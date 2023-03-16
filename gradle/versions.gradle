@@ -1,0 +1,60 @@
+dependencyManagement {
+  dependencies {
+
+    dependency 'info.picocli:picocli:4.7.1'
+
+    dependencySet(group: 'org.apache.logging.log4j', version: '2.20.0') {
+      entry 'log4j-api'
+      entry 'log4j-core'
+      entry 'log4j-slf4j2-impl'
+    }
+
+    dependencySet(group: 'com.google.errorprone', version: '2.18.0') {
+      entry 'error_prone_annotation'
+      entry 'error_prone_check_api'
+      entry 'error_prone_core'
+      entry 'error_prone_test_helpers'
+    }
+    dependency 'tech.pegasys.tools.epchecks:errorprone-checks:1.1.1'
+
+    dependency 'org.apache.commons:commons-lang3:3.12.0'
+
+    dependency 'org.slf4j:slf4j-api:2.0.6'
+
+    dependencySet(group: 'io.vertx', version: '4.2.7') {
+      entry 'vertx-auth-jwt'
+      entry 'vertx-codegen'
+      entry 'vertx-core'
+      entry 'vertx-junit5'
+      entry 'vertx-unit'
+      entry 'vertx-web'
+      entry 'vertx-web-client'
+      entry 'vertx-auth-jwt'
+    }
+
+    dependency 'com.google.guava:guava:31.1-jre'
+
+    dependencySet(group: 'org.hyperledger.besu.internal', version: '23.1.1') {
+      entry 'api'
+      entry 'util'
+      entry 'crypto'
+      entry 'rlp'
+    }
+
+    dependencySet(group: 'org.hyperledger.besu.internal', version: '23.1.1-SNAPSHOT-KT') {
+      entry 'trie'
+    }
+
+    dependencySet(group: 'org.apache.tuweni', version: '2.3.1') {
+      entry 'tuweni-units'
+      entry 'tuweni-bytes'
+    }
+
+    dependency 'io.opentelemetry:opentelemetry-api:1.19.0'
+
+    dependency 'junit:junit:4.13.2'
+    dependency 'org.assertj:assertj-core:3.23.1'
+    dependency 'org.junit.jupiter:junit-jupiter:5.8.2'
+
+  }
+}

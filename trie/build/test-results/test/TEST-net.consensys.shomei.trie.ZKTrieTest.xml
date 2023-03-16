@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="net.consensys.shomei.trie.ZKTrieTest" tests="2" skipped="1" failures="0" errors="0" timestamp="2023-03-16T15:23:02" hostname="1101704" time="0.37">
+  <properties/>
+  <testcase name="testEmptyRootHash" classname="net.consensys.shomei.trie.ZKTrieTest" time="0.37"/>
+  <testcase name="testInsertionRootHash" classname="net.consensys.shomei.trie.ZKTrieTest" time="0.0">
+    <skipped/>
+  </testcase>
+  <system-out><![CDATA[0x89835e84ad52c14bf64fc28e57cfca5cea785d81e4df6cb723aaf3b3ef56888b
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

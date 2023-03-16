@@ -1,0 +1,216 @@
+import groovy.transform.Memoized
+
+buildscript {
+    repositories {
+        mavenCentral()
+        maven {
+            url "https://artifacts.consensys.net/public/maven/maven/"
+            content { includeGroupByRegex('tech\\.pegasys\\..*')}
+        }
+    }
+    dependencies {
+        classpath 'tech.pegasys.internal.license.reporter:license-reporter:1.1.1'
+    }
+}
+
+plugins {
+    id 'com.diffplug.spotless' version '6.16.0'
+    id 'com.github.ben-manes.versions' version '0.46.0'
+    id 'com.github.jk1.dependency-license-report' version '2.1'
+    id 'io.spring.dependency-management' version '1.1.0'
+    id 'net.ltgt.errorprone' version '3.0.1' apply false
+    id 'java'
+    id 'application'
+}
+
+apply plugin: 'application'
+
+application {
+    applicationName = "shomei"
+    getMainClass().set("net.consensys.shomei.Shomei")
+    applicationDefaultJvmArgs = [
+            "-Dvertx.disableFileCPResolving=true",
+            "-Dshomei.home=SHOMEI_HOME",
+            // We shutdown log4j ourselves, as otherwise his shutdown hook runs before our own and whatever
+            // happens during shutdown is not logged.
+            "-Dlog4j.shutdownHookEnabled=false",
+            "-Dlog4j2.formatMsgNoLookups=true",
+            // run `jcmd <PID> VM.native_memory` to check JVM native memory consumption
+            "-XX:NativeMemoryTracking=summary",
+            // 32Mb for Netty Direct ByteBuf
+            "-Dio.netty.maxDirectMemory=33554432"
+    ]
+}
+
+allprojects {
+    apply plugin: 'java-library'
+    apply plugin: 'java-test-fixtures'
+    apply plugin: 'io.spring.dependency-management'
+    apply plugin: 'net.ltgt.errorprone'
+    apply from: "${rootDir}/gradle/versions.gradle"
+
+    version = rootProject.version
+
+
+    task sourcesJar(type: Jar, dependsOn: classes) {
+        archiveClassifier = 'sources'
+        from sourceSets.main.allSource
+        jar.reproducibleFileOrder = true
+        jar.preserveFileTimestamps = false
+    }
+
+    sourceCompatibility = '17'
+    targetCompatibility = '17'
+
+    repositories {
+        mavenLocal()
+        mavenCentral()
+        maven {
+            url "https://artifacts.consensys.net/public/maven/maven/"
+            content { includeGroupByRegex('tech\\.pegasys($|\\..*)')}
+        }
+        maven {
+            url "https://dl.cloudsmith.io/public/libp2p/jvm-libp2p/maven/"
+            content { includeGroupByRegex('io\\.libp2p($|\\..*)') }
+        }
+        maven {
+            url "https://hyperledger.jfrog.io/artifactory/besu-maven/"
+            content { includeGroupByRegex('org\\.hyperledger\\.besu($|\\..*)') }
+        }
+    }
+
+    dependencies {
+        errorprone("com.google.errorprone:error_prone_core")
+        errorprone("tech.pegasys.tools.epchecks:errorprone-checks")
+    }
+
+    apply plugin: 'com.diffplug.spotless'
+    spotless {
+        java {
+            // This path needs to be relative to each project
+            target fileTree('.') {
+                include '**/*.java'
+                exclude '**/.gradle/**'
+                exclude '**/resources'
+                exclude '**/src/*/generated'
+                exclude '**/src/*/generated_tests'
+                exclude '**/build/**'
+            }
+
+            importOrder 'net.consensys', 'java', ''
+            trimTrailingWhitespace()
+            endWithNewline()
+            licenseHeaderFile "${rootDir}/gradle/spotless.java.license"
+            // See gradle.properties for exports/opens flags required by JDK 16 and Google Java Format plugin
+            googleJavaFormat('1.13.0')
+        }
+    }
+
+    tasks.withType(JavaCompile) {
+        options.compilerArgs += [
+                '-Xlint:unchecked',
+                '-Xlint:cast',
+                '-Xlint:rawtypes',
+                '-Xlint:overloads',
+                '-Xlint:divzero',
+                '-Xlint:finally',
+                '-Xlint:static',
+                '-Werror',
+        ]
+        options.forkOptions.jvmArgs += [
+                '--add-opens=jdk.compiler/com.sun.tools.javac.code=ALL-UNNAMED',
+                '--add-opens=jdk.compiler/com.sun.tools.javac.comp=ALL-UNNAMED',
+                '--add-opens=jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED'
+        ]
+
+        options.errorprone {
+            enabled = !'true'.equalsIgnoreCase(System.getProperty('avt.disableErrorProne'))
+            disableWarningsInGeneratedCode
+
+            // Our equals need to be symmetric, this checker doesn't respect that
+            check('EqualsGetClass', net.ltgt.gradle.errorprone.CheckSeverity.OFF)
+            // We use the JSR-305 annotations instead of the Google annotations
+            check('ImmutableEnumChecker', net.ltgt.gradle.errorprone.CheckSeverity.OFF)
+            // Storing a lambda to avoid code duplication is not a bad thing
+            check('UnnecessaryLambda', net.ltgt.gradle.errorprone.CheckSeverity.OFF)
+            // Generates a ton of false alarms for no real value
+            check('LongDoubleConversion', net.ltgt.gradle.errorprone.CheckSeverity.OFF)
+            check('InlineMeSuggester', net.ltgt.gradle.errorprone.CheckSeverity.OFF)
+            check('CanIgnoreReturnValueSuggester', net.ltgt.gradle.errorprone.CheckSeverity.OFF)
+            check('DirectInvocationOnMock', net.ltgt.gradle.errorprone.CheckSeverity.OFF)
+
+            // We don't apply strict javadoc requirements yet
+            check('EmptyBlockTag', net.ltgt.gradle.errorprone.CheckSeverity.OFF)
+            check('MissingSummary', net.ltgt.gradle.errorprone.CheckSeverity.OFF)
+
+            // Force strict compliance with Java naming conventions
+            check('JavaCase', net.ltgt.gradle.errorprone.CheckSeverity.WARN)
+
+            // Check for uses of == that should probably be .equals
+            check('ReferenceComparison', net.ltgt.gradle.errorprone.CheckSeverity.WARN)
+
+            // These checks are imported from errorprone-checks dependency but not required in Teku
+            check('MethodInputParametersMustBeFinal', net.ltgt.gradle.errorprone.CheckSeverity.OFF)
+            check('BannedMethod', net.ltgt.gradle.errorprone.CheckSeverity.OFF)
+            check('ExperimentalCliOptionMustBeCorrectlyDisplayed', net.ltgt.gradle.errorprone.CheckSeverity.OFF)
+
+            // These are experimental checks that we want enabled
+            check('MissingBraces', net.ltgt.gradle.errorprone.CheckSeverity.WARN)
+            check('InsecureCryptoUsage', net.ltgt.gradle.errorprone.CheckSeverity.WARN)
+            check('WildcardImport', net.ltgt.gradle.errorprone.CheckSeverity.WARN)
+            check('DeduplicateConstants', net.ltgt.gradle.errorprone.CheckSeverity.WARN)
+            check('RedundantOverride', net.ltgt.gradle.errorprone.CheckSeverity.WARN)
+            check('RedundantThrows', net.ltgt.gradle.errorprone.CheckSeverity.WARN)
+            check('UnnecessarilyFullyQualified', net.ltgt.gradle.errorprone.CheckSeverity.WARN)
+            check('InitializeInline', net.ltgt.gradle.errorprone.CheckSeverity.WARN)
+            check('ClassName', net.ltgt.gradle.errorprone.CheckSeverity.WARN)
+            check('InterfaceWithOnlyStatics', net.ltgt.gradle.errorprone.CheckSeverity.WARN)
+            check('PackageLocation', net.ltgt.gradle.errorprone.CheckSeverity.WARN)
+        }
+        options.encoding = 'UTF-8'
+    }
+}
+
+jar { enabled = false }
+
+dependencies {
+    implementation project(':shomei')
+    errorprone 'com.google.errorprone:error_prone_core'
+}
+
+@Memoized
+def calculateVersion() {
+    String version = rootProject.version
+    if (version.endsWith("-SNAPSHOT")) {
+        version = version.replace("-SNAPSHOT", "-dev-" + getCheckedOutGitCommitHash())
+    }
+    return version
+}
+
+def getCheckedOutGitCommitHash(length = 8) {
+    try {
+        def gitFolder = "$projectDir/.git/"
+        if (!file(gitFolder).isDirectory()) {
+            // We are in a submodule.  The file's contents are `gitdir: <gitFolder>\n`.
+            // Read the file, cut off the front, and trim the whitespace.
+            gitFolder = file(gitFolder).text.substring(length).trim() + "/"
+        }
+        def takeFromHash = length
+        /*
+         * '.git/HEAD' contains either
+         *      in case of detached head: the currently checked out commit hash
+         *      otherwise: a reference to a file containing the current commit hash
+         */
+        def head = new File(gitFolder + "HEAD").text.split(":") // .git/HEAD
+        def isCommit = head.length == 1 // e5a7c79edabbf7dd39888442df081b1c9d8e88fd
+
+        if (isCommit) return head[0].trim().take(takeFromHash) // e5a7c79edabb
+
+        def refHead = new File(gitFolder + head[1].trim()) // .git/refs/heads/master
+        refHead.text.trim().take takeFromHash
+    } catch (Exception e) {
+        logger.warn('Could not calculate git commit, using "xxxxxxxx" (run with --info for stacktrace)')
+        logger.info('Error retrieving git commit', e)
+        return "xxxxxxxx"
+    }
+}

@@ -1,0 +1,28 @@
+apply plugin: 'java-library'
+
+tasks.named('jar') {
+    archiveBaseName = 'trie'
+    manifest {
+        attributes(
+                'Specification-Title': archiveBaseName,
+                'Specification-Version': project.version,
+                'Implementation-Title': archiveBaseName,
+                'Implementation-Version': calculateVersion()
+        )
+    }
+}
+
+dependencies {
+    implementation 'org.hyperledger.besu.internal:trie'
+    implementation 'org.hyperledger.besu.internal:crypto'
+    implementation 'org.hyperledger.besu.internal:rlp'
+
+    implementation 'com.google.guava:guava'
+
+    implementation 'org.apache.tuweni:tuweni-bytes'
+    implementation 'org.apache.tuweni:tuweni-units'
+
+    testImplementation 'junit:junit'
+    testImplementation 'org.assertj:assertj-core'
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+}

@@ -1,0 +1,41 @@
+
+apply plugin: 'java-library'
+
+tasks.named('jar') {
+    archiveBaseName = 'shomei'
+    manifest {
+        attributes(
+                'Specification-Title': archiveBaseName,
+                'Specification-Version': project.version,
+                'Implementation-Title': archiveBaseName,
+                'Implementation-Version': calculateVersion()
+        )
+    }
+}
+
+dependencies {
+
+    implementation project(':util')
+    implementation project(':rpc')
+
+    implementation 'io.vertx:vertx-core'
+    implementation 'io.vertx:vertx-unit'
+    implementation 'io.vertx:vertx-web'
+    implementation 'io.vertx:vertx-codegen'
+
+    api 'org.slf4j:slf4j-api'
+    implementation 'org.apache.logging.log4j:log4j-slf4j2-impl'
+    implementation 'org.apache.logging.log4j:log4j-core'
+
+    implementation 'org.apache.commons:commons-lang3'
+
+    implementation 'info.picocli:picocli'
+
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.1'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.8.1'
+}
+
+
+test {
+    useJUnitPlatform()
+}

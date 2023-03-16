@@ -1,0 +1,6 @@
+rootProject.name = 'shomei'
+include 'shomei'
+include 'util'
+include 'rpc'
+include 'trie'
+
