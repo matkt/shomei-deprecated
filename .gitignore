@@ -26,7 +26,7 @@ bin/
 local.properties
 target/
 tmp/
-/build/
+**/build/
 out/
 *.vscode/
 gradle/flow/
@@ -40,3 +40,4 @@ scripts/.java-version
 hs_err_pid*
 /shomei.db
 node_modules
+/**/build/
