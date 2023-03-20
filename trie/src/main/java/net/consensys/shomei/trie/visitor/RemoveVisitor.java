@@ -1,5 +1,5 @@
 /*
- * Copyright ConsenSys Software Inc., 2023
+ * Copyright ConsenSys AG.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
  * the License. You may obtain a copy of the License at
@@ -9,43 +9,44 @@
  * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
  * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
  * specific language governing permissions and limitations under the License.
+ *
+ * SPDX-License-Identifier: Apache-2.0
  */
-
 package net.consensys.shomei.trie.visitor;
 
 import net.consensys.shomei.trie.node.EmptyLeafNode;
 import org.apache.tuweni.bytes.Bytes;
+import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.ethereum.trie.CompactEncoding;
 import org.hyperledger.besu.ethereum.trie.MerkleTrieException;
 import org.hyperledger.besu.ethereum.trie.Node;
+import org.hyperledger.besu.ethereum.trie.NodeFactory;
 import org.hyperledger.besu.ethereum.trie.NullNode;
 import org.hyperledger.besu.ethereum.trie.PathNodeVisitor;
 import org.hyperledger.besu.ethereum.trie.patricia.BranchNode;
 import org.hyperledger.besu.ethereum.trie.patricia.ExtensionNode;
 import org.hyperledger.besu.ethereum.trie.patricia.LeafNode;
 
-public class GetVisitor<V> implements PathNodeVisitor<V> {
+public class RemoveVisitor<V> extends org.hyperledger.besu.ethereum.trie.patricia.RemoveVisitor<V> implements PathNodeVisitor<V> {
+
+
+  public RemoveVisitor() {
+  }
+
+  public RemoveVisitor(final boolean allowFlatten) {
+    super(allowFlatten);
+  }
 
   @Override
   public Node<V> visit(final BranchNode<V> branchNode, final Bytes path) {
-    if (path.isEmpty()){
-      return branchNode;
-    }
     final byte childIndex = path.get(0);
-    if (path.isEmpty() && childIndex == CompactEncoding.LEAF_TERMINATOR) {
-      return branchNode;
-    }
-
-    return branchNode.child(childIndex).accept(this, path.slice(1));
+    final Node<V> updatedChild = branchNode.child(childIndex).accept(this, path.slice(1));
+    return branchNode.replaceChild(childIndex, updatedChild);
   }
 
   @Override
   public Node<V> visit(final LeafNode<V> leafNode, final Bytes path) {
-    return leafNode;
-  }
-
-  @Override
-  public Node<V> visit(final NullNode<V> nullNode, final Bytes path) {
+    System.out.println("visit "+leafNode.getEncodedBytes()+" "+path);
     return EmptyLeafNode.instance();
   }
 
@@ -53,4 +54,11 @@ public class GetVisitor<V> implements PathNodeVisitor<V> {
   public Node<V> visit(final ExtensionNode<V> extensionNode, final Bytes path) {
     throw new MerkleTrieException("extension node not allowed in the sparse merkle trie");
   }
+
+  @Override
+  public Node<V> visit(final NullNode<V> nullNode, final Bytes path) {
+    return EmptyLeafNode.instance();
+  }
+
+
 }

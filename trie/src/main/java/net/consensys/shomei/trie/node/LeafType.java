@@ -7,11 +7,9 @@ import java.util.Arrays;
 public enum LeafType {
 
     VALUE((byte)0x16),
-    HEAD((byte)0x17),
-    TAIL((byte)0x18),
-    NEXT_FREE_NODE((byte)0x19),
+    NEXT_FREE_NODE((byte)0x17),
 
-    EMPTY((byte)0x20);
+    EMPTY((byte)0x18);
 
     final byte terminatorPath;
 

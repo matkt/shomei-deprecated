@@ -10,4 +10,8 @@ public class KeyGenerator {
     public static Bytes createDumKey(int value){
         return Hash.keccak256(Bytes.of(("KEY_" + value).getBytes(StandardCharsets.UTF_8)));
     }
+
+    public static Bytes createDumValue(int value){
+        return Hash.keccak256(Bytes.of(("VAL_" + value).getBytes(StandardCharsets.UTF_8)));
+    }
 }

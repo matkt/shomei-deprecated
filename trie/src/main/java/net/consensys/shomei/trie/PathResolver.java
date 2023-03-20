@@ -1,6 +1,6 @@
-package net.consensys.shomei.trie.node;
+package net.consensys.shomei.trie;
 
-import net.consensys.shomei.trie.KeyIndexLoader;
+import net.consensys.shomei.trie.node.LeafType;
 import net.consensys.shomei.trie.util.PathGenerator;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.MutableBytes32;
@@ -8,22 +8,19 @@ import org.hyperledger.besu.ethereum.trie.MerkleTrie;
 import org.hyperledger.besu.ethereum.trie.StoredMerkleTrie;
 
 import java.math.BigInteger;
-import java.util.Optional;
 
 @SuppressWarnings({"DoNotInvokeMessageDigestDirectly", "unused"})
-public class TrieNodePathResolver {
+public class PathResolver {
 
     private static final Bytes NEXT_FREE_NODE_PATH =Bytes.of(0);
     private static final Bytes SUB_TRIE_ROOT_PATH = Bytes.of(1);
 
-    private final KeyIndexLoader keyIndexLoader;
     private final int trieDepth;
     private final MerkleTrie<Bytes, Bytes> trie;
 
     private Long nextFreeNode;
 
-    public TrieNodePathResolver(final KeyIndexLoader keyIndexLoader, final int trieDepth, final StoredMerkleTrie<Bytes,Bytes> trie) {
-        this.keyIndexLoader = keyIndexLoader;
+    public PathResolver(final int trieDepth, final StoredMerkleTrie<Bytes,Bytes> trie) {
         this.trieDepth = trieDepth;
         this.trie = trie;
     }
@@ -32,7 +29,7 @@ public class TrieNodePathResolver {
         return getLeafPath(getAndIncrementNextFreeLeafIndex());
     }
 
-    private Long getAndIncrementNextFreeLeafIndex() {
+    public Long getAndIncrementNextFreeLeafIndex() {
         final long foundFreeNode = getNextFreeLeafIndex();
         nextFreeNode = foundFreeNode + 1;
         trie.putPath(getNextFreeNodePath(), formatNodeIndex(nextFreeNode));
@@ -59,25 +56,9 @@ public class TrieNodePathResolver {
                 PathGenerator.bytesToLeafPath(nodeIndexToBytes(nodeIndex), LeafType.VALUE));
     }
 
-    public Optional<Bytes> getLeafPath(final Bytes key) {
-        return keyIndexLoader.getKeyIndex(key).map(this::getLeafPath);
-    }
-
     public Bytes getNextFreeNodePath() {
         return Bytes.concatenate(
                 NEXT_FREE_NODE_PATH, Bytes.of(LeafType.NEXT_FREE_NODE.getTerminatorPath()));
-    }
-
-    public Bytes getHeadPath() {
-        return Bytes.concatenate(
-                SUB_TRIE_ROOT_PATH,
-                PathGenerator.bytesToLeafPath(nodeIndexToBytes(getAndIncrementNextFreeLeafIndex()), LeafType.HEAD));
-    }
-
-    public Bytes getTailPath() {
-        return Bytes.concatenate(
-                SUB_TRIE_ROOT_PATH,
-                PathGenerator.bytesToLeafPath(nodeIndexToBytes(getAndIncrementNextFreeLeafIndex()), LeafType.TAIL));
     }
 
     private  Bytes nodeIndexToBytes( final long nodeIndex){

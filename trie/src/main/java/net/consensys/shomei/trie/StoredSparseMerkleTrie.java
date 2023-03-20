@@ -17,6 +17,7 @@ import java.util.Optional;
 import java.util.function.Function;
 import net.consensys.shomei.trie.visitor.GetVisitor;
 import net.consensys.shomei.trie.visitor.PutVisitor;
+import net.consensys.shomei.trie.visitor.RemoveVisitor;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.ethereum.trie.MerkleStorage;
@@ -88,8 +89,7 @@ public class StoredSparseMerkleTrie extends StoredMerkleTrie<Bytes, Bytes>
 
   @Override
   public PathNodeVisitor<Bytes> getRemoveVisitor() {
-    throw new UnsupportedOperationException(
-        "remove visitor is not implemented for sparse merkle trie");
+    return new RemoveVisitor<>();
   }
 
   @Override

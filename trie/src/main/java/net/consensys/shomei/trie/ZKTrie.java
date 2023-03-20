@@ -23,11 +23,11 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 import com.google.common.primitives.Longs;
+import net.consensys.shomei.trie.model.StateLeafValue;
 import net.consensys.shomei.trie.node.EmptyLeafNode;
-import net.consensys.shomei.trie.node.TrieNodePathResolver;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
-import org.hyperledger.besu.crypto.Hash;
+import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.ethereum.trie.CommitVisitor;
 import org.hyperledger.besu.ethereum.trie.MerkleTrie;
 import org.hyperledger.besu.ethereum.trie.Node;
@@ -43,17 +43,19 @@ public class ZKTrie implements MerkleTrie<Bytes, Bytes> {
   private static final int ZK_TRIE_DEPTH = 40;
 
 
-  private final TrieNodePathResolver trieNodeFinder;
+  private final PathResolver pathResolver;
   private final StoredSparseMerkleTrie state;
+  private final LeafStorage leafStorage;
 
-  public ZKTrie(final KeyIndexLoader keyIndexLoader, final NodeLoader nodeLoader) {
-    this(EMPTY_TRIE_NODE_HASH, keyIndexLoader, nodeLoader);
+  public ZKTrie(final LeafStorage leafStorage, final NodeLoader nodeLoader) {
+    this(EMPTY_TRIE_NODE_HASH, leafStorage, nodeLoader);
   }
 
   public ZKTrie(
-      final Bytes32 rootHash, final KeyIndexLoader keyIndexLoader, final NodeLoader nodeLoader) {
+          final Bytes32 rootHash, final LeafStorage leafStorage, final NodeLoader nodeLoader) {
+    this.leafStorage = leafStorage;
     this.state = new StoredSparseMerkleTrie(nodeLoader, rootHash, b -> b, b -> b);
-    this.trieNodeFinder = new TrieNodePathResolver(keyIndexLoader, ZK_TRIE_DEPTH, state);
+    this.pathResolver = new PathResolver(ZK_TRIE_DEPTH, state);
   }
 
   public static Node<Bytes> initWorldState(final NodeUpdater nodeUpdater) {
@@ -79,16 +81,20 @@ public class ZKTrie implements MerkleTrie<Bytes, Bytes> {
 
   public void setHeadAndTail(){
     //head
-    putPath(trieNodeFinder.getHeadPath(), Bytes.wrap(Longs.toByteArray(0L)));
+    final Long headIndex = pathResolver.getAndIncrementNextFreeLeafIndex();
+    leafStorage.putKeyIndex(StateLeafValue.HEAD.getHkey(), headIndex);
+    putPath(pathResolver.getLeafPath(headIndex), StateLeafValue.HEAD.getEncodesBytes());
     //tail
-    putPath(trieNodeFinder.getTailPath(), Bytes.wrap(Longs.toByteArray(0L)));
+    final Long tailIndex = pathResolver.getAndIncrementNextFreeLeafIndex();
+    leafStorage.putKeyIndex(StateLeafValue.TAIL.getHkey(), tailIndex);
+    putPath(pathResolver.getLeafPath(tailIndex), StateLeafValue.TAIL.getEncodesBytes());
   }
 
 
   @Override
   public Bytes32 getRootHash() {
     return state
-        .getNodePath(trieNodeFinder.geRootPath()).getHash();
+        .getNodePath(pathResolver.geRootPath()).getHash();
   }
 
   public Bytes32 getTopRootHash() {
@@ -98,33 +104,47 @@ public class ZKTrie implements MerkleTrie<Bytes, Bytes> {
   @Override
   public Optional<Bytes> get(final Bytes key) {
     // use flat database
-    return trieNodeFinder.getLeafPath(key).flatMap(state::getPath);
+    return leafStorage.getKeyIndex(key).map(pathResolver::getLeafPath).flatMap(state::getPath);
   }
 
   @Override
-  public Optional<Bytes> getPath(final Bytes path) {
-    return Optional.empty();
+  public Optional<Bytes>  getPath(final Bytes path) {
+    return state.getPath(path);
   }
-
-  @Override
-  public Proof<Bytes> getValueWithProof(final Bytes key) {
-
-    return null;
-  }
-
-
 
   @Override
   public void put(final Bytes key, final Bytes value) {
+    final LeafStorage.Range nearestKeys = leafStorage.getNearestKeys(key); // find HKey- and HKey+
     // Check if hash(k) exist
-    // IF NOT
-    // FIND HKey- thanks to flat database
-    // FIND HKey+ thanks to next of HKey-
-    // PUT hash(k) with HKey- for Prev and HKey+ for next
-    // UPDATE HKey- with hash(k) for next
-    // UPDATE HKey+ with hash(k) for prev
-    Bytes nodePath = trieNodeFinder.getAndIncrementNextFreeLeafPath();
-    putPath(nodePath, value);
+    if(!nearestKeys.getLeftNodeKey().equals(key)){
+      // HKey-
+      final Bytes nearestKeyPath = pathResolver.getLeafPath(nearestKeys.getLeftNodeIndex().toLong());
+      // HKey+
+      final Bytes nearestNextKeyPath = pathResolver.getLeafPath(nearestKeys.getRightNodeIndex().toLong());
+
+      // PUT hash(k) with HKey- for Prev and HKey+ for next
+      final long nextFreeNode = pathResolver.getAndIncrementNextFreeLeafIndex();
+      final Bytes newKeyPath = pathResolver.getLeafPath(nextFreeNode);
+      leafStorage.putKeyIndex(key,nextFreeNode);
+      final StateLeafValue newKey = new StateLeafValue(
+              nearestKeys.getLeftNodeIndex(), nearestKeys.getRightNodeIndex(),Bytes32.wrap(key), value);
+      putPath(newKeyPath, newKey.getEncodesBytes());
+     
+      // UPDATE HKey- with hash(k) for next
+      final StateLeafValue leftKey = getPath(nearestKeyPath).map(StateLeafValue::readFrom).orElseThrow();
+      leftKey.setNextLeaf(UInt256.valueOf(nextFreeNode));
+      putPath(nearestKeyPath, leftKey.getEncodesBytes());
+
+      // UPDATE HKey+ with hash(k) for prev
+      final StateLeafValue rightKey = getPath(nearestNextKeyPath).map(StateLeafValue::readFrom).orElseThrow();
+      rightKey.setPrevLeaf(UInt256.valueOf(nextFreeNode));
+      putPath(nearestNextKeyPath, rightKey.getEncodesBytes());
+    }else {
+      final Bytes updatedKeyPath = pathResolver.getLeafPath(nearestKeys.getLeftNodeIndex().toLong());
+      final StateLeafValue updatedKey = getPath(updatedKeyPath).map(StateLeafValue::readFrom).orElseThrow();
+      updatedKey.setValue(value);
+      putPath(updatedKeyPath, updatedKey.getEncodesBytes());
+    }
   }
 
   @Override
@@ -133,28 +153,35 @@ public class ZKTrie implements MerkleTrie<Bytes, Bytes> {
   }
 
   @Override
-  public void put(final Bytes key, final PathNodeVisitor<Bytes> putVisitor) {
-    putPath(trieNodeFinder.getAndIncrementNextFreeLeafPath(), putVisitor);
-  }
-
-  @Override
-  public void putPath(final Bytes path, final PathNodeVisitor<Bytes> putVisitor) {
-    state.putPath(path, putVisitor);
-  }
-
-  @Override
   public void remove(final Bytes key) {
-    trieNodeFinder
-        .getLeafPath(key)
-        .ifPresent(
-            path -> {
-              state.putPath(path, Bytes.EMPTY); // TODO put 0 value leaf
-            });
+
+    final LeafStorage.Range nearestKeys = leafStorage.getNearestKeys(key); // find HKey- and HKey+
+    // Check if hash(k) exist
+    if(nearestKeys.getLeftNodeKey().equals(key)){
+      // hash(k)
+      final Bytes keyPathToDelete = pathResolver.getLeafPath(nearestKeys.getLeftNodeIndex().toLong());
+      final StateLeafValue keyToDelete = getPath(keyPathToDelete).map(StateLeafValue::readFrom).orElseThrow();
+
+      // HKey-
+      final Bytes prevKeyPath = pathResolver.getLeafPath(keyToDelete.getPrevLeaf().toLong());
+      final StateLeafValue prevKey = getPath(prevKeyPath).map(StateLeafValue::readFrom).orElseThrow();
+      prevKey.setNextLeaf(keyToDelete.getNextLeaf());
+      putPath(prevKeyPath, prevKey.getEncodesBytes());
+
+      // HKey+
+      final Bytes nextKeyPath = pathResolver.getLeafPath(keyToDelete.getNextLeaf().toLong());
+      final StateLeafValue nextKey = getPath(nextKeyPath).map(StateLeafValue::readFrom).orElseThrow();
+      nextKey.setPrevLeaf(keyToDelete.getPrevLeaf());
+      putPath(nextKeyPath, nextKey.getEncodesBytes());
+
+      // remove hash(k)
+      removePath(keyPathToDelete, null); //TODO Clean this remove part
+    }
   }
 
   @Override
   public void removePath(final Bytes path, final RemoveVisitor<Bytes> removeVisitor) {
-    state.putPath(path, Bytes.EMPTY); // TODO put 0 value leaf
+    state.removePath(path,  (RemoveVisitor<Bytes>) state.getRemoveVisitor());
   }
 
   @Override
@@ -185,6 +212,23 @@ public class ZKTrie implements MerkleTrie<Bytes, Bytes> {
       final Consumer<Node<Bytes>> nodeConsumer, final ExecutorService executorService) {
     return null;
   }
+
+  @Override
+  public void put(final Bytes key, final PathNodeVisitor<Bytes> putVisitor) {
+
+  }
+
+  @Override
+  public void putPath(final Bytes path, final PathNodeVisitor<Bytes> putVisitor) {
+
+  }
+
+
+  @Override
+  public Proof<Bytes> getValueWithProof(final Bytes key) {
+    return null;
+  }
+
 
   @Override
   public void visitLeafs(final TrieIterator.LeafHandler<Bytes> handler) {}

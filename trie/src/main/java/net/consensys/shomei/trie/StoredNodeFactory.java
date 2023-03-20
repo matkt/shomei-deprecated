@@ -25,11 +25,9 @@ import java.util.function.Supplier;
 
 import net.consensys.shomei.trie.node.BranchNode;
 import net.consensys.shomei.trie.node.EmptyLeafNode;
-import net.consensys.shomei.trie.node.HeadNode;
 import net.consensys.shomei.trie.node.LeafNode;
 import net.consensys.shomei.trie.node.LeafType;
 import net.consensys.shomei.trie.node.NextFreeNode;
-import net.consensys.shomei.trie.node.TailNode;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.ethereum.trie.MerkleTrieException;
@@ -98,11 +96,7 @@ public class StoredNodeFactory implements NodeFactory<Bytes> {
 
   @Override
   public Node<Bytes> createLeaf(final Bytes path, final Bytes value) {
-    if(fromBytes(path).equals(LeafType.HEAD)){
-      return handleNewNode(new HeadNode(path, this, valueSerializer));
-    } else if(fromBytes(path).equals(LeafType.TAIL)){
-      return handleNewNode(new TailNode(path, this, valueSerializer));
-    }else if(fromBytes(path).equals(LeafType.NEXT_FREE_NODE)){
+    if(fromBytes(path).equals(LeafType.NEXT_FREE_NODE)){
       return handleNewNode(new NextFreeNode<>(path, value, this, valueSerializer));
     }
     return handleNewNode(new LeafNode<>(path, value, this, valueSerializer));
