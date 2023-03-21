@@ -14,6 +14,7 @@
 package net.consensys.shomei;
 
 import net.consensys.shomei.cli.StateManagerCommand;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import picocli.CommandLine;

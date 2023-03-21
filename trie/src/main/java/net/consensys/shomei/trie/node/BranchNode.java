@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
+
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.ethereum.trie.Node;
@@ -58,16 +59,23 @@ public class BranchNode<V> extends org.hyperledger.besu.ethereum.trie.patricia.B
       }
     }
     final ByteArrayOutputStream out = new ByteArrayOutputStream();
-    getChildren().forEach(vNode -> {
-      if(vNode instanceof NextFreeNode<V>){
-        out.writeBytes(vNode.getEncodedBytes().toArrayUnsafe());
-      } else {
-        out.writeBytes(vNode.getHash().toArrayUnsafe());
-      }
-    });
+    getChildren()
+        .forEach(
+            vNode -> {
+              if (vNode instanceof NextFreeNode<V>) {
+                out.writeBytes(vNode.getEncodedBytes().toArrayUnsafe());
+              } else {
+                out.writeBytes(vNode.getHash().toArrayUnsafe());
+              }
+            });
     final Bytes encoded = Bytes.wrap(out.toByteArray());
     encodedBytes = new WeakReference<>(encoded);
     return encoded;
+  }
+
+  @Override
+  public Bytes32 getHash() {
+    return super.getHash(); // TODO CHANGE TO HashProvider.mimc
   }
 
   @Override

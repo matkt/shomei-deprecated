@@ -14,6 +14,7 @@
 package net.consensys.shomei.cli.option;
 
 import java.util.Set;
+
 import org.apache.logging.log4j.Level;
 import picocli.CommandLine;
 import picocli.CommandLine.Model.CommandSpec;

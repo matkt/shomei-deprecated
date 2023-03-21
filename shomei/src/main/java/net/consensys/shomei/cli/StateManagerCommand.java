@@ -17,6 +17,7 @@ import net.consensys.shomei.cli.error.ExecutionExceptionHandler;
 import net.consensys.shomei.cli.error.ParameterExceptionHandler;
 import net.consensys.shomei.cli.option.LoggingLevelOption;
 import net.consensys.shomei.util.logging.LoggingConfiguration;
+
 import org.apache.logging.log4j.Level;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

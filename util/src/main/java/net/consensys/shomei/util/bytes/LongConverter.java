@@ -11,32 +11,14 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package net.consensys.shomei.trie.node;
+package net.consensys.shomei.util.bytes;
 
-import java.util.Arrays;
+import org.apache.tuweni.bytes.Bytes32;
+import org.apache.tuweni.units.bigints.UInt256;
 
-import org.apache.tuweni.bytes.Bytes;
+public class LongConverter {
 
-public enum LeafType {
-  VALUE((byte) 0x16),
-  NEXT_FREE_NODE((byte) 0x17),
-
-  EMPTY((byte) 0x18);
-
-  final byte terminatorPath;
-
-  LeafType(final byte terminatorPath) {
-    this.terminatorPath = terminatorPath;
-  }
-
-  public byte getTerminatorPath() {
-    return terminatorPath;
-  }
-
-  public static LeafType fromBytes(final Bytes path) {
-    return Arrays.stream(values())
-        .filter(leafType -> Bytes.of(leafType.getTerminatorPath()).equals(path))
-        .findFirst()
-        .orElse(EMPTY);
+  public static Bytes32 toBytes32(final long value) {
+    return Bytes32.leftPad(UInt256.valueOf(value));
   }
 }

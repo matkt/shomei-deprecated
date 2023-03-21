@@ -13,12 +13,12 @@
 
 package net.consensys.shomei.trie.node;
 
-import org.apache.tuweni.bytes.Bytes;
-import org.hyperledger.besu.ethereum.trie.NodeFactory;
-
 import java.io.ByteArrayOutputStream;
 import java.lang.ref.WeakReference;
 import java.util.function.Function;
+
+import org.apache.tuweni.bytes.Bytes;
+import org.hyperledger.besu.ethereum.trie.NodeFactory;
 
 public class NextFreeNode<V> extends org.hyperledger.besu.ethereum.trie.patricia.LeafNode<V> {
 

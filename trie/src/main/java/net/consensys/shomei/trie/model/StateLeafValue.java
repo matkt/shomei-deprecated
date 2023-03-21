@@ -1,5 +1,5 @@
 /*
- * Copyright ConsenSys AG.
+ * Copyright ConsenSys Software Inc., 2023
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
  * the License. You may obtain a copy of the License at
@@ -9,36 +9,30 @@
  * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
  * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
  * specific language governing permissions and limitations under the License.
- *
- * SPDX-License-Identifier: Apache-2.0
  */
+
 package net.consensys.shomei.trie.model;
+
+import net.consensys.shomei.util.bytes.BytesInput;
+
+import java.util.Objects;
 
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
-import org.hyperledger.besu.ethereum.rlp.RLPInput;
-import org.hyperledger.besu.ethereum.rlp.RLPOutput;
-
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.util.Objects;
-import java.util.Optional;
-
-import static com.google.common.base.Preconditions.checkNotNull;
 
 /** Represents the raw values associated with a leaf in the flat database. */
 public class StateLeafValue {
 
+  public static final StateLeafValue HEAD =
+      new StateLeafValue(UInt256.ZERO, UInt256.valueOf(1), Bytes32.ZERO, Bytes32.ZERO);
 
-  public static final StateLeafValue HEAD = new StateLeafValue(
-          UInt256.ZERO,UInt256.valueOf(1), Bytes32.ZERO, Bytes32.ZERO
-  );
-
-  public static final StateLeafValue TAIL = new StateLeafValue(
-          UInt256.ZERO,UInt256.valueOf(1), Bytes32.fromHexString("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"), Bytes32.ZERO
-  );
+  public static final StateLeafValue TAIL =
+      new StateLeafValue(
+          UInt256.ZERO,
+          UInt256.valueOf(1),
+          Bytes32.fromHexString("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"),
+          Bytes32.ZERO);
 
   private final Bytes32 hkey;
 
@@ -56,7 +50,7 @@ public class StateLeafValue {
   }
 
   public StateLeafValue(
-          final UInt256 prevLeaf, final UInt256 nextLeaf, final Bytes32 hkey, final Bytes value) {
+      final UInt256 prevLeaf, final UInt256 nextLeaf, final Bytes32 hkey, final Bytes value) {
     this.hkey = hkey;
     this.value = value;
     this.prevLeaf = prevLeaf;
@@ -69,7 +63,6 @@ public class StateLeafValue {
     this.prevLeaf = stateLeafValue.prevLeaf;
     this.nextLeaf = stateLeafValue.nextLeaf;
   }
-
 
   public UInt256 getPrevLeaf() {
     return prevLeaf;
@@ -86,8 +79,6 @@ public class StateLeafValue {
   public void setNextLeaf(final UInt256 nextLeaf) {
     this.nextLeaf = nextLeaf;
   }
-
-
 
   public Bytes32 getHkey() {
     return hkey;
@@ -110,8 +101,10 @@ public class StateLeafValue {
       return false;
     }
     StateLeafValue that = (StateLeafValue) o;
-    return Objects.equals(hkey, that.hkey) && Objects.equals(value, that.value)
-            && Objects.equals(prevLeaf, that.prevLeaf) && Objects.equals(nextLeaf, that.nextLeaf);
+    return Objects.equals(hkey, that.hkey)
+        && Objects.equals(value, that.value)
+        && Objects.equals(prevLeaf, that.prevLeaf)
+        && Objects.equals(nextLeaf, that.nextLeaf);
   }
 
   @Override
@@ -119,22 +112,22 @@ public class StateLeafValue {
     return Objects.hash(hkey, value, prevLeaf, nextLeaf);
   }
 
-  public static StateLeafValue readFrom(final Bytes encodedBytes){
-    final ByteArrayInputStream stream = new ByteArrayInputStream(encodedBytes.toArrayUnsafe());
-    try {
-      return new StateLeafValue( UInt256.fromBytes(Bytes.of(stream.readNBytes(UInt256.SIZE))), UInt256.fromBytes(Bytes.of(stream.readNBytes(UInt256.SIZE))), Bytes32.wrap(stream.readNBytes(Bytes32.SIZE)), Bytes32.wrap(stream.readNBytes(Bytes32.SIZE)));
-    } catch (IOException e) {
-      System.out.println("error reading");
-    }
-    return null;
+  public static StateLeafValue readFrom(final Bytes encodedBytes) {
+    return BytesInput.readBytes(
+        encodedBytes,
+        bytesInput ->
+            new StateLeafValue(
+                bytesInput.readUInt256(),
+                bytesInput.readUInt256(),
+                bytesInput.readBytes32(),
+                bytesInput.readBytes32()));
   }
 
   public Bytes getEncodesBytes() {
     return Bytes.concatenate(
-            prevLeaf, // Prev
-            nextLeaf, // Next ,
-            hkey, //HKEY
-            value); // VALUE
+        prevLeaf, // Prev
+        nextLeaf, // Next ,
+        hkey, // HKEY
+        value); // VALUE
   }
-
 }

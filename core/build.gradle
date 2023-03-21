@@ -1,7 +1,8 @@
+
 apply plugin: 'java-library'
 
 tasks.named('jar') {
-    archiveBaseName = 'util'
+    archiveBaseName = 'core'
     manifest {
         attributes(
                 'Specification-Title': archiveBaseName,
@@ -13,8 +14,19 @@ tasks.named('jar') {
 }
 
 dependencies {
+
+    implementation project(':util')
+    implementation project(':trie')
+    implementation project(':crypto')
+
+    implementation 'org.hyperledger.besu.internal:trie'
+    implementation 'org.hyperledger.besu:besu-datatypes'
+    implementation 'org.hyperledger.besu:evm'
+
     implementation 'org.apache.tuweni:tuweni-bytes'
     implementation 'org.apache.tuweni:tuweni-units'
 
-    implementation 'org.apache.logging.log4j:log4j-core'
+    testImplementation 'junit:junit'
+    testImplementation 'org.assertj:assertj-core'
+    testImplementation 'org.junit.jupiter:junit-jupiter'
 }

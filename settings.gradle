@@ -3,4 +3,6 @@ include 'shomei'
 include 'util'
 include 'rpc'
 include 'trie'
+include 'core'
+include 'crypto'
 

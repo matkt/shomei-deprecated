@@ -96,13 +96,12 @@ allprojects {
                 exclude '**/src/*/generated_tests'
                 exclude '**/build/**'
             }
-
+            removeUnusedImports()
+            googleJavaFormat('1.15.0')
             importOrder 'net.consensys', 'java', ''
             trimTrailingWhitespace()
             endWithNewline()
             licenseHeaderFile "${rootDir}/gradle/spotless.java.license"
-            // See gradle.properties for exports/opens flags required by JDK 16 and Google Java Format plugin
-            googleJavaFormat('1.13.0')
         }
     }
 

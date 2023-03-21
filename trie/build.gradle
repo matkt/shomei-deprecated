@@ -13,6 +13,9 @@ tasks.named('jar') {
 }
 
 dependencies {
+    implementation project(':util')
+    implementation project(':crypto')
+
     implementation 'org.hyperledger.besu.internal:trie'
     implementation 'org.hyperledger.besu.internal:crypto'
     implementation 'org.hyperledger.besu.internal:rlp'

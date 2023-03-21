@@ -40,6 +40,8 @@ dependencyManagement {
       entry 'crypto'
       entry 'rlp'
     }
+    dependency 'org.hyperledger.besu:besu-datatypes:23.1.1'
+    dependency 'org.hyperledger.besu:evm:23.1.1'
 
     dependencySet(group: 'org.hyperledger.besu.internal', version: '23.1.1-SNAPSHOT-KT') {
       entry 'trie'

@@ -11,26 +11,21 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package net.consensys.shomei.trie.util;
+package net.consensys.shomei.util;
 
-import net.consensys.shomei.trie.node.LeafType;
+import net.consensys.zkevm.HashProvider;
+
+import java.nio.charset.StandardCharsets;
 
 import org.apache.tuweni.bytes.Bytes;
-import org.apache.tuweni.bytes.MutableBytes;
 
-public class PathGenerator {
+public class TestFixtureGenerator {
 
-  public static Bytes bytesToLeafPath(final Bytes bytes, final LeafType leafType) {
-    MutableBytes path = MutableBytes.create(bytes.size() * 2 + 1);
-    int j = 0;
-    for (int i = j; i < bytes.size(); j += 2) {
-      byte b = bytes.get(i);
-      path.set(j, (byte) (b >>> 4 & 15));
-      path.set(j + 1, (byte) (b & 15));
-      ++i;
-    }
+  public static Bytes createDumKey(int value) {
+    return HashProvider.keccak256(Bytes.of(("KEY_" + value).getBytes(StandardCharsets.UTF_8)));
+  }
 
-    path.set(j, leafType.getTerminatorPath()); // leaf ending path
-    return path;
+  public static Bytes createDumValue(int value) {
+    return HashProvider.keccak256(Bytes.of(("VAL_" + value).getBytes(StandardCharsets.UTF_8)));
   }
 }

@@ -16,13 +16,12 @@ package net.consensys.shomei.trie.node;
 import java.io.ByteArrayOutputStream;
 import java.lang.ref.WeakReference;
 import java.util.function.Function;
+
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.ethereum.trie.NodeFactory;
 
 public class LeafNode<V> extends org.hyperledger.besu.ethereum.trie.patricia.LeafNode<V> {
-
-
 
   public LeafNode(
       final Bytes path,
@@ -46,6 +45,11 @@ public class LeafNode<V> extends org.hyperledger.besu.ethereum.trie.patricia.Lea
     final Bytes encoded = Bytes.wrap(out.toByteArray());
     encodedBytes = new WeakReference<>(encoded);
     return encoded;
+  }
+
+  @Override
+  public Bytes32 getHash() {
+    return super.getHash(); // TODO CHANGE TO HashProvider.mimc
   }
 
   @Override

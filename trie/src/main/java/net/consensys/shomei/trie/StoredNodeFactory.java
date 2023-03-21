@@ -16,6 +16,12 @@ package net.consensys.shomei.trie;
 import static java.lang.String.format;
 import static net.consensys.shomei.trie.node.LeafType.fromBytes;
 
+import net.consensys.shomei.trie.node.BranchNode;
+import net.consensys.shomei.trie.node.EmptyLeafNode;
+import net.consensys.shomei.trie.node.LeafNode;
+import net.consensys.shomei.trie.node.LeafType;
+import net.consensys.shomei.trie.node.NextFreeNode;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -23,11 +29,6 @@ import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-import net.consensys.shomei.trie.node.BranchNode;
-import net.consensys.shomei.trie.node.EmptyLeafNode;
-import net.consensys.shomei.trie.node.LeafNode;
-import net.consensys.shomei.trie.node.LeafType;
-import net.consensys.shomei.trie.node.NextFreeNode;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.ethereum.trie.MerkleTrieException;
@@ -68,7 +69,10 @@ public class StoredNodeFactory implements NodeFactory<Bytes> {
   @SuppressWarnings("unchecked")
   @Override
   public Node<Bytes> createBranch(
-      final byte leftIndex, final Node<Bytes> left, final byte rightIndex, final Node<Bytes> right) {
+      final byte leftIndex,
+      final Node<Bytes> left,
+      final byte rightIndex,
+      final Node<Bytes> right) {
     assert (leftIndex <= NB_CHILD);
     assert (rightIndex <= NB_CHILD);
     assert (leftIndex != rightIndex);
@@ -96,7 +100,7 @@ public class StoredNodeFactory implements NodeFactory<Bytes> {
 
   @Override
   public Node<Bytes> createLeaf(final Bytes path, final Bytes value) {
-    if(fromBytes(path).equals(LeafType.NEXT_FREE_NODE)){
+    if (fromBytes(path).equals(LeafType.NEXT_FREE_NODE)) {
       return handleNewNode(new NextFreeNode<>(path, value, this, valueSerializer));
     }
     return handleNewNode(new LeafNode<>(path, value, this, valueSerializer));
@@ -153,7 +157,7 @@ public class StoredNodeFactory implements NodeFactory<Bytes> {
     final ArrayList<Node<Bytes>> children = new ArrayList<>(NB_CHILD);
     final int nbChilds = input.size() / Hash.SIZE;
     for (int i = 0; i < nbChilds; i++) {
-      final Bytes32 childHash = Bytes32.wrap(input.slice(i*Bytes32.SIZE, Hash.SIZE));
+      final Bytes32 childHash = Bytes32.wrap(input.slice(i * Bytes32.SIZE, Hash.SIZE));
       children.add(
           new StoredNode<>(
               this,
@@ -171,5 +175,4 @@ public class StoredNodeFactory implements NodeFactory<Bytes> {
       return new LeafNode<>(Bytes.EMPTY, input, this, valueSerializer);
     }
   }
-
 }

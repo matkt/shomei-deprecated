@@ -13,11 +13,14 @@
 
 package net.consensys.shomei.trie;
 
-import java.util.Optional;
-import java.util.function.Function;
+import static com.google.common.base.Preconditions.checkNotNull;
+
 import net.consensys.shomei.trie.visitor.GetVisitor;
 import net.consensys.shomei.trie.visitor.PutVisitor;
 import net.consensys.shomei.trie.visitor.RemoveVisitor;
+
+import java.util.function.Function;
+
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.ethereum.trie.MerkleStorage;
@@ -27,13 +30,7 @@ import org.hyperledger.besu.ethereum.trie.NodeLoader;
 import org.hyperledger.besu.ethereum.trie.PathNodeVisitor;
 import org.hyperledger.besu.ethereum.trie.StoredMerkleTrie;
 
-import static com.google.common.base.Preconditions.checkNotNull;
-import static org.hyperledger.besu.ethereum.trie.CompactEncoding.bytesToPath;
-
-/**
- * A {@link MerkleTrie} that persists trie nodes to a {@link MerkleStorage} key/value store.
- *
- */
+/** A {@link MerkleTrie} that persists trie nodes to a {@link MerkleStorage} key/value store. */
 public class StoredSparseMerkleTrie extends StoredMerkleTrie<Bytes, Bytes>
     implements MerkleTrie<Bytes, Bytes> {
 
@@ -84,8 +81,6 @@ public class StoredSparseMerkleTrie extends StoredMerkleTrie<Bytes, Bytes>
   public PathNodeVisitor<Bytes> getGetVisitor() {
     return getVisitor;
   }
-
-
 
   @Override
   public PathNodeVisitor<Bytes> getRemoveVisitor() {

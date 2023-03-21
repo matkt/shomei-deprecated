@@ -13,6 +13,9 @@
 
 package net.consensys.shomei.trie.visitor;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.ethereum.trie.MerkleTrieException;
 import org.hyperledger.besu.ethereum.trie.Node;
@@ -26,6 +29,8 @@ import org.hyperledger.besu.ethereum.trie.patricia.LeafNode;
 public class PutVisitor<V> implements PathNodeVisitor<V> {
   private final NodeFactory<V> nodeFactory;
   private final V value;
+
+  List<Node<Bytes>> proof = new ArrayList<>();
 
   public PutVisitor(final NodeFactory<V> nodeFactory, final V value) {
     this.nodeFactory = nodeFactory;
@@ -79,12 +84,12 @@ public class PutVisitor<V> implements PathNodeVisitor<V> {
   }
 
   @Override
-  public Node<V> visit(final ExtensionNode<V> extensionNode, final Bytes path) {
-    throw new MerkleTrieException("extension node not allowed in the sparse merkle trie");
+  public Node<V> visit(final NullNode<V> nullNode, final Bytes path) {
+    return nodeFactory.createLeaf(path, value);
   }
 
   @Override
-  public Node<V> visit(final NullNode<V> nullNode, final Bytes path) {
-    return nodeFactory.createLeaf(path, value);
+  public Node<V> visit(final ExtensionNode<V> extensionNode, final Bytes path) {
+    throw new MerkleTrieException("extension node not allowed in the sparse merkle trie");
   }
 }

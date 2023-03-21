@@ -16,7 +16,6 @@ package net.consensys.shomei.trie;
 import java.util.Map;
 import java.util.Optional;
 
-import net.consensys.shomei.trie.model.StateLeafValue;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
@@ -33,7 +32,8 @@ public interface LeafStorage {
     private final Map.Entry<Bytes32, UInt256> leftNode;
     private final Map.Entry<Bytes32, UInt256> rightNode;
 
-    public Range(final Map.Entry<Bytes32, UInt256> leftNode, final Map.Entry<Bytes32, UInt256> rightNode) {
+    public Range(
+        final Map.Entry<Bytes32, UInt256> leftNode, final Map.Entry<Bytes32, UInt256> rightNode) {
       this.leftNode = leftNode;
       this.rightNode = rightNode;
     }
@@ -54,5 +54,4 @@ public interface LeafStorage {
       return rightNode.getValue();
     }
   }
-
 }

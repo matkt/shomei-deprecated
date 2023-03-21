@@ -14,8 +14,8 @@
 package net.consensys.shomei.trie.visitor;
 
 import net.consensys.shomei.trie.node.EmptyLeafNode;
+
 import org.apache.tuweni.bytes.Bytes;
-import org.hyperledger.besu.ethereum.trie.CompactEncoding;
 import org.hyperledger.besu.ethereum.trie.MerkleTrieException;
 import org.hyperledger.besu.ethereum.trie.Node;
 import org.hyperledger.besu.ethereum.trie.NullNode;
@@ -28,14 +28,10 @@ public class GetVisitor<V> implements PathNodeVisitor<V> {
 
   @Override
   public Node<V> visit(final BranchNode<V> branchNode, final Bytes path) {
-    if (path.isEmpty()){
+    if (path.isEmpty()) {
       return branchNode;
     }
     final byte childIndex = path.get(0);
-    if (path.isEmpty() && childIndex == CompactEncoding.LEAF_TERMINATOR) {
-      return branchNode;
-    }
-
     return branchNode.child(childIndex).accept(this, path.slice(1));
   }
 
