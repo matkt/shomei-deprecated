@@ -13,9 +13,9 @@
 
 package net.consensys.shomei;
 
+import static net.consensys.shomei.util.bytes.FieldElementsUtil.convertToSafeFieldElementsSize;
 import static net.consensys.zkevm.HashProvider.keccak256;
 import static net.consensys.zkevm.HashProvider.mimc;
-import static net.consensys.zkevm.KeccakUtil.formatKeccak;
 
 import net.consensys.shomei.trie.ZKTrie;
 import net.consensys.shomei.util.bytes.BytesInput;
@@ -244,7 +244,7 @@ public class ZkAccount implements MutableAccount, EvmAccount {
         LongConverter.toBytes32(balance.toLong(ByteOrder.BIG_ENDIAN)),
         storageRoot,
         mimcCodeHash,
-        formatKeccak(keccakCodeHash),
+        convertToSafeFieldElementsSize(keccakCodeHash),
         LongConverter.toBytes32(codeSize));
   }
 

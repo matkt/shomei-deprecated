@@ -11,7 +11,7 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package net.consensys.shomei.trie;
+package net.consensys.shomei.trie.storage;
 
 import java.util.Map;
 import java.util.Optional;
@@ -20,11 +20,9 @@ import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
 
-public interface LeafStorage {
+public interface LeafIndexLoader {
 
   Optional<Long> getKeyIndex(Bytes key);
-
-  void putKeyIndex(Bytes key, Long index);
 
   Range getNearestKeys(Bytes key);
 

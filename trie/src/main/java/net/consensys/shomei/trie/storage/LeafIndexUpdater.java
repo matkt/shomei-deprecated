@@ -11,16 +11,13 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package net.consensys.zkevm;
+package net.consensys.shomei.trie.storage;
 
 import org.apache.tuweni.bytes.Bytes;
-import org.apache.tuweni.bytes.Bytes32;
 
-public class KeccakUtil {
+public interface LeafIndexUpdater {
 
-  public static Bytes formatKeccak(Bytes32 hash) {
-    Bytes32 lsb = Bytes32.leftPad(hash.slice(16, 16));
-    Bytes32 msb = Bytes32.leftPad(hash.slice(0, 16));
-    return Bytes.concatenate(lsb, msb);
-  }
+  void putKeyIndex(Bytes key, Long index);
+
+  void removeKeyIndex(Bytes key);
 }

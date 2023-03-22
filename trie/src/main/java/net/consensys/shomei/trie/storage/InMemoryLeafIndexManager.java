@@ -11,7 +11,7 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package net.consensys.shomei.trie;
+package net.consensys.shomei.trie.storage;
 
 import java.util.Comparator;
 import java.util.Iterator;
@@ -23,7 +23,7 @@ import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
 
-public class InMemoryLeafStorage implements LeafStorage {
+public class InMemoryLeafIndexManager implements LeafIndexLoader, LeafIndexUpdater {
 
   final TreeMap<Bytes32, UInt256> flatDB = new TreeMap<>(Comparator.naturalOrder());
 
@@ -35,6 +35,11 @@ public class InMemoryLeafStorage implements LeafStorage {
   @Override
   public void putKeyIndex(final Bytes key, final Long index) {
     flatDB.put(Bytes32.wrap(key), UInt256.valueOf(index));
+  }
+
+  @Override
+  public void removeKeyIndex(final Bytes key) {
+    flatDB.remove(Bytes32.wrap(key));
   }
 
   @Override

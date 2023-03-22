@@ -17,11 +17,14 @@ import static net.consensys.shomei.util.TestFixtureGenerator.createDumKey;
 import static net.consensys.shomei.util.TestFixtureGenerator.createDumValue;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import net.consensys.shomei.trie.storage.InMemoryLeafIndexManager;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
 import org.apache.tuweni.bytes.Bytes;
+import org.apache.tuweni.bytes.Bytes32;
 import org.junit.Test;
 
 public class ZKTrieTest {
@@ -29,13 +32,16 @@ public class ZKTrieTest {
   @Test
   public void testEmptyRootHash() {
 
+    final InMemoryLeafIndexManager inMemoryLeafIndexManager = new InMemoryLeafIndexManager();
     final Map<Bytes, Bytes> keyValueStorage = new HashMap<>();
 
     ZKTrie zkTrie =
         ZKTrie.createTrie(
+            inMemoryLeafIndexManager,
+            inMemoryLeafIndexManager,
             (location, hash) -> Optional.ofNullable(keyValueStorage.get(hash)),
             (location, hash, value) -> keyValueStorage.put(hash, value));
-    zkTrie.commit((location, hash, value) -> keyValueStorage.put(hash, value));
+    zkTrie.commit();
 
     assertThat(keyValueStorage).isNotEmpty();
     assertThat(zkTrie.getRootHash())
@@ -51,16 +57,16 @@ public class ZKTrieTest {
   @Test
   public void testInsertionRootHash() {
 
+    final InMemoryLeafIndexManager inMemoryLeafIndexManager = new InMemoryLeafIndexManager();
     final Map<Bytes, Bytes> keyValueStorage = new HashMap<>();
     ZKTrie zkTrie =
         ZKTrie.createTrie(
+            inMemoryLeafIndexManager,
+            inMemoryLeafIndexManager,
             (location, hash) -> Optional.ofNullable(keyValueStorage.get(hash)),
             (location, hash, value) -> keyValueStorage.put(hash, value));
-    zkTrie.put(createDumKey(58), createDumValue(42));
-    zkTrie.commit(
-        (location, hash, value) -> {
-          keyValueStorage.put(hash, value);
-        });
+    zkTrie.putValue(createDumKey(58), createDumValue(42));
+    zkTrie.commit();
     assertThat(keyValueStorage).isNotEmpty();
     assertThat(zkTrie.getRootHash())
         .isEqualTo(
@@ -77,10 +83,10 @@ public class ZKTrieTest {
 
     final ZKTrie zkTrie = ZKTrie.createInMemoryTrie();
 
-    final Bytes dumValue = createDumValue(41);
-    final Bytes newDumValue = createDumValue(42);
+    final Bytes32 dumValue = createDumValue(41);
+    final Bytes32 newDumValue = createDumValue(42);
 
-    zkTrie.put(createDumKey(58), dumValue);
+    zkTrie.putValue(createDumKey(58), dumValue);
 
     assertThat(zkTrie.getRootHash())
         .isNotEqualTo(
@@ -93,7 +99,7 @@ public class ZKTrieTest {
 
     // Note : the tree should be in exactly the same state as after directly
     // inserting 42
-    zkTrie.put(createDumKey(58), newDumValue);
+    zkTrie.putValue(createDumKey(58), newDumValue);
 
     assertThat(zkTrie.getRootHash())
         .isEqualTo(
@@ -109,9 +115,9 @@ public class ZKTrieTest {
   public void testInsertionAndDeleteRootHash() {
     final ZKTrie zkTrie = ZKTrie.createInMemoryTrie();
 
-    final Bytes dumKey = createDumKey(58);
+    final Bytes32 dumKey = createDumKey(58);
 
-    zkTrie.put(dumKey, createDumValue(41));
+    zkTrie.putValue(dumKey, createDumValue(41));
 
     assertThat(zkTrie.getRootHash())
         .isNotEqualTo(
@@ -122,7 +128,7 @@ public class ZKTrieTest {
             Bytes.fromHexString(
                 "29d47648b374fb18e31fe50dc4ca65bdea4f1cd7664075f4ef52da18138304ab"));
 
-    zkTrie.remove(dumKey);
+    zkTrie.removeValue(dumKey);
 
     assertThat(zkTrie.getRootHash())
         .isEqualTo(
