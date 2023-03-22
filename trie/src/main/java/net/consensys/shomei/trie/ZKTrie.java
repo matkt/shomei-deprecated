@@ -55,15 +55,7 @@ public class ZKTrie implements MerkleTrie<Bytes, Bytes> {
   private final NodeUpdater nodeUpdater;
   private final LeafIndexUpdater leafIndexUpdater;
 
-  public ZKTrie(
-      final LeafIndexLoader leafIndexLoader,
-      final LeafIndexUpdater leafIndexUpdater,
-      final NodeLoader nodeLoader,
-      final NodeUpdater nodeUpdater) {
-    this(EMPTY_TRIE_NODE_HASH, leafIndexLoader, leafIndexUpdater, nodeLoader, nodeUpdater);
-  }
-
-  public ZKTrie(
+  private ZKTrie(
       final Bytes32 rootHash,
       final LeafIndexLoader leafIndexLoader,
       final LeafIndexUpdater leafIndexUpdater,
@@ -100,6 +92,15 @@ public class ZKTrie implements MerkleTrie<Bytes, Bytes> {
             nodeUpdater);
     trie.setHeadAndTail();
     return trie;
+  }
+
+  public static ZKTrie loadTrie(
+      final Bytes32 rootHash,
+      final LeafIndexLoader leafIndexLoader,
+      final LeafIndexUpdater leafIndexUpdater,
+      final NodeLoader nodeLoader,
+      final NodeUpdater nodeUpdater) {
+    return new ZKTrie(rootHash, leafIndexLoader, leafIndexUpdater, nodeLoader, nodeUpdater);
   }
 
   private static Node<Bytes> initWorldState(final NodeUpdater nodeUpdater) {
@@ -297,5 +298,7 @@ public class ZKTrie implements MerkleTrie<Bytes, Bytes> {
   }
 
   @Override
-  public void visitLeafs(final TrieIterator.LeafHandler<Bytes> handler) {}
+  public void visitLeafs(final TrieIterator.LeafHandler<Bytes> handler) {
+    throw new NotImplementedException("not yet available in the zktrie");
+  }
 }
