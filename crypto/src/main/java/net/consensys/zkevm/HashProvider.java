@@ -19,12 +19,12 @@ import org.hyperledger.besu.datatypes.Hash;
 
 public class HashProvider {
 
-  public static Bytes32 keccak256(final Bytes bytes) {
+  public static Hash keccak256(final Bytes bytes) {
     return Hash.hash(bytes);
   }
 
   // TODO change to use mimc
-  public static Bytes32 mimc(final Bytes bytes) {
+  public static Hash mimc(final Bytes bytes) {
     return Hash.hash(bytes);
   }
 }
