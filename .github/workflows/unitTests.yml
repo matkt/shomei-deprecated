@@ -33,11 +33,12 @@ jobs:
         run: ./gradlew --no-daemon clean compileJava compileTestJava assemble
 
       - name: Upload workspace
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: workspace
-          path: .
-          exclude: .git/**
+          path: |
+            ./
+            !./.git/**
 
   unitTests:
     needs: assemble
