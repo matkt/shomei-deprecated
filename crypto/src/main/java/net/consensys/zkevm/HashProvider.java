@@ -14,7 +14,6 @@
 package net.consensys.zkevm;
 
 import org.apache.tuweni.bytes.Bytes;
-import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Hash;
 
 public class HashProvider {
