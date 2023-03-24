@@ -43,8 +43,8 @@ public class ZkAccount implements MutableAccount, EvmAccount {
   public static final Hash EMPTY_STORAGE_ROOT =
       Hash.wrap(ZKTrie.createInMemoryTrie().getTopRootHash());
 
-  public static final Hash EMPTY_KECCAK_CODE_HASH = Hash.wrap(keccak256(Bytes.EMPTY));
-  public static final Hash EMPTY_CODE_HASH = Hash.wrap(mimc(Bytes32.ZERO));
+  public static final Hash EMPTY_KECCAK_CODE_HASH = keccak256(Bytes.EMPTY);
+  public static final Hash EMPTY_CODE_HASH = mimc(Bytes32.ZERO);
 
   private final ZkWorldView context;
   private final boolean mutable;
@@ -133,7 +133,7 @@ public class ZkAccount implements MutableAccount, EvmAccount {
             new ZkAccount(
                 context,
                 address,
-                Hash.wrap(keccak256(address)),
+                keccak256(address),
                 bytesInput.readLong(),
                 Wei.of(bytesInput.readLong()),
                 Hash.wrap(bytesInput.readBytes32()),
