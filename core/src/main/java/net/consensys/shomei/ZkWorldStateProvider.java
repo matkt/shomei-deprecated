@@ -13,25 +13,26 @@
 
 package net.consensys.shomei;
 
-import java.util.Map;
+import net.consensys.shomei.worldview.ZKEvmWorldState;
+
 import java.util.Optional;
 
-import org.apache.tuweni.bytes.Bytes;
-import org.apache.tuweni.bytes.Bytes32;
-import org.apache.tuweni.units.bigints.UInt256;
-import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Hash;
-import org.hyperledger.besu.evm.worldstate.WorldView;
 
-public interface ZkWorldView extends WorldView {
+public class ZkWorldStateProvider {
 
-  Optional<Bytes> getCode(Address address, final Hash codeHash);
+  private final ZKEvmWorldState persistedState;
 
-  UInt256 getStorageValue(Address address, UInt256 key);
+  public ZkWorldStateProvider(final ZKEvmWorldState persistedState) {
+    this.persistedState = persistedState;
+  }
 
-  Optional<UInt256> getStorageValueBySlotHash(Address address, Hash slotHash);
-
-  UInt256 getPriorStorageValue(Address address, UInt256 key);
-
-  Map<Bytes32, Bytes> getAllAccountStorage(Address address, Hash rootHash);
+  public Optional<ZKEvmWorldState> loadState(final Hash blockHash) {
+    if (persistedState.getBlockHash().equals(blockHash)) {
+      return Optional.of(persistedState);
+    } else {
+      // rolling
+      return Optional.empty();
+    }
+  }
 }

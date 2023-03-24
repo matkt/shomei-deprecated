@@ -16,7 +16,6 @@ package net.consensys.shomei;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.apache.tuweni.bytes.Bytes32;
-import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.Wei;
 import org.junit.Test;
@@ -26,17 +25,7 @@ public class ZkAccountTest {
   @Test
   public void testHashZeroAccount() {
     final ZkAccount zkAccount =
-        new ZkAccount(
-            null,
-            Address.ZERO,
-            Hash.hash(Address.ZERO),
-            0,
-            Wei.ZERO,
-            Hash.ZERO,
-            Hash.ZERO,
-            Hash.ZERO,
-            0L,
-            false);
+        new ZkAccount(Hash.ZERO, 0, Wei.ZERO, Hash.ZERO, Hash.ZERO, Hash.ZERO, 0L, false);
     assertThat(Hash.hash(zkAccount.serializeAccount()))
         .isEqualTo(
             Bytes32.fromHexString(
