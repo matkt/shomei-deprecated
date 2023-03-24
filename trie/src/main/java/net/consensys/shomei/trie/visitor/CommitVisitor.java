@@ -39,6 +39,6 @@ public class CommitVisitor<V> extends org.hyperledger.besu.ethereum.trie.CommitV
 
   @Override
   public void visit(Bytes location, ExtensionNode<V> extensionNode) {
-    throw new MerkleTrieException("extension node not allowed in the sparse merkle trie");
+    throw new MerkleTrieException("extension node not allowed in the zk trie");
   }
 }

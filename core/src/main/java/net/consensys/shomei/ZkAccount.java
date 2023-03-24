@@ -132,6 +132,26 @@ public class ZkAccount {
     return codeSize;
   }
 
+  public void setKeccakCodeHash(final Hash keccakCodeHash) {
+    this.keccakCodeHash = keccakCodeHash;
+  }
+
+  public void setMimcCodeHash(final Hash mimcCodeHash) {
+    this.mimcCodeHash = mimcCodeHash;
+  }
+
+  public void setCodeSize(final long codeSize) {
+    this.codeSize = codeSize;
+  }
+
+  public void setNonce(final long nonce) {
+    this.nonce = nonce;
+  }
+
+  public void setBalance(final Wei balance) {
+    this.balance = balance;
+  }
+
   public Bytes serializeAccount() {
     return Bytes.concatenate(
         LongConverter.toBytes32(nonce),

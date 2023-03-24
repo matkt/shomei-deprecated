@@ -17,6 +17,7 @@ import static net.consensys.shomei.ZkAccount.EMPTY_CODE_HASH;
 import static net.consensys.shomei.ZkAccount.EMPTY_KECCAK_CODE_HASH;
 import static net.consensys.shomei.ZkAccount.EMPTY_TRIE_ROOT;
 import static net.consensys.shomei.util.TestUtil.createDumAddress;
+import static net.consensys.shomei.util.TestUtil.createSafeFieldElementSizeDumDigest;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import net.consensys.shomei.trie.ZKTrie;
@@ -25,6 +26,7 @@ import net.consensys.shomei.trielog.TrieLogLayer;
 import net.consensys.shomei.worldview.ZKEvmWorldState;
 import net.consensys.zkevm.HashProvider;
 
+import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.Wei;
 import org.junit.Test;
@@ -78,6 +80,70 @@ public class RollingTests {
   }
 
   @Test
+  public void rollingForwardUpdatingAccount() {
+
+    ZKTrie accountStateTrieOne = ZKTrie.createInMemoryTrie();
+
+    ZkAccount account1 = new ZkAccount(ZK_ACCOUNT, true);
+    accountStateTrieOne.put(account1.getHkey(), account1.serializeAccount());
+    account1.setBalance(Wei.of(100));
+    accountStateTrieOne.put(account1.getHkey(), account1.serializeAccount());
+    Hash topRootHash = Hash.wrap(accountStateTrieOne.getTopRootHash());
+    assertThat(topRootHash)
+        .isEqualTo(
+            Hash.fromHexString(
+                "0xceb3ac18141ddf7cf476384ec31ff9233a739596552360affa2602060b5f4bed"));
+
+    TrieLogLayer trieLogLayer = new TrieLogLayer();
+    trieLogLayer.addAccountChange(H_KEY, null, new TrieLogAccountValue(ZK_ACCOUNT));
+
+    TrieLogLayer trieLogLayer2 = new TrieLogLayer();
+    trieLogLayer2.addAccountChange(
+        H_KEY, new TrieLogAccountValue(ZK_ACCOUNT), new TrieLogAccountValue(account1));
+
+    ZKEvmWorldState zkEvmWorldState = new ZKEvmWorldState(EMPTY_TRIE_ROOT, Hash.EMPTY);
+    assertThat(zkEvmWorldState.getRootHash()).isEqualTo(EMPTY_TRIE_ROOT);
+    zkEvmWorldState.getAccumulator().rollForward(trieLogLayer);
+    zkEvmWorldState.commit(null);
+    assertThat(zkEvmWorldState.getRootHash())
+        .isEqualTo(
+            Hash.fromHexString("828dd273c29ec50463bd7fac90e06b04b4010b72fe880df82e299bf162046e41"));
+    zkEvmWorldState.getAccumulator().rollForward(trieLogLayer2);
+    zkEvmWorldState.commit(null);
+    assertThat(zkEvmWorldState.getRootHash()).isEqualTo(topRootHash);
+  }
+
+  @Test
+  public void rollingForwardUpdatingAccountWithSeveralTrieLogs() {
+
+    ZKTrie accountStateTrieOne = ZKTrie.createInMemoryTrie();
+
+    ZkAccount account1 = new ZkAccount(ZK_ACCOUNT, true);
+    accountStateTrieOne.put(account1.getHkey(), account1.serializeAccount());
+    account1.setBalance(Wei.of(100));
+    accountStateTrieOne.put(account1.getHkey(), account1.serializeAccount());
+    Hash topRootHash = Hash.wrap(accountStateTrieOne.getTopRootHash());
+    assertThat(topRootHash)
+        .isEqualTo(
+            Hash.fromHexString(
+                "0xceb3ac18141ddf7cf476384ec31ff9233a739596552360affa2602060b5f4bed"));
+
+    TrieLogLayer trieLogLayer = new TrieLogLayer();
+    trieLogLayer.addAccountChange(H_KEY, null, new TrieLogAccountValue(ZK_ACCOUNT));
+
+    TrieLogLayer trieLogLayer2 = new TrieLogLayer();
+    trieLogLayer2.addAccountChange(
+        H_KEY, new TrieLogAccountValue(ZK_ACCOUNT), new TrieLogAccountValue(account1));
+
+    ZKEvmWorldState zkEvmWorldState = new ZKEvmWorldState(EMPTY_TRIE_ROOT, Hash.EMPTY);
+    assertThat(zkEvmWorldState.getRootHash()).isEqualTo(EMPTY_TRIE_ROOT);
+    zkEvmWorldState.getAccumulator().rollForward(trieLogLayer);
+    zkEvmWorldState.getAccumulator().rollForward(trieLogLayer2);
+    zkEvmWorldState.commit(null);
+    assertThat(zkEvmWorldState.getRootHash()).isEqualTo(topRootHash);
+  }
+
+  @Test
   public void rollingForwardTwoAccount() {
 
     ZKTrie accountStateTrieOne = ZKTrie.createInMemoryTrie();
@@ -89,6 +155,35 @@ public class RollingTests {
     TrieLogLayer trieLogLayer = new TrieLogLayer();
     trieLogLayer.addAccountChange(H_KEY, null, new TrieLogAccountValue(ZK_ACCOUNT));
     trieLogLayer.addAccountChange(H_KEY_2, null, new TrieLogAccountValue(ZK_ACCOUNT_2));
+
+    ZKEvmWorldState zkEvmWorldState = new ZKEvmWorldState(EMPTY_TRIE_ROOT, Hash.EMPTY);
+    assertThat(zkEvmWorldState.getRootHash()).isEqualTo(EMPTY_TRIE_ROOT);
+    zkEvmWorldState.getAccumulator().rollForward(trieLogLayer);
+    zkEvmWorldState.commit(null);
+    assertThat(zkEvmWorldState.getRootHash()).isEqualTo(topRootHash);
+  }
+
+  @Test
+  public void rollingForwardContractWithStorage() {
+    ZKTrie accountStateTrieOne = ZKTrie.createInMemoryTrie();
+
+    final ZkAccount contract = new ZkAccount(ZK_ACCOUNT_2, true);
+    final Hash storageKey = HashProvider.mimc(createSafeFieldElementSizeDumDigest(14));
+    final UInt256 storageValue = UInt256.valueOf(12);
+    ;
+    final ZKTrie contractStorageTrie = ZKTrie.createInMemoryTrie();
+    contractStorageTrie.put(storageKey, storageValue);
+    contract.setStorageRoot(Hash.wrap(contractStorageTrie.getTopRootHash()));
+
+    accountStateTrieOne.put(ZK_ACCOUNT.getHkey(), ZK_ACCOUNT.serializeAccount());
+    accountStateTrieOne.put(contract.getHkey(), contract.serializeAccount());
+
+    Hash topRootHash = Hash.wrap(accountStateTrieOne.getTopRootHash());
+
+    TrieLogLayer trieLogLayer = new TrieLogLayer();
+    trieLogLayer.addAccountChange(H_KEY, null, new TrieLogAccountValue(ZK_ACCOUNT));
+    trieLogLayer.addAccountChange(H_KEY_2, null, new TrieLogAccountValue(contract));
+    trieLogLayer.addStorageChange(H_KEY_2, storageKey, null, storageValue);
 
     ZKEvmWorldState zkEvmWorldState = new ZKEvmWorldState(EMPTY_TRIE_ROOT, Hash.EMPTY);
     assertThat(zkEvmWorldState.getRootHash()).isEqualTo(EMPTY_TRIE_ROOT);

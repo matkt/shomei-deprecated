@@ -256,47 +256,47 @@ public class ZKTrie implements MerkleTrie<Bytes, Bytes> {
 
   @Override
   public Map<Bytes32, Bytes> entriesFrom(final Bytes32 startKeyHash, final int limit) {
-    throw new NotImplementedException("not yet available in the zktrie");
+    throw new NotImplementedException("not yet available in the zk trie");
   }
 
   @Override
   public Map<Bytes32, Bytes> entriesFrom(final Function<Node<Bytes>, Map<Bytes32, Bytes>> handler) {
-    throw new NotImplementedException("not yet available in the zktrie");
+    throw new NotImplementedException("not yet available in the zk trie");
   }
 
   @Override
   public void visitAll(final Consumer<Node<Bytes>> nodeConsumer) {
-    throw new NotImplementedException("not yet available in the zktrie");
+    throw new NotImplementedException("not yet available in the zk trie");
   }
 
   @Override
   public CompletableFuture<Void> visitAll(
       final Consumer<Node<Bytes>> nodeConsumer, final ExecutorService executorService) {
-    throw new NotImplementedException("not yet available in the zktrie");
+    throw new NotImplementedException("not yet available in the zk trie");
   }
 
   @Override
   public void put(final Bytes key, final PathNodeVisitor<Bytes> putVisitor) {
-    throw new NotImplementedException("not yet available in the zktrie");
+    throw new NotImplementedException("not yet available in the zk trie");
   }
 
   @Override
   public void putPath(final Bytes path, final Bytes value) {
-    throw new NotImplementedException("not yet available in the zktrie");
+    throw new NotImplementedException("not yet available in the zk trie");
   }
 
   @Override
   public void removePath(final Bytes path, final PathNodeVisitor<Bytes> pathNodeVisitor) {
-    throw new NotImplementedException("not yet available in the zktrie");
+    throw new NotImplementedException("not yet available in the zk trie");
   }
 
   @Override
   public Proof<Bytes> getValueWithProof(final Bytes key) {
-    throw new NotImplementedException("not yet available in the zktrie");
+    throw new NotImplementedException("not yet available in the zk trie");
   }
 
   @Override
   public void visitLeafs(final TrieIterator.LeafHandler<Bytes> handler) {
-    throw new NotImplementedException("not yet available in the zktrie");
+    throw new NotImplementedException("not yet available in the zk trie");
   }
 }

@@ -47,6 +47,6 @@ public class GetVisitor<V> implements PathNodeVisitor<V> {
 
   @Override
   public Node<V> visit(final ExtensionNode<V> extensionNode, final Bytes path) {
-    throw new MerkleTrieException("extension node not allowed in the sparse merkle trie");
+    throw new MerkleTrieException("extension node not allowed in the zk trie");
   }
 }

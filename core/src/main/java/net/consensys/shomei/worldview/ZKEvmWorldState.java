@@ -73,6 +73,7 @@ public class ZKEvmWorldState {
                         zkStorageTrie.put(slotKey, storageValue.getUpdated());
                       }
                     });
+                zkStorageTrie.commit();
               }
               if (accountValue.getUpdated() == null) {
                 zkAccountTrie.remove(accountValue.getPrior().getHkey());
@@ -82,6 +83,7 @@ public class ZKEvmWorldState {
                     accountValue.getUpdated().serializeAccount());
               }
             });
+    zkAccountTrie.commit();
     return Hash.wrap(zkAccountTrie.getTopRootHash());
   }
 

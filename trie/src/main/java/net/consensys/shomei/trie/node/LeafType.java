@@ -39,4 +39,8 @@ public enum LeafType {
         .findFirst()
         .orElse(EMPTY);
   }
+
+  public static boolean isLeafTerminator(final byte b) {
+    return Arrays.stream(values()).anyMatch(leafType -> leafType.terminatorPath == b);
+  }
 }
