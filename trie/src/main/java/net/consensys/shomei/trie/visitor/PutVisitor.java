@@ -54,7 +54,7 @@ public class PutVisitor<V> implements PathNodeVisitor<V> {
       return nodeFactory.createLeaf(leafPath, value);
     }
 
-    throw new RuntimeException("this path is not allowed in the zk trie");
+    throw new RuntimeException("this path is not allowed in sparse merkle trie");
   }
 
   @Override
@@ -64,6 +64,6 @@ public class PutVisitor<V> implements PathNodeVisitor<V> {
 
   @Override
   public Node<V> visit(final ExtensionNode<V> extensionNode, final Bytes path) {
-    throw new MerkleTrieException("extension node not allowed in the zk trie");
+    throw new MerkleTrieException("extension node not allowed in sparse merkle trie");
   }
 }
