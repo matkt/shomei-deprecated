@@ -17,7 +17,7 @@ import static net.consensys.shomei.util.TestFixtureGenerator.createDumKey;
 import static net.consensys.shomei.util.TestFixtureGenerator.createDumValue;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import net.consensys.shomei.trie.storage.InMemoryLeafIndexManager;
+import net.consensys.shomei.trie.storage.LeafIndexManager;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -32,12 +32,11 @@ public class ZKTrieTest {
   @Test
   public void testEmptyRootHash() {
 
-    final InMemoryLeafIndexManager inMemoryLeafIndexManager = new InMemoryLeafIndexManager();
+    final LeafIndexManager inMemoryLeafIndexManager = new LeafIndexManager();
     final Map<Bytes, Bytes> keyValueStorage = new HashMap<>();
 
     ZKTrie zkTrie =
         ZKTrie.createTrie(
-            inMemoryLeafIndexManager,
             inMemoryLeafIndexManager,
             (location, hash) -> Optional.ofNullable(keyValueStorage.get(hash)),
             (location, hash, value) -> keyValueStorage.put(hash, value));
@@ -57,11 +56,10 @@ public class ZKTrieTest {
   @Test
   public void testInsertionRootHash() {
 
-    final InMemoryLeafIndexManager inMemoryLeafIndexManager = new InMemoryLeafIndexManager();
+    final LeafIndexManager inMemoryLeafIndexManager = new LeafIndexManager();
     final Map<Bytes, Bytes> keyValueStorage = new HashMap<>();
     ZKTrie zkTrie =
         ZKTrie.createTrie(
-            inMemoryLeafIndexManager,
             inMemoryLeafIndexManager,
             (location, hash) -> Optional.ofNullable(keyValueStorage.get(hash)),
             (location, hash, value) -> keyValueStorage.put(hash, value));

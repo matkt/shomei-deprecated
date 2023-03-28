@@ -17,7 +17,6 @@ import java.util.Map;
 import java.util.Optional;
 
 import org.apache.tuweni.bytes.Bytes;
-import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
 
 public interface LeafIndexLoader {
@@ -27,20 +26,20 @@ public interface LeafIndexLoader {
   Range getNearestKeys(Bytes key);
 
   class Range {
-    private final Map.Entry<Bytes32, UInt256> leftNode;
-    private final Map.Entry<Bytes32, UInt256> rightNode;
+    private final Map.Entry<Bytes, UInt256> leftNode;
+    private final Map.Entry<Bytes, UInt256> rightNode;
 
     public Range(
-        final Map.Entry<Bytes32, UInt256> leftNode, final Map.Entry<Bytes32, UInt256> rightNode) {
+        final Map.Entry<Bytes, UInt256> leftNode, final Map.Entry<Bytes, UInt256> rightNode) {
       this.leftNode = leftNode;
       this.rightNode = rightNode;
     }
 
-    public Bytes32 getLeftNodeKey() {
+    public Bytes getLeftNodeKey() {
       return leftNode.getKey();
     }
 
-    public Bytes32 getRightNodeKey() {
+    public Bytes getRightNodeKey() {
       return rightNode.getKey();
     }
 

@@ -54,6 +54,6 @@ public class LeafNode<V> extends org.hyperledger.besu.ethereum.trie.patricia.Lea
 
   @Override
   public boolean isReferencedByHash() {
-    return false;
+    return true;
   }
 }
