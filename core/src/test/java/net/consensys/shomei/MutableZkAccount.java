@@ -13,7 +13,6 @@
 
 package net.consensys.shomei;
 
-import net.consensys.shomei.ZkAccount;
 import net.consensys.shomei.trielog.TrieLogAccountValue;
 
 import org.hyperledger.besu.datatypes.Address;
