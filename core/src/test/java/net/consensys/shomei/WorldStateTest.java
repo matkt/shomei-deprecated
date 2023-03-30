@@ -38,14 +38,7 @@ public class WorldStateTest {
 
     final ZkAccount zkAccount =
         new ZkAccount(
-            address,
-            EMPTY_KECCAK_CODE_HASH,
-            EMPTY_CODE_HASH,
-            0L,
-            65,
-            Wei.of(835),
-            EMPTY_TRIE_ROOT,
-            false);
+            address, EMPTY_KECCAK_CODE_HASH, EMPTY_CODE_HASH, 0L, 65, Wei.of(835), EMPTY_TRIE_ROOT);
 
     assertThat(Hash.hash(zkAccount.serializeAccount()))
         .isEqualTo(
@@ -66,14 +59,7 @@ public class WorldStateTest {
 
     final ZkAccount zkAccount =
         new ZkAccount(
-            address,
-            EMPTY_KECCAK_CODE_HASH,
-            EMPTY_CODE_HASH,
-            0L,
-            65,
-            Wei.of(835),
-            EMPTY_TRIE_ROOT,
-            false);
+            address, EMPTY_KECCAK_CODE_HASH, EMPTY_CODE_HASH, 0L, 65, Wei.of(835), EMPTY_TRIE_ROOT);
     final ZkAccount zkAccount2 =
         new ZkAccount(
             address2,
@@ -82,8 +68,7 @@ public class WorldStateTest {
             0L,
             42,
             Wei.of(354),
-            EMPTY_TRIE_ROOT,
-            false);
+            EMPTY_TRIE_ROOT);
 
     assertThat(Hash.hash(zkAccount.serializeAccount()))
         .isEqualTo(
@@ -105,14 +90,7 @@ public class WorldStateTest {
 
     final ZkAccount zkAccount =
         new ZkAccount(
-            address,
-            EMPTY_KECCAK_CODE_HASH,
-            EMPTY_CODE_HASH,
-            0L,
-            65,
-            Wei.of(835),
-            EMPTY_TRIE_ROOT,
-            false);
+            address, EMPTY_KECCAK_CODE_HASH, EMPTY_CODE_HASH, 0L, 65, Wei.of(835), EMPTY_TRIE_ROOT);
     final ZkAccount zkAccount2 =
         new ZkAccount(
             address2,
@@ -121,8 +99,7 @@ public class WorldStateTest {
             7L,
             41,
             Wei.of(15353),
-            EMPTY_TRIE_ROOT,
-            false);
+            EMPTY_TRIE_ROOT);
 
     ZKTrie accountStateTrie = ZKTrie.createInMemoryTrie();
     accountStateTrie.put(zkAccount.getHkey(), zkAccount.serializeAccount());
@@ -140,25 +117,17 @@ public class WorldStateTest {
 
     final ZkAccount zkAccount =
         new ZkAccount(
-            address,
-            EMPTY_KECCAK_CODE_HASH,
-            EMPTY_CODE_HASH,
-            0L,
-            65,
-            Wei.of(835),
-            EMPTY_TRIE_ROOT,
-            false);
+            address, EMPTY_KECCAK_CODE_HASH, EMPTY_CODE_HASH, 0L, 65, Wei.of(835), EMPTY_TRIE_ROOT);
 
-    final ZkAccount zkAccount2 =
-        new ZkAccount(
+    final MutableZkAccount zkAccount2 =
+        new MutableZkAccount(
             address2,
             Hash.wrap(createDumDigest(15)),
             Hash.wrap(createDumDigest(75)),
             7L,
             41,
             Wei.of(15353),
-            EMPTY_TRIE_ROOT,
-            true);
+            EMPTY_TRIE_ROOT);
 
     ZKTrie accountStateTrie = ZKTrie.createInMemoryTrie();
     accountStateTrie.put(zkAccount.getHkey(), zkAccount.serializeAccount());
@@ -184,25 +153,17 @@ public class WorldStateTest {
 
     final ZkAccount zkAccount =
         new ZkAccount(
-            address,
-            EMPTY_KECCAK_CODE_HASH,
-            EMPTY_CODE_HASH,
-            0L,
-            65,
-            Wei.of(835),
-            EMPTY_TRIE_ROOT,
-            false);
+            address, EMPTY_KECCAK_CODE_HASH, EMPTY_CODE_HASH, 0L, 65, Wei.of(835), EMPTY_TRIE_ROOT);
 
-    final ZkAccount zkAccount2 =
-        new ZkAccount(
+    final MutableZkAccount zkAccount2 =
+        new MutableZkAccount(
             address2,
             Hash.wrap(createDumDigest(15)),
             Hash.wrap(createDumDigest(75)),
             7L,
             41,
             Wei.of(15353),
-            EMPTY_TRIE_ROOT,
-            true);
+            EMPTY_TRIE_ROOT);
 
     ZKTrie accountStateTrie = ZKTrie.createInMemoryTrie();
     accountStateTrie.put(zkAccount.getHkey(), zkAccount.serializeAccount());
@@ -249,14 +210,7 @@ public class WorldStateTest {
 
     final ZkAccount zkAccount =
         new ZkAccount(
-            address,
-            EMPTY_KECCAK_CODE_HASH,
-            EMPTY_CODE_HASH,
-            0L,
-            65,
-            Wei.of(835),
-            EMPTY_TRIE_ROOT,
-            false);
+            address, EMPTY_KECCAK_CODE_HASH, EMPTY_CODE_HASH, 0L, 65, Wei.of(835), EMPTY_TRIE_ROOT);
 
     final ZkAccount zkAccount2 =
         new ZkAccount(
@@ -266,8 +220,7 @@ public class WorldStateTest {
             7L,
             41,
             Wei.of(15353),
-            EMPTY_TRIE_ROOT,
-            false);
+            EMPTY_TRIE_ROOT);
 
     final ZkAccount zkAccount3 =
         new ZkAccount(
@@ -277,8 +230,7 @@ public class WorldStateTest {
             19L,
             48,
             Wei.of(9835),
-            EMPTY_TRIE_ROOT,
-            false);
+            EMPTY_TRIE_ROOT);
 
     ZKTrie accountStateTrie = ZKTrie.createInMemoryTrie();
     accountStateTrie.put(zkAccount.getHkey(), zkAccount.serializeAccount());
@@ -299,14 +251,7 @@ public class WorldStateTest {
 
     final ZkAccount zkAccount =
         new ZkAccount(
-            address,
-            EMPTY_KECCAK_CODE_HASH,
-            EMPTY_CODE_HASH,
-            0L,
-            65,
-            Wei.of(835),
-            EMPTY_TRIE_ROOT,
-            false);
+            address, EMPTY_KECCAK_CODE_HASH, EMPTY_CODE_HASH, 0L, 65, Wei.of(835), EMPTY_TRIE_ROOT);
 
     final ZkAccount zkAccount2 =
         new ZkAccount(
@@ -316,8 +261,7 @@ public class WorldStateTest {
             7L,
             41,
             Wei.of(15353),
-            EMPTY_TRIE_ROOT,
-            false);
+            EMPTY_TRIE_ROOT);
 
     ZKTrie accountStateTrie = ZKTrie.createInMemoryTrie();
     // add account

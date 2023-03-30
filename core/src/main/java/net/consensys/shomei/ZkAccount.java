@@ -42,27 +42,24 @@ public class ZkAccount {
   public static final Hash EMPTY_KECCAK_CODE_HASH = keccak256(Bytes.EMPTY);
   public static final Hash EMPTY_CODE_HASH = mimc(Bytes32.ZERO);
 
-  private final boolean mutable;
-
   private final Supplier<Hash> hkey;
-  private final Address address;
-  private Hash keccakCodeHash;
-  private Hash mimcCodeHash;
+  protected Address address;
+  protected Hash keccakCodeHash;
+  protected Hash mimcCodeHash;
 
-  private long codeSize;
-  private long nonce;
-  private Wei balance;
-  private Hash storageRoot;
+  protected long codeSize;
+  protected long nonce;
+  protected Wei balance;
+  protected Hash storageRoot;
 
-  ZkAccount(
+  public ZkAccount(
       final Address address,
       final Hash keccakCodeHash,
       final Hash mimcCodeHash,
       final long codeSize,
       final long nonce,
       final Wei balance,
-      final Hash storageRoot,
-      final boolean mutable) {
+      final Hash storageRoot) {
     this.hkey = Suppliers.memoize(() -> HashProvider.mimc(Bytes32.leftPad(address)));
     this.address = address;
     this.nonce = nonce;
@@ -71,7 +68,6 @@ public class ZkAccount {
     this.keccakCodeHash = keccakCodeHash;
     this.mimcCodeHash = mimcCodeHash;
     this.codeSize = codeSize;
-    this.mutable = mutable;
   }
 
   public ZkAccount(
@@ -82,8 +78,7 @@ public class ZkAccount {
       final long codeSize,
       final long nonce,
       final Wei balance,
-      final Hash storageRoot,
-      final boolean mutable) {
+      final Hash storageRoot) {
     this.hkey = Suppliers.memoize(() -> hkey);
     this.address = address;
     this.keccakCodeHash = keccakCodeHash;
@@ -92,7 +87,6 @@ public class ZkAccount {
     this.nonce = nonce;
     this.balance = balance;
     this.storageRoot = storageRoot;
-    this.mutable = mutable;
   }
 
   public ZkAccount(final Hash hkey, final Address address, final TrieLogAccountValue accountValue) {
@@ -104,11 +98,10 @@ public class ZkAccount {
         accountValue.getCodeSize(),
         accountValue.getNonce(),
         accountValue.getBalance(),
-        accountValue.getStorageRoot(),
-        false);
+        accountValue.getStorageRoot());
   }
 
-  public ZkAccount(final ZkAccount toCopy, final boolean mutable) {
+  public ZkAccount(final ZkAccount toCopy) {
     this(
         toCopy.hkey.get(),
         toCopy.address,
@@ -117,12 +110,10 @@ public class ZkAccount {
         toCopy.codeSize,
         toCopy.nonce,
         toCopy.balance,
-        toCopy.storageRoot,
-        mutable);
+        toCopy.storageRoot);
   }
 
-  static ZkAccount fromEncodedBytes(
-      final Address address, final Bytes encoded, final boolean mutable) {
+  static ZkAccount fromEncodedBytes(final Address address, final Bytes encoded) {
 
     return BytesInput.readBytes(
         encoded,
@@ -134,8 +125,7 @@ public class ZkAccount {
                 bytesInput.readLong(),
                 bytesInput.readLong(),
                 Wei.of(bytesInput.readLong()),
-                Hash.wrap(bytesInput.readBytes32()),
-                mutable));
+                Hash.wrap(bytesInput.readBytes32())));
   }
 
   public Hash getHkey() {
@@ -166,24 +156,8 @@ public class ZkAccount {
     return codeSize;
   }
 
-  public void setKeccakCodeHash(final Hash keccakCodeHash) {
-    this.keccakCodeHash = keccakCodeHash;
-  }
-
-  public void setMimcCodeHash(final Hash mimcCodeHash) {
-    this.mimcCodeHash = mimcCodeHash;
-  }
-
-  public void setCodeSize(final long codeSize) {
-    this.codeSize = codeSize;
-  }
-
-  public void setNonce(final long nonce) {
-    this.nonce = nonce;
-  }
-
-  public void setBalance(final Wei balance) {
-    this.balance = balance;
+  public Hash getStorageRoot() {
+    return storageRoot;
   }
 
   public Bytes serializeAccount() {
@@ -196,22 +170,9 @@ public class ZkAccount {
         LongConverter.toBytes32(codeSize));
   }
 
-  public Hash getStorageRoot() {
-    return storageRoot;
-  }
-
-  public void setStorageRoot(final Hash storageRoot) {
-    if (!mutable) {
-      throw new UnsupportedOperationException("Account is immutable");
-    }
-    this.storageRoot = storageRoot;
-  }
-
   @Override
   public String toString() {
     return "ZkAccount{"
-        + "mutable="
-        + mutable
         + ", hkey="
         + hkey
         + ", keccakCodeHash="

@@ -39,7 +39,7 @@ public class PathResolver {
     this.trie = trie;
   }
 
-  public Long decrementNextFree() {
+  public Long getAndDecrementNextFreeLeafNodeIndex() {
     final long foundFreeNode = getNextFreeLeafIndex();
     nextFreeNode = foundFreeNode - 1;
     trie.putPath(getNextFreeNodePath(), formatNodeIndex(nextFreeNode));

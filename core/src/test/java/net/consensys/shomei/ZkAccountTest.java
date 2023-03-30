@@ -26,8 +26,7 @@ public class ZkAccountTest {
   @Test
   public void testHashZeroAccount() {
     final ZkAccount zkAccount =
-        new ZkAccount(
-            Hash.ZERO, Address.ZERO, Hash.ZERO, Hash.ZERO, 0L, 0L, Wei.ZERO, Hash.ZERO, false);
+        new ZkAccount(Hash.ZERO, Address.ZERO, Hash.ZERO, Hash.ZERO, 0L, 0L, Wei.ZERO, Hash.ZERO);
     assertThat(Hash.hash(zkAccount.serializeAccount()))
         .isEqualTo(
             Bytes32.fromHexString(

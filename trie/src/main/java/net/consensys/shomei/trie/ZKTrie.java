@@ -232,7 +232,7 @@ public class ZKTrie implements MerkleTrie<Bytes, Bytes> {
   }
 
   public void decrementNextFreeNode() {
-    pathResolver.decrementNextFree();
+    pathResolver.getAndDecrementNextFreeLeafNodeIndex();
   }
 
   public void commit() {
