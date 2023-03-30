@@ -17,9 +17,8 @@ import static com.google.common.base.Preconditions.checkArgument;
 
 import net.consensys.shomei.trie.model.StateLeafValue;
 import net.consensys.shomei.trie.node.EmptyLeafNode;
-import net.consensys.shomei.trie.storage.InMemoryLeafIndexManager;
 import net.consensys.shomei.trie.storage.LeafIndexLoader;
-import net.consensys.shomei.trie.storage.LeafIndexUpdater;
+import net.consensys.shomei.trie.storage.LeafIndexManager;
 import net.consensys.zkevm.HashProvider;
 
 import java.util.Collections;
@@ -52,44 +51,38 @@ public class ZKTrie implements MerkleTrie<Bytes, Bytes> {
 
   private final PathResolver pathResolver;
   private final StoredSparseMerkleTrie state;
-  private final LeafIndexLoader leafIndexLoader;
+  private final LeafIndexManager leafIndexManager;
 
   private final NodeUpdater nodeUpdater;
-  private final LeafIndexUpdater leafIndexUpdater;
 
   private ZKTrie(
       final Bytes32 rootHash,
-      final LeafIndexLoader leafIndexLoader,
-      final LeafIndexUpdater leafIndexUpdater,
+      final LeafIndexManager leafIndexManager,
       final NodeLoader nodeLoader,
       final NodeUpdater nodeUpdater) {
-    this.leafIndexLoader = leafIndexLoader;
-    this.leafIndexUpdater = leafIndexUpdater;
+    this.leafIndexManager = leafIndexManager;
     this.state = new StoredSparseMerkleTrie(nodeLoader, rootHash, b -> b, b -> b);
     this.pathResolver = new PathResolver(ZK_TRIE_DEPTH, state);
     this.nodeUpdater = nodeUpdater;
   }
 
   public static ZKTrie createInMemoryTrie() {
-    final InMemoryLeafIndexManager inMemoryLeafIndexManager = new InMemoryLeafIndexManager();
+    final LeafIndexManager inMemoryLeafIndexManager = new LeafIndexManager();
     final Map<Bytes, Bytes> storage = new HashMap<>();
     return createTrie(
-        inMemoryLeafIndexManager,
         inMemoryLeafIndexManager,
         (location, hash) -> Optional.ofNullable(storage.get(hash)),
         (location, hash, value) -> storage.put(hash, value));
   }
 
   public static ZKTrie createTrie(
-      final LeafIndexLoader leafIndexLoader,
-      final LeafIndexUpdater leafIndexUpdater,
+      final LeafIndexManager leafIndexManager,
       final NodeLoader nodeLoader,
       final NodeUpdater nodeUpdater) {
     final ZKTrie trie =
         new ZKTrie(
             ZKTrie.initWorldState(nodeUpdater).getHash(),
-            leafIndexLoader,
-            leafIndexUpdater,
+            leafIndexManager,
             nodeLoader,
             nodeUpdater);
     trie.setHeadAndTail();
@@ -98,11 +91,10 @@ public class ZKTrie implements MerkleTrie<Bytes, Bytes> {
 
   public static ZKTrie loadTrie(
       final Bytes32 rootHash,
-      final LeafIndexLoader leafIndexLoader,
-      final LeafIndexUpdater leafIndexUpdater,
+      final LeafIndexManager leafIndexManager,
       final NodeLoader nodeLoader,
       final NodeUpdater nodeUpdater) {
-    return new ZKTrie(rootHash, leafIndexLoader, leafIndexUpdater, nodeLoader, nodeUpdater);
+    return new ZKTrie(rootHash, leafIndexManager, nodeLoader, nodeUpdater);
   }
 
   private static Node<Bytes> initWorldState(final NodeUpdater nodeUpdater) {
@@ -116,10 +108,9 @@ public class ZKTrie implements MerkleTrie<Bytes, Bytes> {
     }
     nodeUpdater.store(null, defaultNode.getHash(), defaultNode.getEncodedBytes());
 
-    Node<Bytes> nextFreeNode = EmptyLeafNode.instance();
-    nodeUpdater.store(null, nextFreeNode.getHash(), nextFreeNode.getEncodedBytes());
-
-    defaultNode = nodeFactory.createBranch(List.of(nextFreeNode, defaultNode), Optional.empty());
+    // create root node
+    defaultNode =
+        nodeFactory.createBranch(List.of(EmptyLeafNode.instance(), defaultNode), Optional.empty());
 
     nodeUpdater.store(null, defaultNode.getHash(), defaultNode.getEncodedBytes());
 
@@ -129,11 +120,11 @@ public class ZKTrie implements MerkleTrie<Bytes, Bytes> {
   public void setHeadAndTail() {
     // head
     final Long headIndex = pathResolver.getAndIncrementNextFreeLeafIndex();
-    leafIndexUpdater.putKeyIndex(StateLeafValue.HEAD.getHkey(), headIndex);
+    leafIndexManager.putKeyIndex(StateLeafValue.HEAD.getHkey(), headIndex);
     state.putPath(pathResolver.getLeafPath(headIndex), StateLeafValue.HEAD.getEncodesBytes());
     // tail
     final Long tailIndex = pathResolver.getAndIncrementNextFreeLeafIndex();
-    leafIndexUpdater.putKeyIndex(StateLeafValue.TAIL.getHkey(), tailIndex);
+    leafIndexManager.putKeyIndex(StateLeafValue.TAIL.getHkey(), tailIndex);
     state.putPath(pathResolver.getLeafPath(tailIndex), StateLeafValue.TAIL.getEncodesBytes());
   }
 
@@ -148,7 +139,7 @@ public class ZKTrie implements MerkleTrie<Bytes, Bytes> {
 
   @Override
   public Optional<Bytes> get(final Bytes key) {
-    return leafIndexLoader.getKeyIndex(key).map(pathResolver::getLeafPath).flatMap(state::getPath);
+    return leafIndexManager.getKeyIndex(key).map(pathResolver::getLeafPath).flatMap(state::getPath);
   }
 
   @Override
@@ -159,7 +150,7 @@ public class ZKTrie implements MerkleTrie<Bytes, Bytes> {
   @VisibleForTesting
   protected void putValue(final Bytes32 key, final Bytes32 value) {
     final LeafIndexLoader.Range nearestKeys =
-        leafIndexLoader.getNearestKeys(key); // find HKey- and HKey+
+        leafIndexManager.getNearestKeys(key); // find HKey- and HKey+
     // Check if hash(k) exist
     if (!nearestKeys.getLeftNodeKey().equals(key)) {
       // HKey-
@@ -171,7 +162,7 @@ public class ZKTrie implements MerkleTrie<Bytes, Bytes> {
       // PUT hash(k) with HKey- for Prev and HKey+ for next
       final long nextFreeNode = pathResolver.getAndIncrementNextFreeLeafIndex();
       final Bytes newKeyPath = pathResolver.getLeafPath(nextFreeNode);
-      leafIndexUpdater.putKeyIndex(key, nextFreeNode);
+      leafIndexManager.putKeyIndex(key, nextFreeNode);
       final StateLeafValue newKey =
           new StateLeafValue(
               nearestKeys.getLeftNodeIndex(),
@@ -211,13 +202,13 @@ public class ZKTrie implements MerkleTrie<Bytes, Bytes> {
   public void remove(final Bytes key) {
     checkArgument(key.size() == Bytes32.SIZE);
     final LeafIndexLoader.Range nearestKeys =
-        leafIndexLoader.getNearestKeys(key); // find HKey- and HKey+
+        leafIndexManager.getNearestKeys(key); // find HKey- and HKey+
     // Check if hash(k) exist
     if (nearestKeys.getLeftNodeKey().equals(key)) {
       // hash(k)
       final Bytes keyPathToDelete =
           pathResolver.getLeafPath(nearestKeys.getLeftNodeIndex().toLong());
-      leafIndexUpdater.removeKeyIndex(key);
+      leafIndexManager.removeKeyIndex(key);
       final StateLeafValue keyToDelete =
           getPath(keyPathToDelete).map(StateLeafValue::readFrom).orElseThrow();
 
@@ -240,6 +231,10 @@ public class ZKTrie implements MerkleTrie<Bytes, Bytes> {
     }
   }
 
+  public void decrementNextFreeNode() {
+    pathResolver.getAndDecrementNextFreeLeafNodeIndex();
+  }
+
   public void commit() {
     state.commit(nodeUpdater);
   }
@@ -256,47 +251,47 @@ public class ZKTrie implements MerkleTrie<Bytes, Bytes> {
 
   @Override
   public Map<Bytes32, Bytes> entriesFrom(final Bytes32 startKeyHash, final int limit) {
-    throw new NotImplementedException("not yet available in the zktrie");
+    throw new NotImplementedException("not yet available in sparse merkle trie");
   }
 
   @Override
   public Map<Bytes32, Bytes> entriesFrom(final Function<Node<Bytes>, Map<Bytes32, Bytes>> handler) {
-    throw new NotImplementedException("not yet available in the zktrie");
+    throw new NotImplementedException("not yet available in sparse merkle trie");
   }
 
   @Override
   public void visitAll(final Consumer<Node<Bytes>> nodeConsumer) {
-    throw new NotImplementedException("not yet available in the zktrie");
+    throw new NotImplementedException("not yet available in sparse merkle trie");
   }
 
   @Override
   public CompletableFuture<Void> visitAll(
       final Consumer<Node<Bytes>> nodeConsumer, final ExecutorService executorService) {
-    throw new NotImplementedException("not yet available in the zktrie");
+    throw new NotImplementedException("not yet available in sparse merkle trie");
   }
 
   @Override
   public void put(final Bytes key, final PathNodeVisitor<Bytes> putVisitor) {
-    throw new NotImplementedException("not yet available in the zktrie");
+    throw new NotImplementedException("not yet available in sparse merkle trie");
   }
 
   @Override
   public void putPath(final Bytes path, final Bytes value) {
-    throw new NotImplementedException("not yet available in the zktrie");
+    throw new NotImplementedException("not yet available in sparse merkle trie");
   }
 
   @Override
   public void removePath(final Bytes path, final PathNodeVisitor<Bytes> pathNodeVisitor) {
-    throw new NotImplementedException("not yet available in the zktrie");
+    throw new NotImplementedException("not yet available in sparse merkle trie");
   }
 
   @Override
   public Proof<Bytes> getValueWithProof(final Bytes key) {
-    throw new NotImplementedException("not yet available in the zktrie");
+    throw new NotImplementedException("not yet available in sparse merkle trie");
   }
 
   @Override
   public void visitLeafs(final TrieIterator.LeafHandler<Bytes> handler) {
-    throw new NotImplementedException("not yet available in the zktrie");
+    throw new NotImplementedException("not yet available in sparse merkle trie");
   }
 }

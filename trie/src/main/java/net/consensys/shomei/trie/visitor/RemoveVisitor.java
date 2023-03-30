@@ -50,6 +50,6 @@ public class RemoveVisitor<V> extends org.hyperledger.besu.ethereum.trie.patrici
 
   @Override
   public Node<V> visit(final ExtensionNode<V> extensionNode, final Bytes path) {
-    throw new MerkleTrieException("extension node not allowed in the sparse merkle trie");
+    throw new MerkleTrieException("extension node not allowed in sparse merkle trie");
   }
 }

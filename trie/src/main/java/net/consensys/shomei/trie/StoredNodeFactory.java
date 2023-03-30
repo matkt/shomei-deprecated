@@ -115,6 +115,7 @@ public class StoredNodeFactory implements NodeFactory<Bytes> {
   @Override
   public Optional<Node<Bytes>> retrieve(final Bytes location, final Bytes32 hash)
       throws MerkleTrieException {
+
     return nodeLoader
         .getNode(location, hash)
         .map(
@@ -141,6 +142,9 @@ public class StoredNodeFactory implements NodeFactory<Bytes> {
 
     switch (type) {
       case 1 -> {
+        if (location.isEmpty()) {
+          return decodeRoot(input, errMessage);
+        }
         return decodeBranch(location, input, errMessage);
       }
       case 2 -> {
@@ -149,6 +153,21 @@ public class StoredNodeFactory implements NodeFactory<Bytes> {
       default -> throw new MerkleTrieException(
           errMessage.get() + format(": invalid node %s", type));
     }
+  }
+
+  protected BranchNode<Bytes> decodeRoot(final Bytes input, final Supplier<String> errMessage) {
+    final ArrayList<Node<Bytes>> children = new ArrayList<>(NB_CHILD);
+    final int nbChilds = input.size() / Hash.SIZE;
+    final Bytes32 nextFreeNode = Bytes32.wrap(input.slice(0, Bytes32.SIZE));
+    children.add(
+        new NextFreeNode<>(
+            Bytes.of(LeafType.NEXT_FREE_NODE.getTerminatorPath()),
+            nextFreeNode,
+            this,
+            valueSerializer));
+    final Bytes32 childHash = Bytes32.wrap(input.slice(1 * Bytes32.SIZE, Hash.SIZE));
+    children.add(new StoredNode<>(this, Bytes.concatenate(Bytes.of((byte) 1)), childHash));
+    return new BranchNode<>(Bytes.EMPTY, children, Optional.empty(), this, valueSerializer);
   }
 
   @SuppressWarnings("unchecked")

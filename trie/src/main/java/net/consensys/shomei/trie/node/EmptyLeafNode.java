@@ -113,6 +113,6 @@ public class EmptyLeafNode<V> extends NullNode<V> implements Node<V> {
 
   @Override
   public boolean isReferencedByHash() {
-    return false;
+    return true;
   }
 }

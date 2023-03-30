@@ -50,37 +50,11 @@ public class PutVisitor<V> implements PathNodeVisitor<V> {
     final int commonPathLength = leafPath.commonPrefixLength(path);
 
     // Check if the current leaf node should be replaced
-    if (commonPathLength == leafPath.size() && commonPathLength == path.size()) {
+    if ((commonPathLength == leafPath.size())) {
       return nodeFactory.createLeaf(leafPath, value);
     }
 
-    assert commonPathLength < leafPath.size() && commonPathLength < path.size()
-        : "Should not have consumed non-matching terminator";
-
-    // The current leaf path must be split to accommodate the new value.
-
-    final byte newLeafIndex = path.get(commonPathLength);
-    final Bytes newLeafPath = path.slice(commonPathLength + 1);
-
-    final byte updatedLeafIndex = leafPath.get(commonPathLength);
-
-    final Node<V> updatedLeaf = leafNode.replacePath(leafPath.slice(commonPathLength + 1));
-    final Node<V> leaf = nodeFactory.createLeaf(newLeafPath, value);
-    Node<V> branch = nodeFactory.createBranch(updatedLeafIndex, updatedLeaf, newLeafIndex, leaf);
-
-    // create all the common path
-    final Bytes commonPath = leafPath.slice(0, commonPathLength);
-    for (int i = commonPath.size() - 1; i >= 0; i--) {
-      byte loc = commonPath.get(i);
-      switch (loc) {
-        case 0x00 -> branch =
-            nodeFactory.createBranch(loc, branch, (byte) 0x01, NullNode.instance());
-        case 0x01 -> branch =
-            nodeFactory.createBranch((byte) 0x00, NullNode.instance(), loc, branch);
-      }
-    }
-
-    return branch;
+    throw new RuntimeException("this path is not allowed in sparse merkle trie");
   }
 
   @Override
@@ -90,6 +64,6 @@ public class PutVisitor<V> implements PathNodeVisitor<V> {
 
   @Override
   public Node<V> visit(final ExtensionNode<V> extensionNode, final Bytes path) {
-    throw new MerkleTrieException("extension node not allowed in the sparse merkle trie");
+    throw new MerkleTrieException("extension node not allowed in sparse merkle trie");
   }
 }

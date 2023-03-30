@@ -80,6 +80,6 @@ public class BranchNode<V> extends org.hyperledger.besu.ethereum.trie.patricia.B
 
   @Override
   public boolean isReferencedByHash() {
-    return false;
+    return true;
   }
 }

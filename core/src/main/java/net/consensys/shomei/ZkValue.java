@@ -18,21 +18,30 @@ import java.util.function.BiConsumer;
 
 import org.hyperledger.besu.ethereum.rlp.RLPOutput;
 
-public class ZkValue<T> { // TODO maybe use directly BonsaiValue from Besu
+public class ZkValue<U, T> { // TODO maybe use directly BonsaiValue from Besu
+
+  private final U key;
+
   private T prior;
   private T updated;
-  private boolean cleared;
+  private boolean isRollforward;
 
-  public ZkValue(final T prior, final T updated) {
+  public ZkValue(final U key, final T prior, final T updated) {
+    this.key = key;
     this.prior = prior;
     this.updated = updated;
-    this.cleared = false;
+    this.isRollforward = false;
   }
 
-  public ZkValue(final T prior, final T updated, final boolean cleared) {
+  public ZkValue(final U key, final T prior, final T updated, final boolean isRollforward) {
+    this.key = key;
     this.prior = prior;
     this.updated = updated;
-    this.cleared = cleared;
+    this.isRollforward = isRollforward;
+  }
+
+  public U getKey() {
+    return key;
   }
 
   public T getPrior() {
@@ -43,13 +52,13 @@ public class ZkValue<T> { // TODO maybe use directly BonsaiValue from Besu
     return updated;
   }
 
-  public ZkValue<T> setPrior(final T prior) {
+  public ZkValue<U, T> setPrior(final T prior) {
     this.prior = prior;
     return this;
   }
 
-  public ZkValue<T> setUpdated(final T updated) {
-    this.cleared = updated == null;
+  public ZkValue<U, T> setUpdated(final T updated) {
+    this.isRollforward = updated == null;
     this.updated = updated;
     return this;
   }
@@ -58,8 +67,12 @@ public class ZkValue<T> { // TODO maybe use directly BonsaiValue from Besu
     return Objects.equals(updated, prior);
   }
 
-  public boolean isCleared() {
-    return cleared;
+  public boolean isRollforward() {
+    return isRollforward;
+  }
+
+  public void setRollforward(final boolean rollforward) {
+    this.isRollforward = rollforward;
   }
 
   public void writeRlp(final RLPOutput output, final BiConsumer<RLPOutput, T> writer) {
@@ -83,6 +96,15 @@ public class ZkValue<T> { // TODO maybe use directly BonsaiValue from Besu
 
   @Override
   public String toString() {
-    return "ZkValue{" + "prior=" + prior + ", updated=" + updated + ", cleared=" + cleared + '}';
+    return "ZkValue{"
+        + "key="
+        + key
+        + ", prior="
+        + prior
+        + ", updated="
+        + updated
+        + ", isRollforward="
+        + isRollforward
+        + '}';
   }
 }

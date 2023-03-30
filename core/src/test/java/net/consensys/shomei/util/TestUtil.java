@@ -23,10 +23,10 @@ import org.hyperledger.besu.datatypes.Address;
 
 public class TestUtil {
 
-  public static Bytes32 createDumAddress(int value) {
+  public static Address createDumAddress(int value) {
     MutableBytes mutableBytes = MutableBytes.create(Address.SIZE);
     mutableBytes.set(0, (byte) value);
-    return Bytes32.leftPad(Address.wrap(mutableBytes));
+    return Address.wrap(mutableBytes);
   }
 
   public static Bytes32 createDumDigest(int value) {

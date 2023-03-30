@@ -26,7 +26,7 @@ import org.hyperledger.besu.ethereum.trie.StoredMerkleTrie;
 @SuppressWarnings({"DoNotInvokeMessageDigestDirectly", "unused"})
 public class PathResolver {
 
-  private static final Bytes NEXT_FREE_NODE_PATH = Bytes.of(0);
+  public static final Bytes NEXT_FREE_NODE_PATH = Bytes.of(0);
   private static final Bytes SUB_TRIE_ROOT_PATH = Bytes.of(1);
 
   private final int trieDepth;
@@ -37,6 +37,13 @@ public class PathResolver {
   public PathResolver(final int trieDepth, final StoredMerkleTrie<Bytes, Bytes> trie) {
     this.trieDepth = trieDepth;
     this.trie = trie;
+  }
+
+  public Long getAndDecrementNextFreeLeafNodeIndex() {
+    final long foundFreeNode = getNextFreeLeafIndex();
+    nextFreeNode = foundFreeNode - 1;
+    trie.putPath(getNextFreeNodePath(), formatNodeIndex(nextFreeNode));
+    return foundFreeNode;
   }
 
   public Bytes getAndIncrementNextFreeLeafPath() {
