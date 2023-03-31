@@ -23,10 +23,10 @@ import org.apache.tuweni.bytes.Bytes32;
 public class TestFixtureGenerator {
 
   public static Bytes32 createDumKey(int value) {
-    return HashProvider.keccak256(Bytes.of(("KEY_" + value).getBytes(StandardCharsets.UTF_8)));
+    return HashProvider.mimc(Bytes.of(("KEY_" + value).getBytes(StandardCharsets.UTF_8)));
   }
 
   public static Bytes32 createDumValue(int value) {
-    return HashProvider.keccak256(Bytes.of(("VAL_" + value).getBytes(StandardCharsets.UTF_8)));
+    return HashProvider.mimc(Bytes.of(("VAL_" + value).getBytes(StandardCharsets.UTF_8)));
   }
 }

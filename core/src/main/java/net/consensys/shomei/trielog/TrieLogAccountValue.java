@@ -14,7 +14,12 @@
 package net.consensys.shomei.trielog;
 
 import net.consensys.shomei.ZkAccount;
+import net.consensys.zkevm.HashProvider;
 
+import java.util.function.Supplier;
+
+import com.google.common.base.Suppliers;
+import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.Wei;
@@ -26,9 +31,9 @@ public class TrieLogAccountValue {
   private final long nonce;
   private final Wei balance;
   private final Hash storageRoot;
-  private final Hash codeHash;
+  private final Supplier<Hash> codeHash;
 
-  private final Hash mimcCodeHash;
+  private final Supplier<Hash> mimcCodeHash;
 
   private final Long codeSize;
 
@@ -36,8 +41,8 @@ public class TrieLogAccountValue {
       final long nonce,
       final Wei balance,
       final Hash storageRoot,
-      final Hash codeHash,
-      final Hash mimcCodeHash,
+      final Supplier<Hash> codeHash,
+      final Supplier<Hash> mimcCodeHash,
       final Long codeSize) {
     this.nonce = nonce;
     this.balance = balance;
@@ -47,13 +52,29 @@ public class TrieLogAccountValue {
     this.codeSize = codeSize;
   }
 
+  public TrieLogAccountValue(
+      final long nonce,
+      final Wei balance,
+      final Hash storageRoot,
+      final Bytes code,
+      final Long codeSize) {
+    this(
+        nonce,
+        balance,
+        storageRoot,
+        Suppliers.memoize(() -> HashProvider.keccak256(code)),
+        Suppliers.memoize(() -> HashProvider.mimc(code)),
+        codeSize);
+  }
+
   public TrieLogAccountValue(final ZkAccount zkAccount) {
-    this.nonce = zkAccount.getNonce();
-    this.balance = zkAccount.getBalance();
-    this.storageRoot = zkAccount.getStorageRoot();
-    this.codeHash = zkAccount.getCodeHash();
-    this.mimcCodeHash = zkAccount.getMimcCodeHash();
-    this.codeSize = zkAccount.getCodeSize();
+    this(
+        zkAccount.getNonce(),
+        zkAccount.getBalance(),
+        zkAccount.getStorageRoot(),
+        zkAccount::getCodeHash,
+        zkAccount::getCodeHash,
+        zkAccount.getCodeSize());
   }
 
   /**
@@ -89,7 +110,7 @@ public class TrieLogAccountValue {
    * @return the hash of the account code (which may be {@link Hash#EMPTY}).
    */
   public Hash getCodeHash() {
-    return codeHash;
+    return codeHash.get();
   }
 
   /**
@@ -98,7 +119,7 @@ public class TrieLogAccountValue {
    * @return the mimc hash of the account code.
    */
   public Hash getMimcCodeHash() {
-    return mimcCodeHash;
+    return mimcCodeHash.get();
   }
 
   /**
@@ -116,8 +137,8 @@ public class TrieLogAccountValue {
     out.writeLongScalar(nonce);
     out.writeUInt256Scalar(balance);
     out.writeBytes(storageRoot);
-    out.writeBytes(codeHash);
-    out.writeBytes(mimcCodeHash);
+    out.writeBytes(codeHash.get());
+    out.writeBytes(mimcCodeHash.get());
     out.writeLongScalar(codeSize);
     out.endList();
   }
@@ -164,8 +185,8 @@ public class TrieLogAccountValue {
         nonce,
         balance,
         Hash.wrap(storageRoot),
-        Hash.wrap(keccakCodeHash),
-        Hash.wrap(mimcCodeHash),
+        () -> Hash.wrap(keccakCodeHash),
+        () -> Hash.wrap(mimcCodeHash),
         codeSize);
   }
 }
