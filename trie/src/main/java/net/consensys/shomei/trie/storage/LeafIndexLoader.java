@@ -16,38 +16,54 @@ package net.consensys.shomei.trie.storage;
 import java.util.Map;
 import java.util.Optional;
 
-import org.apache.tuweni.bytes.Bytes;
-import org.apache.tuweni.units.bigints.UInt256;
+import org.hyperledger.besu.datatypes.Hash;
 
 public interface LeafIndexLoader {
 
-  Optional<Long> getKeyIndex(Bytes key);
+  Optional<Long> getKeyIndex(Hash key);
 
-  Range getNearestKeys(Bytes key);
+  Range getNearestKeys(Hash key);
 
   class Range {
-    private final Map.Entry<Bytes, UInt256> leftNode;
-    private final Map.Entry<Bytes, UInt256> rightNode;
+    private final Map.Entry<Hash, Long> leftNode;
+
+    private final Optional<Map.Entry<Hash, Long>> centerNode;
+    private final Map.Entry<Hash, Long> rightNode;
 
     public Range(
-        final Map.Entry<Bytes, UInt256> leftNode, final Map.Entry<Bytes, UInt256> rightNode) {
+        final Map.Entry<Hash, Long> leftNode,
+        final Optional<Map.Entry<Hash, Long>> centerNode,
+        final Map.Entry<Hash, Long> rightNode) {
       this.leftNode = leftNode;
+      this.centerNode = centerNode;
       this.rightNode = rightNode;
     }
 
-    public Bytes getLeftNodeKey() {
+    public Range(final Map.Entry<Hash, Long> leftNode, final Map.Entry<Hash, Long> rightNode) {
+      this(leftNode, Optional.empty(), rightNode);
+    }
+
+    public Hash getLeftNodeKey() {
       return leftNode.getKey();
     }
 
-    public Bytes getRightNodeKey() {
+    public Optional<Hash> getCenterNodeKey() {
+      return centerNode.map(Map.Entry::getKey);
+    }
+
+    public Hash getRightNodeKey() {
       return rightNode.getKey();
     }
 
-    public UInt256 getLeftNodeIndex() {
+    public Long getLeftNodeIndex() {
       return leftNode.getValue();
     }
 
-    public UInt256 getRightNodeIndex() {
+    public Optional<Long> getCenterNodeIndex() {
+      return centerNode.map(Map.Entry::getValue);
+    }
+
+    public Long getRightNodeIndex() {
       return rightNode.getValue();
     }
   }

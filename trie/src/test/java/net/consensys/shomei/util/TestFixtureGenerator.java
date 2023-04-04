@@ -18,15 +18,15 @@ import net.consensys.zkevm.HashProvider;
 import java.nio.charset.StandardCharsets;
 
 import org.apache.tuweni.bytes.Bytes;
-import org.apache.tuweni.bytes.Bytes32;
+import org.hyperledger.besu.datatypes.Hash;
 
 public class TestFixtureGenerator {
 
-  public static Bytes32 createDumKey(int value) {
+  public static Hash createDumKey(int value) {
     return HashProvider.keccak256(Bytes.of(("KEY_" + value).getBytes(StandardCharsets.UTF_8)));
   }
 
-  public static Bytes32 createDumValue(int value) {
+  public static Hash createDumValue(int value) {
     return HashProvider.keccak256(Bytes.of(("VAL_" + value).getBytes(StandardCharsets.UTF_8)));
   }
 }
