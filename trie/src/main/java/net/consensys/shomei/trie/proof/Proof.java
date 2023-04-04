@@ -11,22 +11,28 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package net.consensys.shomei.util;
+package net.consensys.shomei.trie.proof;
 
-import net.consensys.zkevm.HashProvider;
-
-import java.nio.charset.StandardCharsets;
+import java.util.List;
 
 import org.apache.tuweni.bytes.Bytes;
-import org.hyperledger.besu.datatypes.Hash;
+import org.hyperledger.besu.ethereum.trie.Node;
 
-public class TestFixtureGenerator {
+public class Proof {
 
-  public static Hash createDumKey(int value) {
-    return HashProvider.keccak256(Bytes.of(("KEY_" + value).getBytes(StandardCharsets.UTF_8)));
+  public long leafIndex;
+  public List<Node<Bytes>> siblings;
+
+  public Proof(final long leafIndex, final List<Node<Bytes>> siblings) {
+    this.leafIndex = leafIndex;
+    this.siblings = siblings;
   }
 
-  public static Hash createDumValue(int value) {
-    return HashProvider.keccak256(Bytes.of(("VAL_" + value).getBytes(StandardCharsets.UTF_8)));
+  public long getLeafIndex() {
+    return leafIndex;
+  }
+
+  public List<Node<Bytes>> getSiblings() {
+    return siblings;
   }
 }

@@ -26,6 +26,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import com.google.common.annotations.VisibleForTesting;
 import org.apache.tuweni.bytes.Bytes;
+import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Hash;
@@ -43,7 +44,7 @@ public class ZKEvmWorldState {
 
   // TODO change with rocksdb
 
-  final TreeMap<Bytes, UInt256> flatDB = new TreeMap<>(Comparator.naturalOrder());
+  final TreeMap<Bytes, Long> flatDB = new TreeMap<>(Comparator.naturalOrder());
   private final Map<Bytes, Bytes> storage = new ConcurrentHashMap<>();
 
   public ZKEvmWorldState(final Hash rootHash, final Hash blockHash) {
@@ -80,15 +81,15 @@ public class ZKEvmWorldState {
                         .orElse(ZkAccount.EMPTY_TRIE_ROOT);
                 storageToUpdate.forEach(
                     (slotKeyHash, storageValue) -> {
-                      if (!storageValue.isRollforward()
+                      if (!storageValue.isRollforward() // rollbackward
                           && (storageValue.getUpdated() == null
                               || storageValue.getPrior() == null)) {
                         zkStorageTrie.decrementNextFreeNode();
                       }
                       if (storageValue.getUpdated() == null) {
-                        zkStorageTrie.remove(slotKeyHash);
+                        zkStorageTrie.removeAndProve(slotKeyHash);
                       } else {
-                        zkStorageTrie.put(slotKeyHash, storageValue.getUpdated());
+                        zkStorageTrie.putAndProve(slotKeyHash, storageValue.getUpdated());
                       }
                     });
                 if (!zkStorageTrie.getTopRootHash().equals(targetStorageRootHash)) {
@@ -96,14 +97,14 @@ public class ZKEvmWorldState {
                 }
                 zkStorageTrie.commit();
               }
-              if (!accountValue.isRollforward()
+              if (!accountValue.isRollforward() // rollbackward
                   && (accountValue.getUpdated() == null || accountValue.getPrior() == null)) {
                 zkAccountTrie.decrementNextFreeNode();
               }
               if (accountValue.getUpdated() == null) {
-                zkAccountTrie.remove(accountValue.getPrior().getHkey());
+                zkAccountTrie.removeAndProve(accountValue.getPrior().getHkey());
               } else {
-                zkAccountTrie.put(
+                zkAccountTrie.putAndProve(
                     accountValue.getUpdated().getHkey(),
                     accountValue.getUpdated().serializeAccount());
               }
@@ -145,13 +146,13 @@ public class ZKEvmWorldState {
     final LeafIndexManager leafIndexManager =
         new LeafIndexManager(flatDB) {
           @Override
-          public Bytes wrapKey(final Bytes key) {
+          public Bytes wrapKey(final Hash key) {
             return Bytes.concatenate(zkAccount.getKey(), key);
           }
 
           @Override
-          public Bytes unwrapKey(final Bytes key) {
-            return key.slice(zkAccount.getKey().size());
+          public Hash unwrapKey(final Bytes key) {
+            return Hash.wrap(Bytes32.wrap(key.slice(zkAccount.getKey().size())));
           }
         };
     if (zkAccount.getPrior() == null

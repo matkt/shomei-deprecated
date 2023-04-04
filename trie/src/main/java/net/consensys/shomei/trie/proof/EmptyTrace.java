@@ -11,22 +11,6 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package net.consensys.shomei.util;
+package net.consensys.shomei.trie.proof;
 
-import net.consensys.zkevm.HashProvider;
-
-import java.nio.charset.StandardCharsets;
-
-import org.apache.tuweni.bytes.Bytes;
-import org.hyperledger.besu.datatypes.Hash;
-
-public class TestFixtureGenerator {
-
-  public static Hash createDumKey(int value) {
-    return HashProvider.keccak256(Bytes.of(("KEY_" + value).getBytes(StandardCharsets.UTF_8)));
-  }
-
-  public static Hash createDumValue(int value) {
-    return HashProvider.keccak256(Bytes.of(("VAL_" + value).getBytes(StandardCharsets.UTF_8)));
-  }
-}
+public class EmptyTrace implements Trace {}
