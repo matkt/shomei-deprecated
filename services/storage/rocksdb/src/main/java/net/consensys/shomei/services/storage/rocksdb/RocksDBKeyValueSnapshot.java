@@ -24,6 +24,7 @@ import java.util.stream.Stream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import services.storage.BidirectionalIterator;
 import services.storage.KeyValueStorage;
 import services.storage.KeyValueStorageTransaction;
 import services.storage.StorageException;
@@ -49,6 +50,12 @@ public class RocksDBKeyValueSnapshot implements KeyValueStorage {
   public Optional<byte[]> get(final byte[] key) throws StorageException {
     throwIfClosed();
     return snapTx.get(key);
+  }
+
+  @Override
+  public Optional<BidirectionalIterator<KeyValuePair>> getNearestTo(final byte[] key)
+      throws StorageException {
+    return snapTx.getNearestTo(key);
   }
 
   @Override
