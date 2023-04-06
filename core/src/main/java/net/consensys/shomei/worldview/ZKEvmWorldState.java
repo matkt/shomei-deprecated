@@ -22,6 +22,7 @@ import net.consensys.shomei.util.bytes.FullBytes;
 
 import java.util.Comparator;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
@@ -89,7 +90,8 @@ public class ZKEvmWorldState {
                           // read zero
                           zkStorageTrie.readZeroAndProve(
                               slotKeyHash, new FullBytes(storageValue.getKey()));
-                        } else if (storageValue.getPrior().equals(storageValue.getUpdated())) {
+                        } else if (Objects.equals(
+                            storageValue.getPrior(), storageValue.getUpdated())) {
                           // read non zero
                           zkAccountTrie.readAndProve(
                               slotKeyHash,
@@ -128,7 +130,7 @@ public class ZKEvmWorldState {
                 if (accountValue.getPrior() == null && accountValue.getUpdated() == null) {
                   // read zero
                   zkAccountTrie.readZeroAndProve(hkey, accountValue.getKey());
-                } else if (accountValue.getPrior().equals(accountValue.getUpdated())) {
+                } else if (Objects.equals(accountValue.getPrior(), accountValue.getUpdated())) {
                   // read non zero
                   zkAccountTrie.readAndProve(
                       hkey, accountValue.getKey(), accountValue.getPrior().serializeAccount());
