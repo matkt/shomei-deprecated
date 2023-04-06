@@ -18,12 +18,14 @@ import java.util.function.BiConsumer;
 
 import org.hyperledger.besu.ethereum.rlp.RLPOutput;
 
-public class ZkValue<U, T> { // TODO maybe use directly BonsaiValue from Besu
+public class ZkValue<U, T> {
 
   private final U key;
 
   private T prior;
   private T updated;
+
+  private boolean hasBeenDestroyed; //it was destroyed between the two states
   private boolean isRollforward;
 
   public ZkValue(final U key, final T prior, final T updated) {
@@ -33,11 +35,11 @@ public class ZkValue<U, T> { // TODO maybe use directly BonsaiValue from Besu
     this.isRollforward = false;
   }
 
-  public ZkValue(final U key, final T prior, final T updated, final boolean isRollforward) {
+  public ZkValue(final U key, final T prior, final T updated, final boolean hasBeenDestroyed) {
     this.key = key;
     this.prior = prior;
     this.updated = updated;
-    this.isRollforward = isRollforward;
+    this.hasBeenDestroyed = hasBeenDestroyed;
   }
 
   public U getKey() {

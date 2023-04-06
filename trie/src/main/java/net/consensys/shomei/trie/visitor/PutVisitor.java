@@ -13,6 +13,8 @@
 
 package net.consensys.shomei.trie.visitor;
 
+import net.consensys.shomei.trie.node.NextFreeNode;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -40,8 +42,11 @@ public class PutVisitor<V> implements PathNodeVisitor<V> {
   @Override
   public Node<V> visit(final BranchNode<V> branchNode, final Bytes path) {
     final byte childIndex = path.get(0);
-    proof.add(branchNode.child((byte) (childIndex ^ 1)));
     final Node<V> updatedChild = branchNode.child(childIndex).accept(this, path.slice(1));
+    final Node<V> sibling = branchNode.child((byte) (childIndex ^ 1));
+    if (!(sibling instanceof NextFreeNode<V>)) { // not add the nextFreeNode in the proof
+      proof.add(sibling);
+    }
     return branchNode.replaceChild(childIndex, updatedChild);
   }
 

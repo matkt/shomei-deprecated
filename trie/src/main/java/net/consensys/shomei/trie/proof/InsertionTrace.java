@@ -13,13 +13,16 @@
 
 package net.consensys.shomei.trie.proof;
 
+import net.consensys.shomei.trie.model.StateLeafValue;
+
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.ethereum.trie.Node;
 
 public class InsertionTrace implements Trace {
 
-  public Node<Bytes> oldRoot;
-  public Node<Bytes> newRoot;
+  private long newNextFreeNode;
+  public Node<Bytes> oldSubRoot;
+  public Node<Bytes> newSubRoot;
 
   // `New` correspond to the inserted leaf
   public Proof proofLeft; // HKEY -
@@ -29,11 +32,11 @@ public class InsertionTrace implements Trace {
   public Bytes value;
 
   // Value of the leaf opening before being modified
-  public Bytes priorLeftLeaf;
-  public Bytes priorRightLeaf;
+  public StateLeafValue priorLeftLeaf;
+  public StateLeafValue priorRightLeaf;
 
-  public InsertionTrace(final Node<Bytes> oldRoot) {
-    this.oldRoot = oldRoot;
+  public InsertionTrace(final Node<Bytes> oldSubRoot) {
+    this.oldSubRoot = oldSubRoot;
   }
 
   public void setKey(final Bytes key) {
@@ -44,16 +47,24 @@ public class InsertionTrace implements Trace {
     this.value = value;
   }
 
-  public Node<Bytes> getOldRoot() {
-    return oldRoot;
+  public long getNewNextFreeNode() {
+    return newNextFreeNode;
   }
 
-  public Node<Bytes> getNewRoot() {
-    return newRoot;
+  public void setNewNextFreeNode(final long newNextFreeNode) {
+    this.newNextFreeNode = newNextFreeNode;
   }
 
-  public void setNewRoot(final Node<Bytes> newRoot) {
-    this.newRoot = newRoot;
+  public Node<Bytes> getOldSubRoot() {
+    return oldSubRoot;
+  }
+
+  public Node<Bytes> getNewSubRoot() {
+    return newSubRoot;
+  }
+
+  public void setNewSubRoot(final Node<Bytes> newSubRoot) {
+    this.newSubRoot = newSubRoot;
   }
 
   public Proof getProofLeft() {
@@ -88,19 +99,27 @@ public class InsertionTrace implements Trace {
     return value;
   }
 
-  public Bytes getPriorLeftLeaf() {
+  public StateLeafValue getPriorLeftLeaf() {
     return priorLeftLeaf;
   }
 
-  public Bytes getPriorRightLeaf() {
+  public StateLeafValue getPriorRightLeaf() {
     return priorRightLeaf;
   }
 
-  public void setPriorLeftLeaf(final Bytes priorLeftLeaf) {
+  public void setPriorLeftLeaf(final StateLeafValue priorLeftLeaf) {
     this.priorLeftLeaf = priorLeftLeaf;
   }
 
-  public void setPriorRightLeaf(final Bytes priorRightLeaf) {
+  public void setPriorRightLeaf(final StateLeafValue priorRightLeaf) {
     this.priorRightLeaf = priorRightLeaf;
+  }
+
+  public void load() {
+    oldSubRoot.getHash();
+    newSubRoot.getHash();
+    proofLeft.load();
+    proofNew.load();
+    proofRight.load();
   }
 }

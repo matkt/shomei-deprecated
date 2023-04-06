@@ -14,9 +14,9 @@
 package net.consensys.shomei.trielog;
 
 import static com.google.common.base.Preconditions.checkState;
-import static net.consensys.shomei.util.bytes.FieldElementsUtil.convertToSafeFieldElementsSize;
 
 import net.consensys.shomei.ZkValue;
+import net.consensys.shomei.util.bytes.FullBytes;
 import net.consensys.zkevm.HashProvider;
 
 import java.util.HashMap;
@@ -90,7 +90,7 @@ public class TrieLogLayer {
     storage
         .computeIfAbsent(HashProvider.mimc(Bytes32.leftPad(address)), a -> new TreeMap<>())
         .put(
-            HashProvider.mimc(convertToSafeFieldElementsSize(storageKey)),
+            HashProvider.mimc(new FullBytes(storageKey)),
             new ZkValue<>(storageKey, oldValue, newValue));
   }
 

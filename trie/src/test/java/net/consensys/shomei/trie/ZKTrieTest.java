@@ -13,11 +13,10 @@
 
 package net.consensys.shomei.trie;
 
-import static net.consensys.shomei.util.TestFixtureGenerator.createDumKey;
-import static net.consensys.shomei.util.TestFixtureGenerator.createDumValue;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import net.consensys.shomei.trie.storage.LeafIndexManager;
+import net.consensys.zkevm.HashProvider;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -25,6 +24,7 @@ import java.util.Optional;
 
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
+import org.apache.tuweni.bytes.MutableBytes32;
 import org.hyperledger.besu.datatypes.Hash;
 import org.junit.Test;
 
@@ -44,7 +44,7 @@ public class ZKTrieTest {
     zkTrie.commit();
 
     assertThat(keyValueStorage).isNotEmpty();
-    assertThat(zkTrie.getRootHash())
+    assertThat(zkTrie.getSubRootHash())
         .isEqualTo(
             Bytes.fromHexString(
                 "89835e84ad52c14bf64fc28e57cfca5cea785d81e4df6cb723aaf3b3ef56888b"));
@@ -64,17 +64,21 @@ public class ZKTrieTest {
             inMemoryLeafIndexManager,
             (location, hash) -> Optional.ofNullable(keyValueStorage.get(hash)),
             (location, hash, value) -> keyValueStorage.put(hash, value));
-    zkTrie.putAndProve(createDumKey(58), createDumValue(42));
+
+    final Bytes key = createDumDiggest(58);
+    final Hash hkey = HashProvider.mimc(key);
+
+    zkTrie.putAndProve(hkey, key, createDumDiggest(42));
     zkTrie.commit();
     assertThat(keyValueStorage).isNotEmpty();
-    assertThat(zkTrie.getRootHash())
+    assertThat(zkTrie.getSubRootHash())
         .isEqualTo(
             Bytes.fromHexString(
-                "75c713f679ee0a14e456a01f0e5af12c747c177ca8df2e038222f23197d52061"));
+                "a6cf0354a2b53b2dbd0f5aa59361a35f131dc3e7e7eb73287f6bc3ae39f91e59"));
     assertThat(zkTrie.getTopRootHash())
         .isEqualTo(
             Bytes.fromHexString(
-                "108c3ea9aa7fdc16efd6836d91233f14d663fb520845bddd49f42be2680cc3e5"));
+                "bd286f0deb3d838d95426a42122ff6d2a14f5e5294b249e19056b9d1e030fed5"));
   }
 
   @Test
@@ -82,54 +86,56 @@ public class ZKTrieTest {
 
     final ZKTrie zkTrie = ZKTrie.createInMemoryTrie();
 
-    final Bytes32 dumValue = createDumValue(41);
-    final Bytes32 newDumValue = createDumValue(42);
+    final Bytes32 dumValue = createDumDiggest(41);
+    final Bytes32 newDumValue = createDumDiggest(42);
 
-    zkTrie.putAndProve(createDumKey(58), dumValue);
+    final Bytes key = createDumDiggest(58);
+    final Hash hkey = HashProvider.mimc(key);
+    zkTrie.putAndProve(hkey, key, dumValue);
 
-    assertThat(zkTrie.getRootHash())
+    assertThat(zkTrie.getSubRootHash())
         .isNotEqualTo(
             Bytes.fromHexString(
-                "75c713f679ee0a14e456a01f0e5af12c747c177ca8df2e038222f23197d52061"));
+                "a6cf0354a2b53b2dbd0f5aa59361a35f131dc3e7e7eb73287f6bc3ae39f91e59"));
     assertThat(zkTrie.getTopRootHash())
         .isNotEqualTo(
             Bytes.fromHexString(
-                "108c3ea9aa7fdc16efd6836d91233f14d663fb520845bddd49f42be2680cc3e5"));
+                "bd286f0deb3d838d95426a42122ff6d2a14f5e5294b249e19056b9d1e030fed5"));
 
     // Note : the tree should be in exactly the same state as after directly
     // inserting 42
-    zkTrie.putAndProve(createDumKey(58), newDumValue);
+    zkTrie.putAndProve(hkey, hkey, newDumValue);
 
-    assertThat(zkTrie.getRootHash())
+    assertThat(zkTrie.getSubRootHash())
         .isEqualTo(
             Bytes.fromHexString(
-                "75c713f679ee0a14e456a01f0e5af12c747c177ca8df2e038222f23197d52061"));
+                "a6cf0354a2b53b2dbd0f5aa59361a35f131dc3e7e7eb73287f6bc3ae39f91e59"));
     assertThat(zkTrie.getTopRootHash())
         .isEqualTo(
             Bytes.fromHexString(
-                "108c3ea9aa7fdc16efd6836d91233f14d663fb520845bddd49f42be2680cc3e5"));
+                "bd286f0deb3d838d95426a42122ff6d2a14f5e5294b249e19056b9d1e030fed5"));
   }
 
   @Test
   public void testInsertionAndDeleteRootHash() {
     final ZKTrie zkTrie = ZKTrie.createInMemoryTrie();
 
-    final Hash dumKey = createDumKey(58);
+    final Bytes key = createDumDiggest(58);
+    final Hash hkey = HashProvider.mimc(key);
+    zkTrie.putAndProve(hkey, key, createDumDiggest(41));
 
-    zkTrie.putAndProve(dumKey, createDumValue(41));
-
-    assertThat(zkTrie.getRootHash())
+    assertThat(zkTrie.getSubRootHash())
         .isNotEqualTo(
             Bytes.fromHexString(
-                "75c713f679ee0a14e456a01f0e5af12c747c177ca8df2e038222f23197d52061"));
+                "0x6fc4afd4f9a87ed6ed40e9829ed5c58d378848248609d1b4eb60a893011a429f"));
     assertThat(zkTrie.getTopRootHash())
         .isNotEqualTo(
             Bytes.fromHexString(
-                "108c3ea9aa7fdc16efd6836d91233f14d663fb520845bddd49f42be2680cc3e5"));
+                "0xe1ec2e46125e67ca779d458c531549a86f58671163fbc3332c8bb1b0a86cbb62"));
 
-    zkTrie.removeAndProve(dumKey);
+    zkTrie.removeAndProve(hkey, key);
 
-    assertThat(zkTrie.getRootHash())
+    assertThat(zkTrie.getSubRootHash())
         .isEqualTo(
             Bytes.fromHexString(
                 "89835e84ad52c14bf64fc28e57cfca5cea785d81e4df6cb723aaf3b3ef56888b"));
@@ -137,5 +143,11 @@ public class ZKTrieTest {
         .isEqualTo(
             Bytes.fromHexString(
                 "a3ff34462bfb7b99a97df2ca92e3218077a799841e73598bd632b9b65283bcc7"));
+  }
+
+  public static Bytes32 createDumDiggest(int value) {
+    MutableBytes32 mutableBytes = MutableBytes32.create();
+    mutableBytes.set(Bytes32.SIZE - 1, (byte) value);
+    return mutableBytes;
   }
 }

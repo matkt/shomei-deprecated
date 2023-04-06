@@ -22,6 +22,7 @@ dependencies {
     implementation 'org.hyperledger.besu.internal:rlp'
 
     implementation 'com.google.guava:guava'
+    implementation 'com.google.code.gson:gson'
 
     implementation 'org.apache.tuweni:tuweni-bytes'
     implementation 'org.apache.tuweni:tuweni-units'

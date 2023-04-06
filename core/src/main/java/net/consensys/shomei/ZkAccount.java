@@ -13,13 +13,13 @@
 
 package net.consensys.shomei;
 
-import static net.consensys.shomei.util.bytes.FieldElementsUtil.convertToSafeFieldElementsSize;
 import static net.consensys.zkevm.HashProvider.keccak256;
 import static net.consensys.zkevm.HashProvider.mimc;
 
 import net.consensys.shomei.trie.ZKTrie;
 import net.consensys.shomei.trielog.TrieLogAccountValue;
 import net.consensys.shomei.util.bytes.BytesInput;
+import net.consensys.shomei.util.bytes.FullBytes;
 import net.consensys.shomei.util.bytes.LongConverter;
 import net.consensys.zkevm.HashProvider;
 
@@ -39,12 +39,12 @@ public class ZkAccount {
   public static final Hash EMPTY_TRIE_ROOT =
       Hash.wrap(ZKTrie.createInMemoryTrie().getTopRootHash());
 
-  public static final Hash EMPTY_KECCAK_CODE_HASH = keccak256(Bytes.EMPTY);
+  public static final FullBytes EMPTY_KECCAK_CODE_HASH = new FullBytes(keccak256(Bytes.EMPTY));
   public static final Hash EMPTY_CODE_HASH = mimc(Bytes32.ZERO);
 
   private final Supplier<Hash> hkey;
   protected Address address;
-  protected Hash keccakCodeHash;
+  protected FullBytes keccakCodeHash;
   protected Hash mimcCodeHash;
 
   protected long codeSize;
@@ -54,7 +54,7 @@ public class ZkAccount {
 
   public ZkAccount(
       final Address address,
-      final Hash keccakCodeHash,
+      final FullBytes keccakCodeHash,
       final Hash mimcCodeHash,
       final long codeSize,
       final long nonce,
@@ -73,7 +73,7 @@ public class ZkAccount {
   public ZkAccount(
       final Hash hkey,
       final Address address,
-      final Hash keccakCodeHash,
+      final FullBytes keccakCodeHash,
       final Hash mimcCodeHash,
       final long codeSize,
       final long nonce,
@@ -120,7 +120,7 @@ public class ZkAccount {
         bytesInput ->
             new ZkAccount(
                 address,
-                Hash.wrap(bytesInput.readBytes32()),
+                new FullBytes(bytesInput.readBytes32()),
                 Hash.wrap(bytesInput.readBytes32()),
                 bytesInput.readLong(),
                 bytesInput.readLong(),
@@ -144,7 +144,7 @@ public class ZkAccount {
     return balance;
   }
 
-  public Hash getCodeHash() {
+  public FullBytes getCodeHash() {
     return keccakCodeHash;
   }
 
@@ -166,7 +166,7 @@ public class ZkAccount {
         LongConverter.toBytes32(balance.toLong(ByteOrder.BIG_ENDIAN)),
         storageRoot,
         mimcCodeHash,
-        convertToSafeFieldElementsSize(keccakCodeHash),
+        keccakCodeHash,
         LongConverter.toBytes32(codeSize));
   }
 

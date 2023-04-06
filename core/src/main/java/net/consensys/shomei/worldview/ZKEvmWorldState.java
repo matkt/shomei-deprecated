@@ -17,6 +17,7 @@ import net.consensys.shomei.ZkAccount;
 import net.consensys.shomei.ZkValue;
 import net.consensys.shomei.trie.ZKTrie;
 import net.consensys.shomei.trie.storage.LeafIndexManager;
+import net.consensys.shomei.util.bytes.FullBytes;
 
 import java.util.Comparator;
 import java.util.Map;
@@ -87,9 +88,18 @@ public class ZKEvmWorldState {
                         zkStorageTrie.decrementNextFreeNode();
                       }
                       if (storageValue.getUpdated() == null) {
-                        zkStorageTrie.removeAndProve(slotKeyHash);
+                        zkStorageTrie.removeAndProve(
+                            slotKeyHash, new FullBytes(storageValue.getKey()));
                       } else {
-                        zkStorageTrie.putAndProve(slotKeyHash, storageValue.getUpdated());
+                        zkStorageTrie.putAndProve(
+                            slotKeyHash,
+                            new FullBytes(storageValue.getKey()),
+                            storageValue.getPrior() == null
+                                ? null
+                                : new FullBytes(storageValue.getPrior()),
+                            storageValue.getUpdated() == null
+                                ? null
+                                : new FullBytes(storageValue.getUpdated()));
                       }
                     });
                 if (!zkStorageTrie.getTopRootHash().equals(targetStorageRootHash)) {
@@ -102,10 +112,15 @@ public class ZKEvmWorldState {
                 zkAccountTrie.decrementNextFreeNode();
               }
               if (accountValue.getUpdated() == null) {
-                zkAccountTrie.removeAndProve(accountValue.getPrior().getHkey());
+                zkAccountTrie.removeAndProve(
+                    accountValue.getPrior().getHkey(), accountValue.getKey());
               } else {
                 zkAccountTrie.putAndProve(
                     accountValue.getUpdated().getHkey(),
+                    accountValue.getKey(),
+                    accountValue.getPrior() == null
+                        ? null
+                        : accountValue.getPrior().serializeAccount(),
                     accountValue.getUpdated().serializeAccount());
               }
             });

@@ -11,7 +11,7 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package net.consensys.shomei;
+package net.consensys.shomei.rpc;
 
 import static com.google.common.collect.Streams.stream;
 
