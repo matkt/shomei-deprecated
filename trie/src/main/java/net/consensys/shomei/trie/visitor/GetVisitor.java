@@ -14,6 +14,10 @@
 package net.consensys.shomei.trie.visitor;
 
 import net.consensys.shomei.trie.node.EmptyLeafNode;
+import net.consensys.shomei.trie.node.NextFreeNode;
+
+import java.util.ArrayList;
+import java.util.List;
 
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.ethereum.trie.MerkleTrieException;
@@ -26,13 +30,20 @@ import org.hyperledger.besu.ethereum.trie.patricia.LeafNode;
 
 public class GetVisitor<V> implements PathNodeVisitor<V> {
 
+  private final List<Node<V>> proof = new ArrayList<>();
+
   @Override
   public Node<V> visit(final BranchNode<V> branchNode, final Bytes path) {
     if (path.isEmpty()) {
       return branchNode;
     }
     final byte childIndex = path.get(0);
-    return branchNode.child(childIndex).accept(this, path.slice(1));
+    final Node<V> children = branchNode.child(childIndex).accept(this, path.slice(1));
+    final Node<V> sibling = branchNode.child((byte) (childIndex ^ 1));
+    if (!(sibling instanceof NextFreeNode<V>)) { // not add the nextFreeNode in the proof
+      proof.add(sibling);
+    }
+    return children;
   }
 
   @Override
@@ -43,6 +54,10 @@ public class GetVisitor<V> implements PathNodeVisitor<V> {
   @Override
   public Node<V> visit(final NullNode<V> nullNode, final Bytes path) {
     return EmptyLeafNode.instance();
+  }
+
+  public List<Node<V>> getProof() {
+    return proof;
   }
 
   @Override

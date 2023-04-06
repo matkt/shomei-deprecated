@@ -25,7 +25,9 @@ public class ZkValue<U, T> {
   private T prior;
   private T updated;
 
-  private boolean hasBeenDestroyed; //it was destroyed between the two states
+  @SuppressWarnings({"FieldCanBeLocal", "unused"}) // TODO manage self destruct
+  private boolean hasBeenDestroyed; // it was destroyed between the two states
+
   private boolean isRollforward;
 
   public ZkValue(final U key, final T prior, final T updated) {

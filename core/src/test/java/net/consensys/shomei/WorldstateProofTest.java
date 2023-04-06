@@ -71,6 +71,36 @@ public class WorldstateProofTest {
   }
 
   @Test
+  public void testTraceReadZero() throws IOException {
+
+    final Bytes key = createDumDiggest(36);
+    final Hash hkey = HashProvider.mimc(key);
+
+    ZKTrie accountStateTrie = ZKTrie.createInMemoryTrie();
+
+    Trace trace = accountStateTrie.readZeroAndProve(hkey, key);
+
+    assertThat(gson.toJson(trace))
+        .isEqualToIgnoringWhitespace(getResources("testTraceReadZero.json"));
+  }
+
+  @Test
+  public void testTraceRead() throws IOException {
+
+    final Bytes key = createDumDiggest(36);
+    final Hash hkey = HashProvider.mimc(key);
+    final Bytes value = createDumDiggest(32);
+
+    ZKTrie accountStateTrie = ZKTrie.createInMemoryTrie();
+
+    accountStateTrie.putAndProve(hkey, key, value);
+
+    Trace trace = accountStateTrie.readAndProve(hkey, key, value);
+
+    assertThat(gson.toJson(trace)).isEqualToIgnoringWhitespace(getResources("testTraceRead.json"));
+  }
+
+  @Test
   public void testTraceStateWithAnAccount() throws IOException {
     final Address address = createDumAddress(36);
 

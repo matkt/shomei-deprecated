@@ -21,9 +21,11 @@ import net.consensys.shomei.trie.proof.DeleteTrace;
 import net.consensys.shomei.trie.proof.EmptyTrace;
 import net.consensys.shomei.trie.proof.InsertionTrace;
 import net.consensys.shomei.trie.proof.Proof;
+import net.consensys.shomei.trie.proof.ReadTrace;
+import net.consensys.shomei.trie.proof.ReadZeroTrace;
 import net.consensys.shomei.trie.proof.Trace;
 import net.consensys.shomei.trie.proof.UpdateTrace;
-import net.consensys.shomei.trie.storage.LeafIndexLoader;
+import net.consensys.shomei.trie.storage.InMemoryLeafIndexManager;
 import net.consensys.shomei.trie.storage.LeafIndexManager;
 import net.consensys.zkevm.HashProvider;
 
@@ -33,6 +35,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Hash;
@@ -62,7 +65,7 @@ public class ZKTrie {
   }
 
   public static ZKTrie createInMemoryTrie() {
-    final LeafIndexManager inMemoryLeafIndexManager = new LeafIndexManager();
+    final LeafIndexManager inMemoryLeafIndexManager = new InMemoryLeafIndexManager();
     final Map<Bytes, Bytes> storage = new HashMap<>();
     return createTrie(
         inMemoryLeafIndexManager,
@@ -141,14 +144,60 @@ public class ZKTrie {
     return state.getRootHash();
   }
 
-  public Optional<Bytes> get(final Hash key) {
-    return leafIndexManager
-        .getKeyIndex(key)
-        .map(pathResolver::getLeafPath)
-        .flatMap(path -> get(key, path));
+  public Optional<Bytes> get(final Hash hkey) {
+    return leafIndexManager.getKeyIndex(hkey).map(pathResolver::getLeafPath).flatMap(this::get);
   }
 
-  public Optional<Bytes> get(final Hash hkey, final Bytes path) {
+  public Trace readZeroAndProve(final Hash hkey, final Bytes key) {
+    return readAndProve(hkey, key, null);
+  }
+
+  public Trace readAndProve(final Hash hkey, final Bytes key, final Bytes value) {
+    // GET the openings HKEY-,  hash(k) , HKEY+
+    final LeafIndexManager.Range nearestKeys = leafIndexManager.getNearestKeys(hkey);
+    // CHECK if hash(k) exist
+    if (nearestKeys.getCenterNodeKey().isEmpty()) {
+      // INIT trace
+      final ReadZeroTrace readZeroTrace = new ReadZeroTrace(getSubRootNode());
+
+      // GET path of HKey-
+      final Bytes leftLeafPath = pathResolver.getLeafPath(nearestKeys.getLeftNodeIndex());
+      // GET path of HKey+
+      final Bytes rightLeafPath = pathResolver.getLeafPath(nearestKeys.getRightNodeIndex());
+
+      final Pair<Optional<Bytes>, List<Node<Bytes>>> leftData = state.getAndProve(leftLeafPath);
+      final Pair<Optional<Bytes>, List<Node<Bytes>>> rightData = state.getAndProve(rightLeafPath);
+
+      readZeroTrace.setKey(key);
+      readZeroTrace.setNextFreeNode(pathResolver.getNextFreeLeafNodeIndex());
+      readZeroTrace.setLeftLeaf(leftData.getKey().map(StateLeafValue::readFrom).orElseThrow());
+      readZeroTrace.setRightLeaf(rightData.getKey().map(StateLeafValue::readFrom).orElseThrow());
+      readZeroTrace.setProofLeft(new Proof(nearestKeys.getLeftNodeIndex(), leftData.getValue()));
+      readZeroTrace.setProofRight(new Proof(nearestKeys.getRightNodeIndex(), rightData.getValue()));
+
+      return readZeroTrace;
+    } else {
+      // INIT trace
+      final ReadTrace readTrace = new ReadTrace(getSubRootNode());
+
+      // GET path of hash(k)
+      final Bytes leafPath =
+          pathResolver.getLeafPath(nearestKeys.getCenterNodeIndex().orElseThrow());
+      // READ hash(k)
+      final Pair<Optional<Bytes>, List<Node<Bytes>>> data = state.getAndProve(leafPath);
+
+      readTrace.setKey(key);
+      readTrace.setValue(value);
+      readTrace.setNextFreeNode(pathResolver.getNextFreeLeafNodeIndex());
+      readTrace.setLeaf(data.getKey().map(StateLeafValue::readFrom).orElseThrow());
+      readTrace.setProof(
+          new Proof(nearestKeys.getCenterNodeIndex().orElseThrow(), data.getValue()));
+
+      return readTrace;
+    }
+  }
+
+  private Optional<Bytes> get(final Bytes path) {
     return state.get(path);
   }
 
@@ -161,7 +210,7 @@ public class ZKTrie {
     checkArgument(hKey.size() == Bytes32.SIZE);
 
     // GET the openings HKEY-,  hash(k) , HKEY+
-    final LeafIndexLoader.Range nearestKeys = leafIndexManager.getNearestKeys(hKey);
+    final LeafIndexManager.Range nearestKeys = leafIndexManager.getNearestKeys(hKey);
 
     // CHECK if hash(k) exist
     if (nearestKeys.getCenterNodeKey().isEmpty()) {
@@ -179,16 +228,13 @@ public class ZKTrie {
 
       // UPDATE HKey- with hash(k) for next
       final StateLeafValue priorLeftLeaf =
-          get(nearestKeys.getLeftNodeKey(), leftLeafPath)
-              .map(StateLeafValue::readFrom)
-              .orElseThrow();
+          get(leftLeafPath).map(StateLeafValue::readFrom).orElseThrow();
 
       final StateLeafValue newLeftLeaf = new StateLeafValue(priorLeftLeaf);
       newLeftLeaf.setNextLeaf(nextFreeNode);
 
       final List<Node<Bytes>> leftSiblings =
-          state.putAndProve(
-              nearestKeys.getLeftNodeKey(), leftLeafPath, newLeftLeaf.getEncodesBytes());
+          state.putAndProve(leftLeafPath, newLeftLeaf.getEncodesBytes());
 
       // PUT hash(k) with HKey- for Prev and HKey+ for next
       final Bytes leafPathToAdd = pathResolver.getLeafPath(nextFreeNode);
@@ -201,19 +247,16 @@ public class ZKTrie {
               HashProvider.mimc(newValue));
 
       final List<Node<Bytes>> centerSiblings =
-          state.putAndProve(hKey, leafPathToAdd, newKey.getEncodesBytes());
+          state.putAndProve(leafPathToAdd, newKey.getEncodesBytes());
 
       // UPDATE HKey+ with hash(k) for prev
       final StateLeafValue priorRightLeaf =
-          get(nearestKeys.getRightNodeKey(), rightLeafPath)
-              .map(StateLeafValue::readFrom)
-              .orElseThrow();
+          get(rightLeafPath).map(StateLeafValue::readFrom).orElseThrow();
       final StateLeafValue newRightLeaf = new StateLeafValue(priorRightLeaf);
       newRightLeaf.setPrevLeaf(nextFreeNode);
 
       final List<Node<Bytes>> rightSiblings =
-          state.putAndProve(
-              nearestKeys.getRightNodeKey(), rightLeafPath, newRightLeaf.getEncodesBytes());
+          state.putAndProve(rightLeafPath, newRightLeaf.getEncodesBytes());
 
       // UPDATE next free node
       pathResolver.incrementNextFreeLeafNodeIndex();
@@ -240,12 +283,12 @@ public class ZKTrie {
 
       // RETRIEVE OLD VALUE
       final StateLeafValue priorUpdatedLeaf =
-          get(hKey, leafPathToUpdate).map(StateLeafValue::readFrom).orElseThrow();
+          get(leafPathToUpdate).map(StateLeafValue::readFrom).orElseThrow();
       final StateLeafValue newUpdatedLeaf = new StateLeafValue(priorUpdatedLeaf);
       newUpdatedLeaf.setHval(HashProvider.mimc(newValue));
 
       final List<Node<Bytes>> siblings =
-          state.putAndProve(hKey, leafPathToUpdate, newUpdatedLeaf.getEncodesBytes());
+          state.putAndProve(leafPathToUpdate, newUpdatedLeaf.getEncodesBytes());
 
       updateTrace.setKey(key);
       updateTrace.setNewValue(newValue);
@@ -264,7 +307,7 @@ public class ZKTrie {
     checkArgument(hkey.size() == Bytes32.SIZE);
 
     // GET the openings HKEY-,  hash(k) , HKEY+
-    final LeafIndexLoader.Range nearestKeys = leafIndexManager.getNearestKeys(hkey);
+    final LeafIndexManager.Range nearestKeys = leafIndexManager.getNearestKeys(hkey);
 
     // CHECK if hash(k) exist
     if (nearestKeys.getCenterNodeIndex().isPresent()) {
@@ -278,38 +321,30 @@ public class ZKTrie {
       // UPDATE HKey- with HKey+ for next
       final Bytes leftLeafPath = pathResolver.getLeafPath(leftLeafIndex);
       final StateLeafValue priorLeftLeaf =
-          get(nearestKeys.getLeftNodeKey(), leftLeafPath)
-              .map(StateLeafValue::readFrom)
-              .orElseThrow();
+          get(leftLeafPath).map(StateLeafValue::readFrom).orElseThrow();
       final StateLeafValue newLeftLeaf = new StateLeafValue(priorLeftLeaf);
       newLeftLeaf.setNextLeaf(rightLeafIndex);
 
       final List<Node<Bytes>> leftSiblings =
-          state.putAndProve(
-              nearestKeys.getLeftNodeKey(), leftLeafPath, newLeftLeaf.getEncodesBytes());
+          state.putAndProve(leftLeafPath, newLeftLeaf.getEncodesBytes());
 
       // REMOVE hash(k)
       final Bytes leafPathToDelete =
           pathResolver.getLeafPath(nearestKeys.getCenterNodeIndex().orElseThrow());
       final StateLeafValue priorDeletedLeaf =
-          get(nearestKeys.getCenterNodeKey().orElseThrow(), leafPathToDelete)
-              .map(StateLeafValue::readFrom)
-              .orElseThrow();
+          get(leafPathToDelete).map(StateLeafValue::readFrom).orElseThrow();
       leafIndexManager.removeKeyIndex(hkey);
-      final List<Node<Bytes>> centerSiblings = state.removeAndProve(hkey, leafPathToDelete);
+      final List<Node<Bytes>> centerSiblings = state.removeAndProve(leafPathToDelete);
 
       // UPDATE HKey+ with HKey- for prev
       final Bytes rightLeafPath = pathResolver.getLeafPath(rightLeafIndex);
       final StateLeafValue priorRightLeaf =
-          get(nearestKeys.getRightNodeKey(), rightLeafPath)
-              .map(StateLeafValue::readFrom)
-              .orElseThrow();
+          get(rightLeafPath).map(StateLeafValue::readFrom).orElseThrow();
       final StateLeafValue newRightLeaf = new StateLeafValue(priorRightLeaf);
       newRightLeaf.setPrevLeaf(leftLeafIndex);
 
       final List<Node<Bytes>> rightSiblings =
-          state.putAndProve(
-              nearestKeys.getRightNodeKey(), rightLeafPath, newRightLeaf.getEncodesBytes());
+          state.putAndProve(rightLeafPath, newRightLeaf.getEncodesBytes());
 
       deleteTrace.setKey(key);
       deleteTrace.setPriorLeftLeaf(priorLeftLeaf);
@@ -334,9 +369,11 @@ public class ZKTrie {
 
   public void commit() {
     state.commit(nodeUpdater);
+    leafIndexManager.commit();
   }
 
   public void commit(final NodeUpdater nodeUpdater) {
     state.commit(nodeUpdater);
+    leafIndexManager.commit();
   }
 }

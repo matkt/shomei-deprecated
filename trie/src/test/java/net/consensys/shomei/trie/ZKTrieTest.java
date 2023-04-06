@@ -15,7 +15,7 @@ package net.consensys.shomei.trie;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import net.consensys.shomei.trie.storage.LeafIndexManager;
+import net.consensys.shomei.trie.storage.InMemoryLeafIndexManager;
 import net.consensys.zkevm.HashProvider;
 
 import java.util.HashMap;
@@ -33,7 +33,7 @@ public class ZKTrieTest {
   @Test
   public void testEmptyRootHash() {
 
-    final LeafIndexManager inMemoryLeafIndexManager = new LeafIndexManager();
+    final InMemoryLeafIndexManager inMemoryLeafIndexManager = new InMemoryLeafIndexManager();
     final Map<Bytes, Bytes> keyValueStorage = new HashMap<>();
 
     ZKTrie zkTrie =
@@ -57,7 +57,7 @@ public class ZKTrieTest {
   @Test
   public void testInsertionRootHash() {
 
-    final LeafIndexManager inMemoryLeafIndexManager = new LeafIndexManager();
+    final InMemoryLeafIndexManager inMemoryLeafIndexManager = new InMemoryLeafIndexManager();
     final Map<Bytes, Bytes> keyValueStorage = new HashMap<>();
     ZKTrie zkTrie =
         ZKTrie.createTrie(
