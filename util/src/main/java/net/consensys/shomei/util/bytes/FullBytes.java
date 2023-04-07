@@ -35,6 +35,15 @@ public class FullBytes extends DelegatingBytes implements Bytes {
     return originalValue;
   }
 
+  /**
+   * Fhe fields elements hold on 32 bytes but do not allow to contain 32 bytes entirely. For some
+   * keys, we cannot assume that it will always fit on a field element. So we need sometimes to
+   * split the key Put the first half of f into the second half of msb and the second half of f into
+   * the second half of lsb The rest is zero.
+   *
+   * @param value to format
+   * @return formated value
+   */
   private static Bytes convertToSafeFieldElementsSize(Bytes32 value) {
     Bytes32 lsb = Bytes32.leftPad(value.slice(16, 16));
     Bytes32 msb = Bytes32.leftPad(value.slice(0, 16));
