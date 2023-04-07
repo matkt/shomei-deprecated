@@ -15,6 +15,7 @@ package net.consensys.shomei.services.storage.rocksdb;
 
 import java.util.Iterator;
 import java.util.NoSuchElementException;
+import java.util.Optional;
 import java.util.Spliterator;
 import java.util.Spliterators;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -25,27 +26,21 @@ import org.rocksdb.RocksDBException;
 import org.rocksdb.RocksIterator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import services.storage.BidirectionalIterator;
 import services.storage.KeyValueStorage.KeyValuePair;
 
-/** The Rocks db iterator. */
-public class RocksDbIterator implements Iterator<KeyValuePair>, AutoCloseable {
-  private static final Logger LOG = LoggerFactory.getLogger(RocksDbIterator.class);
+public class RocksDBIterator implements BidirectionalIterator<KeyValuePair>, AutoCloseable {
+  private static final Logger LOG = LoggerFactory.getLogger(RocksDBIterator.class);
 
   private final RocksIterator rocksIterator;
   private final AtomicBoolean isClosed = new AtomicBoolean(false);
 
-  private RocksDbIterator(final RocksIterator rocksIterator) {
+  private RocksDBIterator(final RocksIterator rocksIterator) {
     this.rocksIterator = rocksIterator;
   }
 
-  /**
-   * Create RocksDb iterator.
-   *
-   * @param rocksIterator the rocks iterator
-   * @return the rocks db iterator
-   */
-  public static RocksDbIterator create(final RocksIterator rocksIterator) {
-    return new RocksDbIterator(rocksIterator);
+  public static RocksDBIterator create(final RocksIterator rocksIterator) {
+    return new RocksDBIterator(rocksIterator);
   }
 
   @Override
@@ -57,13 +52,7 @@ public class RocksDbIterator implements Iterator<KeyValuePair>, AutoCloseable {
   @Override
   public KeyValuePair next() {
     assertOpen();
-    try {
-      rocksIterator.status();
-    } catch (final RocksDBException e) {
-      LOG.error(
-          String.format("%s encountered a problem while iterating.", getClass().getSimpleName()),
-          e);
-    }
+    checkStatus();
     if (!hasNext()) {
       throw new NoSuchElementException();
     }
@@ -73,13 +62,26 @@ public class RocksDbIterator implements Iterator<KeyValuePair>, AutoCloseable {
     return new KeyValuePair(key, value);
   }
 
-  /**
-   * Next key.
-   *
-   * @return the byte [ ]
-   */
-  public byte[] nextKey() {
+  @Override
+  public boolean hasPrevious() {
     assertOpen();
+    return rocksIterator.isValid();
+  }
+
+  @Override
+  public KeyValuePair previous() {
+    assertOpen();
+    checkStatus();
+    if (!hasPrevious()) {
+      throw new NoSuchElementException();
+    }
+    final byte[] key = rocksIterator.key();
+    final byte[] value = rocksIterator.value();
+    rocksIterator.prev();
+    return new KeyValuePair(key, value);
+  }
+
+  private void checkStatus() {
     try {
       rocksIterator.status();
     } catch (final RocksDBException e) {
@@ -87,19 +89,8 @@ public class RocksDbIterator implements Iterator<KeyValuePair>, AutoCloseable {
           String.format("%s encountered a problem while iterating.", getClass().getSimpleName()),
           e);
     }
-    if (!hasNext()) {
-      throw new NoSuchElementException();
-    }
-    final byte[] key = rocksIterator.key();
-    rocksIterator.next();
-    return key;
   }
 
-  /**
-   * To stream.
-   *
-   * @return the stream
-   */
   public Stream<KeyValuePair> toStream() {
     assertOpen();
     final Spliterator<KeyValuePair> spliterator =
@@ -126,12 +117,14 @@ public class RocksDbIterator implements Iterator<KeyValuePair>, AutoCloseable {
             new Iterator<>() {
               @Override
               public boolean hasNext() {
-                return RocksDbIterator.this.hasNext();
+                return RocksDBIterator.this.hasNext();
               }
 
               @Override
               public byte[] next() {
-                return RocksDbIterator.this.nextKey();
+                return Optional.ofNullable(RocksDBIterator.this.next())
+                    .map(KeyValuePair::key)
+                    .orElse(null);
               }
             },
             Spliterator.IMMUTABLE
@@ -144,7 +137,7 @@ public class RocksDbIterator implements Iterator<KeyValuePair>, AutoCloseable {
   }
 
   private void assertOpen() {
-    if (!isClosed.get()) {
+    if (isClosed.get()) {
       throw new IllegalStateException(String.format("%s is closed.", getClass().getSimpleName()));
     }
   }

@@ -28,6 +28,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.rocksdb.AbstractRocksIterator;
 import org.rocksdb.BlockBasedTableConfig;
 import org.rocksdb.BloomFilter;
 import org.rocksdb.ColumnFamilyDescriptor;
@@ -48,6 +49,7 @@ import org.rocksdb.TransactionDBOptions;
 import org.rocksdb.WriteOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import services.storage.BidirectionalIterator;
 import services.storage.KeyValueStorage;
 import services.storage.KeyValueStorageTransaction;
 import services.storage.SnappableKeyValueStorage;
@@ -226,24 +228,24 @@ public class RocksDBSegmentedStorage implements AutoCloseable {
       }
     }
 
-    public Stream<KeyValueStorage.KeyValuePair> stream() {
+    public Stream<KeyValueStorage.KeyValuePair> stream(final ReadOptions readOptions) {
       throwIfClosed();
-      final RocksIterator rocksIterator = db.newIterator();
+      final RocksIterator rocksIterator = db.newIterator(this.getHandle(), readOptions);
       rocksIterator.seekToFirst();
-      return RocksDbIterator.create(rocksIterator).toStream();
+      return RocksDBIterator.create(rocksIterator).toStream();
     }
 
-    public Stream<byte[]> streamKeys() {
+    public Stream<byte[]> streamKeys(final ReadOptions readOptions) {
       throwIfClosed();
-      final RocksIterator rocksIterator = db.newIterator();
+      final RocksIterator rocksIterator = db.newIterator(getHandle(), readOptions);
       rocksIterator.seekToFirst();
-      return RocksDbIterator.create(rocksIterator).toStreamKeys();
+      return RocksDBIterator.create(rocksIterator).toStreamKeys();
     }
 
     public boolean tryDelete(final byte[] key) {
       throwIfClosed();
       try {
-        db.delete(tryDeleteOptions, key);
+        db.delete(getHandle(), tryDeleteOptions, key);
         return true;
       } catch (RocksDBException e) {
         if (e.getStatus().getCode() == Status.Code.Incomplete) {
@@ -286,6 +288,22 @@ public class RocksDBSegmentedStorage implements AutoCloseable {
     @Override
     public int hashCode() {
       return reference.get().hashCode();
+    }
+
+    public Optional<BidirectionalIterator<KeyValueStorage.KeyValuePair>> getNearestTo(
+        final ReadOptions readOptions, final byte[] key) {
+      throwIfClosed();
+
+      try {
+        RocksIterator iterator = db.newIterator(getHandle(), readOptions);
+        iterator.seekForPrev(key);
+
+        return Optional.of(iterator)
+            .filter(AbstractRocksIterator::isValid)
+            .map(RocksDBIterator::create);
+      } catch (final Throwable t) {
+        throw new StorageException(t);
+      }
     }
   }
 }

@@ -11,22 +11,12 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package net.consensys.shomei.util;
+package services.storage;
 
-import net.consensys.zkevm.HashProvider;
+import java.util.Iterator;
 
-import java.nio.charset.StandardCharsets;
+public interface BidirectionalIterator<T> extends Iterator<T> {
+  boolean hasPrevious();
 
-import org.apache.tuweni.bytes.Bytes;
-import org.hyperledger.besu.datatypes.Hash;
-
-public class TestFixtureGenerator {
-
-  public static Hash createDumKey(int value) {
-    return HashProvider.keccak256(Bytes.of(("KEY_" + value).getBytes(StandardCharsets.UTF_8)));
-  }
-
-  public static Hash createDumValue(int value) {
-    return HashProvider.keccak256(Bytes.of(("VAL_" + value).getBytes(StandardCharsets.UTF_8)));
-  }
+  T previous();
 }
