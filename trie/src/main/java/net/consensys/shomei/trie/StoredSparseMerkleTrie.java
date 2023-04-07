@@ -109,10 +109,7 @@ public class StoredSparseMerkleTrie {
     if (root.isDirty() && root.getEncodedBytesRef().size() < 32) {
       nodeUpdater.store(Bytes.EMPTY, root.getHash(), root.getEncodedBytesRef());
     }
-    // Reset root so dirty nodes can be garbage collected
-    final Bytes32 rootHash = root.getHash();
-    System.out.println(EMPTY_TRIE_ROOT + " " + rootHash);
-    this.root = new StoredNode<>(nodeFactory, Bytes.EMPTY, rootHash);
+    this.root = new StoredNode<>(nodeFactory, Bytes.EMPTY, root.getHash());
   }
 
   public GetVisitor<Bytes> getGetVisitor() {
