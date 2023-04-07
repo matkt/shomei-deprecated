@@ -15,7 +15,7 @@ package net.consensys.shomei;
 
 import static net.consensys.shomei.ZkAccount.EMPTY_CODE_HASH;
 import static net.consensys.shomei.ZkAccount.EMPTY_KECCAK_CODE_HASH;
-import static net.consensys.shomei.ZkAccount.EMPTY_TRIE_ROOT;
+import static net.consensys.shomei.trie.StoredSparseMerkleTrie.EMPTY_TRIE_ROOT;
 import static net.consensys.shomei.util.TestFixtureGenerator.createDumAddress;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -52,10 +52,11 @@ public class RollingTests {
 
     accountStateTrieOne.putAndProve(
         ZK_ACCOUNT.getHkey(), ZK_ACCOUNT.getAddress(), ZK_ACCOUNT.serializeAccount());
+
     Hash topRootHash = Hash.wrap(accountStateTrieOne.getTopRootHash());
     assertThat(topRootHash)
         .isEqualTo(
-            Hash.fromHexString("828dd273c29ec50463bd7fac90e06b04b4010b72fe880df82e299bf162046e41"));
+            Hash.fromHexString("11aed727a707f2f1962e399bd4787153ba0e69b7224e8eecf4d1e4e6a8e8dafd"));
 
     TrieLogLayer trieLogLayer = new TrieLogLayer();
     trieLogLayer.addAccountChange(ACCOUNT_1, null, new TrieLogAccountValue(ZK_ACCOUNT));
@@ -85,7 +86,7 @@ public class RollingTests {
     assertThat(topRootHash)
         .isEqualTo(
             Hash.fromHexString(
-                "0xceb3ac18141ddf7cf476384ec31ff9233a739596552360affa2602060b5f4bed"));
+                "0x271a0e17054a194a6a1e227ddfa4bec3f22c55a0b061c5056a089bba1ae24ec9"));
 
     TrieLogLayer trieLogLayer = new TrieLogLayer();
     trieLogLayer.addAccountChange(ACCOUNT_1, null, new TrieLogAccountValue(ZK_ACCOUNT));
@@ -100,7 +101,7 @@ public class RollingTests {
     zkEvmWorldState.commit(null);
     assertThat(zkEvmWorldState.getRootHash())
         .isEqualTo(
-            Hash.fromHexString("828dd273c29ec50463bd7fac90e06b04b4010b72fe880df82e299bf162046e41"));
+            Hash.fromHexString("11aed727a707f2f1962e399bd4787153ba0e69b7224e8eecf4d1e4e6a8e8dafd"));
     zkEvmWorldState.getAccumulator().rollForward(trieLogLayer2);
     zkEvmWorldState.commit(null);
     assertThat(zkEvmWorldState.getRootHash()).isEqualTo(topRootHash);
@@ -124,7 +125,7 @@ public class RollingTests {
     assertThat(topRootHash)
         .isEqualTo(
             Hash.fromHexString(
-                "0xceb3ac18141ddf7cf476384ec31ff9233a739596552360affa2602060b5f4bed"));
+                "0x271a0e17054a194a6a1e227ddfa4bec3f22c55a0b061c5056a089bba1ae24ec9"));
 
     TrieLogLayer trieLogLayer = new TrieLogLayer();
     trieLogLayer.addAccountChange(ACCOUNT_1, null, new TrieLogAccountValue(ZK_ACCOUNT));
@@ -142,19 +143,23 @@ public class RollingTests {
   }
 
   @Test
-  public void rollingForwardTwoAccount() {
+  public void rollingForwardTwoAccounts() {
 
     ZKTrie accountStateTrieOne = ZKTrie.createInMemoryTrie();
 
     accountStateTrieOne.putAndProve(
-        ZK_ACCOUNT.getHkey(), ZK_ACCOUNT.getAddress(), ZK_ACCOUNT.serializeAccount());
+        ZK_ACCOUNT_2.getHkey(),
+        ZK_ACCOUNT_2.getAddress(),
+        ZK_ACCOUNT_2
+            .serializeAccount()); // respect the order of hkey because they are in the same batch
     accountStateTrieOne.putAndProve(
-        ZK_ACCOUNT_2.getHkey(), ZK_ACCOUNT.getAddress(), ZK_ACCOUNT_2.serializeAccount());
+        ZK_ACCOUNT.getHkey(), ZK_ACCOUNT.getAddress(), ZK_ACCOUNT.serializeAccount());
+
     Hash topRootHash = Hash.wrap(accountStateTrieOne.getTopRootHash());
 
     TrieLogLayer trieLogLayer = new TrieLogLayer();
-    trieLogLayer.addAccountChange(ACCOUNT_1, null, new TrieLogAccountValue(ZK_ACCOUNT));
     trieLogLayer.addAccountChange(ACCOUNT_2, null, new TrieLogAccountValue(ZK_ACCOUNT_2));
+    trieLogLayer.addAccountChange(ACCOUNT_1, null, new TrieLogAccountValue(ZK_ACCOUNT));
 
     ZKEvmWorldState zkEvmWorldState = new ZKEvmWorldState(EMPTY_TRIE_ROOT, Hash.EMPTY);
     assertThat(zkEvmWorldState.getRootHash()).isEqualTo(EMPTY_TRIE_ROOT);
@@ -177,18 +182,21 @@ public class RollingTests {
     contractStorageTrie.putAndProve(storageKeyHash, storageKey, storageValue);
     contract.setStorageRoot(Hash.wrap(contractStorageTrie.getTopRootHash()));
 
+    // add contract
+    accountStateTrieOne.putAndProve(
+        contract.getHkey(),
+        contract.getAddress(),
+        contract
+            .serializeAccount()); // respect the order of hkey because they are in the same batch
     // add simple account
     accountStateTrieOne.putAndProve(
         ZK_ACCOUNT.getHkey(), ZK_ACCOUNT.getAddress(), ZK_ACCOUNT.serializeAccount());
-    // add contract
-    accountStateTrieOne.putAndProve(
-        contract.getHkey(), contract.getAddress(), contract.serializeAccount());
 
     Hash topRootHash = Hash.wrap(accountStateTrieOne.getTopRootHash());
 
     TrieLogLayer trieLogLayer = new TrieLogLayer();
-    trieLogLayer.addAccountChange(ACCOUNT_1, null, new TrieLogAccountValue(ZK_ACCOUNT));
     trieLogLayer.addAccountChange(ACCOUNT_2, null, new TrieLogAccountValue(contract));
+    trieLogLayer.addAccountChange(ACCOUNT_1, null, new TrieLogAccountValue(ZK_ACCOUNT));
     trieLogLayer.addStorageChange(
         ACCOUNT_2,
         UInt256.fromBytes(storageKey.getOriginalValue()),

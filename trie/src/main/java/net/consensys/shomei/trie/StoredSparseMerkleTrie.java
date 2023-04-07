@@ -27,7 +27,7 @@ import java.util.function.Function;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
-import org.hyperledger.besu.ethereum.trie.MerkleTrie;
+import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.ethereum.trie.Node;
 import org.hyperledger.besu.ethereum.trie.NodeFactory;
 import org.hyperledger.besu.ethereum.trie.NodeLoader;
@@ -37,6 +37,9 @@ import org.hyperledger.besu.ethereum.trie.StoredNode;
 
 /** A {@link StoredSparseMerkleTrie} that persists trie nodes to a key/value store. */
 public class StoredSparseMerkleTrie {
+
+  public static final Hash EMPTY_TRIE_ROOT =
+      Hash.wrap(ZKTrie.createInMemoryTrie().getTopRootHash());
 
   protected final NodeFactory<Bytes> nodeFactory;
 
@@ -49,7 +52,7 @@ public class StoredSparseMerkleTrie {
       final Function<Bytes, Bytes> valueDeserializer) {
     this.nodeFactory = new StoredNodeFactory(nodeLoader, valueSerializer, valueDeserializer);
     this.root =
-        rootHash.equals(MerkleTrie.EMPTY_TRIE_NODE_HASH)
+        rootHash.equals(EMPTY_TRIE_ROOT)
             ? NullNode.instance()
             : new StoredNode<>(nodeFactory, Bytes.EMPTY, rootHash);
   }
@@ -108,10 +111,8 @@ public class StoredSparseMerkleTrie {
     }
     // Reset root so dirty nodes can be garbage collected
     final Bytes32 rootHash = root.getHash();
-    this.root =
-        rootHash.equals(MerkleTrie.EMPTY_TRIE_NODE_HASH)
-            ? NullNode.instance()
-            : new StoredNode<>(nodeFactory, Bytes.EMPTY, rootHash);
+    System.out.println(EMPTY_TRIE_ROOT + " " + rootHash);
+    this.root = new StoredNode<>(nodeFactory, Bytes.EMPTY, rootHash);
   }
 
   public GetVisitor<Bytes> getGetVisitor() {

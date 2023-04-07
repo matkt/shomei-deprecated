@@ -16,7 +16,6 @@ package net.consensys.shomei;
 import static net.consensys.zkevm.HashProvider.keccak256;
 import static net.consensys.zkevm.HashProvider.mimc;
 
-import net.consensys.shomei.trie.ZKTrie;
 import net.consensys.shomei.trielog.TrieLogAccountValue;
 import net.consensys.shomei.util.bytes.BytesInput;
 import net.consensys.shomei.util.bytes.FullBytes;
@@ -35,9 +34,6 @@ import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.Wei;
 
 public class ZkAccount {
-
-  public static final Hash EMPTY_TRIE_ROOT =
-      Hash.wrap(ZKTrie.createInMemoryTrie().getTopRootHash());
 
   public static final FullBytes EMPTY_KECCAK_CODE_HASH = new FullBytes(keccak256(Bytes.EMPTY));
   public static final Hash EMPTY_CODE_HASH = mimc(Bytes32.ZERO);

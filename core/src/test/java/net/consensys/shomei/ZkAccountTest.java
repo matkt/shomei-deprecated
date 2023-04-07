@@ -16,6 +16,7 @@ package net.consensys.shomei;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import net.consensys.shomei.util.bytes.FullBytes;
+import net.consensys.zkevm.HashProvider;
 
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Address;
@@ -37,9 +38,10 @@ public class ZkAccountTest {
             0L,
             Wei.ZERO,
             Hash.ZERO);
-    assertThat(Hash.hash(zkAccount.serializeAccount()))
+
+    assertThat(HashProvider.mimc(zkAccount.serializeAccount()))
         .isEqualTo(
             Bytes32.fromHexString(
-                "868e09d528a16744c1f38ea3c10cc2251e01a456434f91172247695087d129b7"));
+                "19be98b429f6e00b8eff84a8aa617d2982421d5cde049c3e2a9b5a30a554a307"));
   }
 }

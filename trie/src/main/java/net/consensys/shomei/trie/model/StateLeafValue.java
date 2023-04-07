@@ -29,7 +29,11 @@ public class StateLeafValue {
       new StateLeafValue(0, 1, Hash.wrap(Bytes32.ZERO), Bytes32.ZERO);
 
   public static final StateLeafValue TAIL =
-      new StateLeafValue(0, 1, Hash.wrap(Bytes32.repeat((byte) 0xff)), Bytes32.ZERO);
+      new StateLeafValue(
+          0,
+          1,
+          Hash.fromHexString("30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000000"),
+          Bytes32.ZERO);
 
   private final Hash hkey;
 

@@ -21,8 +21,6 @@ import org.hyperledger.besu.nativelib.mimc.LibMimc;
 
 public class HashProvider {
 
-  public static boolean isMimcEnable = false; // TODO remove and only use MIMC
-
   @SuppressWarnings("WeakerAccess")
   public static final boolean ENABLED;
 
@@ -42,11 +40,7 @@ public class HashProvider {
     return Hash.hash(bytes);
   }
 
-  // TODO change to use mimc
   public static Hash mimc(final Bytes bytes) {
-    if (!isMimcEnable) {
-      return Hash.hash(bytes); // TODO remove and only use MIMC
-    }
     final byte[] output = new byte[Bytes32.SIZE];
     LibMimc.compute(bytes.toArrayUnsafe(), bytes.size(), output);
     return Hash.wrap(Bytes32.wrap(output));

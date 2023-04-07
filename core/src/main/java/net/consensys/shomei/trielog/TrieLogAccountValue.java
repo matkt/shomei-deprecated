@@ -14,6 +14,7 @@
 package net.consensys.shomei.trielog;
 
 import net.consensys.shomei.ZkAccount;
+import net.consensys.shomei.trie.StoredSparseMerkleTrie;
 import net.consensys.shomei.util.bytes.FullBytes;
 
 import org.apache.tuweni.bytes.Bytes32;
@@ -133,7 +134,7 @@ public class TrieLogAccountValue {
     Bytes32 mimcCodeHash;
     long codeSize;
     if (in.nextIsNull()) {
-      storageRoot = ZkAccount.EMPTY_TRIE_ROOT;
+      storageRoot = StoredSparseMerkleTrie.EMPTY_TRIE_ROOT;
       in.skipNext();
     } else {
       storageRoot = in.readBytes32();

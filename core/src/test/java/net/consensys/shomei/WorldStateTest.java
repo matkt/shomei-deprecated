@@ -15,7 +15,7 @@ package net.consensys.shomei;
 
 import static net.consensys.shomei.ZkAccount.EMPTY_CODE_HASH;
 import static net.consensys.shomei.ZkAccount.EMPTY_KECCAK_CODE_HASH;
-import static net.consensys.shomei.ZkAccount.EMPTY_TRIE_ROOT;
+import static net.consensys.shomei.trie.StoredSparseMerkleTrie.EMPTY_TRIE_ROOT;
 import static net.consensys.shomei.util.TestFixtureGenerator.createDumAddress;
 import static net.consensys.shomei.util.TestFixtureGenerator.createDumDiggest;
 import static net.consensys.shomei.util.TestFixtureGenerator.createDumFullBytes;
@@ -43,7 +43,7 @@ public class WorldStateTest {
 
     assertThat(HashProvider.mimc(zkAccount.serializeAccount()))
         .isEqualTo(
-            Hash.fromHexString("ab023fb58c760f385eb5e68491287a46a51a653f3d7609b035b82a79df93f413"));
+            Hash.fromHexString("25ddd6106526ffb2c9b923617cf3bcab669a5d57821d0ec81daa23155c1513ea"));
 
     ZKTrie accountStateTrie = ZKTrie.createInMemoryTrie();
     accountStateTrie.putAndProve(
@@ -51,11 +51,11 @@ public class WorldStateTest {
 
     assertThat(accountStateTrie.getSubRootHash())
         .isEqualTo(
-            Hash.fromHexString("2485d2db988337c68fbc4236b4b0dc92f82cc7d2ac18836f90afe852842922cc"));
+            Hash.fromHexString("15154ecb54514b439ed9cd51078e08e51676c30fc2067d04320ef6b6d263584e"));
 
     assertThat(accountStateTrie.getTopRootHash())
         .isEqualTo(
-            Hash.fromHexString("828dd273c29ec50463bd7fac90e06b04b4010b72fe880df82e299bf162046e41"));
+            Hash.fromHexString("11aed727a707f2f1962e399bd4787153ba0e69b7224e8eecf4d1e4e6a8e8dafd"));
   }
 
   @Test
@@ -78,7 +78,7 @@ public class WorldStateTest {
 
     assertThat(HashProvider.mimc(zkAccount.serializeAccount()))
         .isEqualTo(
-            Hash.fromHexString("ab023fb58c760f385eb5e68491287a46a51a653f3d7609b035b82a79df93f413"));
+            Hash.fromHexString("25ddd6106526ffb2c9b923617cf3bcab669a5d57821d0ec81daa23155c1513ea"));
 
     ZKTrie accountStateTrie = ZKTrie.createInMemoryTrie();
     accountStateTrie.putAndProve(
@@ -88,7 +88,7 @@ public class WorldStateTest {
 
     assertThat(accountStateTrie.getTopRootHash())
         .isEqualTo(
-            Hash.fromHexString("527e480b526f4976528ef828ef90fc07b5758bf9f4e7db77e9bf5122b5935f2a"));
+            Hash.fromHexString("1f8b53f5cf08c25611e11f8bfd2ffdbdab2f12f7e0578e54282f31e0e6267ab4"));
   }
 
   @Test
@@ -117,7 +117,7 @@ public class WorldStateTest {
 
     assertThat(accountStateTrie.getTopRootHash())
         .isEqualTo(
-            Hash.fromHexString("67c5b3445103ca9762dbaa16cd81c34beeb01b7d66d569bd27bd0558bf290f2f"));
+            Hash.fromHexString("15471b9c6443332dccaef5b1544c5881e2c2a6e4576ad1696cec3d1769061e21"));
   }
 
   @Test
@@ -161,7 +161,7 @@ public class WorldStateTest {
 
     assertThat(accountStateTrie.getTopRootHash())
         .isEqualTo(
-            Hash.fromHexString("78af69680860107428206b1fc984696007e9ee7381f2d075c9be438d98f56bd3"));
+            Hash.fromHexString("16df792bd76d708e98bccd2f037d15e5b8d5fa816febf0bf0a30487b8e0ba117"));
   }
 
   @Test
@@ -207,7 +207,7 @@ public class WorldStateTest {
     accountStateTrie.removeAndProve(zkAccount.getHkey(), zkAccount.getAddress());
     assertThat(accountStateTrie.getTopRootHash())
         .isEqualTo(
-            Hash.fromHexString("8f066c00f100e87a1d037ddc020538caa24b974da1f6e33249e97b265f262230"));
+            Hash.fromHexString("2e603c5f62481d627428d9efbfccd33fc1474e1d191b9e93cefa337b4a0e67da"));
 
     // clean storage B
     zkAccount2PriorValue = zkAccount2.serializeAccount();
@@ -220,7 +220,7 @@ public class WorldStateTest {
         zkAccount2.serializeAccount());
     assertThat(accountStateTrie.getTopRootHash())
         .isEqualTo(
-            Hash.fromHexString("279c1a09b9b8fe9de73fdcf3b460d7be9662dd5b15d1d2176f6c0819d03dffcb"));
+            Hash.fromHexString("1aee37cbf805a51f827b48eb8fab44a7012575876045dca6ea6faaaa2233b0b5"));
 
     // Write again, somewhere else
     zkAccount2PriorValue = zkAccount2.serializeAccount();
@@ -236,7 +236,7 @@ public class WorldStateTest {
         zkAccount2.serializeAccount());
     assertThat(accountStateTrie.getTopRootHash())
         .isEqualTo(
-            Hash.fromHexString("cca1d6b6e90e8cd82082c7abab8491394eb2cceafad4c52e22cef7f8355fbe8f"));
+            Hash.fromHexString("02b9fb86c95b0e45a3ad401f1267b62f80e1ec16057d1491c2c9b32b36a1478f"));
   }
 
   @Test
@@ -280,7 +280,7 @@ public class WorldStateTest {
 
     assertThat(accountStateTrie.getTopRootHash())
         .isEqualTo(
-            Hash.fromHexString("ae6539fb01841d666941963fede04ff6bb8334c68ba22e90d1904532b64b29cb"));
+            Hash.fromHexString("1cb213eb41f295fded1c6850d570beec729ca15541a33586320e0f097f0ed11b"));
   }
 
   @Test
@@ -310,7 +310,8 @@ public class WorldStateTest {
         zkAccount2.getHkey(), zkAccount2.getAddress(), zkAccount2.serializeAccount());
     assertThat(accountStateTrie.getTopRootHash())
         .isEqualTo(
-            Hash.fromHexString("67c5b3445103ca9762dbaa16cd81c34beeb01b7d66d569bd27bd0558bf290f2f"));
+            Hash.fromHexString(
+                "0x15471b9c6443332dccaef5b1544c5881e2c2a6e4576ad1696cec3d1769061e21"));
     accountStateTrie.commit();
     // revert all addition
     accountStateTrie.removeAndProve(zkAccount.getHkey(), zkAccount.getAddress());
@@ -319,7 +320,7 @@ public class WorldStateTest {
     accountStateTrie.decrementNextFreeNode();
     assertThat(accountStateTrie.getTopRootHash())
         .isEqualTo(
-            Hash.fromHexString("a222476ab21332f448fdf2496ce1b8442761140856b48300d1fce9c5395e4305"));
+            Hash.fromHexString("2e7942bb21022172cbad3ffc38d1c59e998f1ab6ab52feb15345d04bbf859f14"));
     accountStateTrie.commit();
     // add account again
     accountStateTrie.putAndProve(
@@ -328,6 +329,7 @@ public class WorldStateTest {
         zkAccount2.getHkey(), zkAccount2.getAddress(), zkAccount2.serializeAccount());
     assertThat(accountStateTrie.getTopRootHash())
         .isEqualTo(
-            Hash.fromHexString("67c5b3445103ca9762dbaa16cd81c34beeb01b7d66d569bd27bd0558bf290f2f"));
+            Hash.fromHexString(
+                "0x15471b9c6443332dccaef5b1544c5881e2c2a6e4576ad1696cec3d1769061e21"));
   }
 }
