@@ -41,7 +41,7 @@ public class WorldStateTest {
         new ZkAccount(
             address, EMPTY_KECCAK_CODE_HASH, EMPTY_CODE_HASH, 0L, 65, Wei.of(835), EMPTY_TRIE_ROOT);
 
-    assertThat(Hash.hash(zkAccount.serializeAccount()))
+    assertThat(HashProvider.mimc(zkAccount.serializeAccount()))
         .isEqualTo(
             Hash.fromHexString("ab023fb58c760f385eb5e68491287a46a51a653f3d7609b035b82a79df93f413"));
 
@@ -76,7 +76,7 @@ public class WorldStateTest {
             Wei.of(354),
             EMPTY_TRIE_ROOT);
 
-    assertThat(Hash.hash(zkAccount.serializeAccount()))
+    assertThat(HashProvider.mimc(zkAccount.serializeAccount()))
         .isEqualTo(
             Hash.fromHexString("ab023fb58c760f385eb5e68491287a46a51a653f3d7609b035b82a79df93f413"));
 

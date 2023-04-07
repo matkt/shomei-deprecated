@@ -45,6 +45,8 @@ dependencyManagement {
       entry 'core'
     }
 
+    dependency 'org.hyperledger.besu:mimc:0.7.2-SNAPSHOT'
+
     dependencySet(group: 'org.hyperledger.besu', version: '23.1.3-SNAPSHOT') {
       entry 'besu-datatypes'
       entry 'evm'
