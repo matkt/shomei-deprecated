@@ -24,25 +24,11 @@ import org.junit.Test;
 public class HashProviderTest {
 
   @Test
-  public void testMimcFallbackToKeccak() {
-    MutableBytes input = MutableBytes.of(new byte[Bytes32.SIZE * 16]);
-    for (int i = 0; i < 16; i++) {
-      input.set(Bytes32.SIZE * (i + 1) - 1, (byte) i);
-    }
-    HashProvider.isMimcEnable = false;
-    assertThat(HashProvider.mimc(input))
-        .isEqualTo(
-            Bytes32.fromHexString(
-                "0x829e64f7f29b5bec5d6bb979723771844e0a3749b2031215208b7f91920061dd"));
-  }
-
-  @Test
   public void testMimc() {
     MutableBytes input = MutableBytes.of(new byte[Bytes32.SIZE * 16]);
     for (int i = 0; i < 16; i++) {
       input.set(Bytes32.SIZE * (i + 1) - 1, (byte) i);
     }
-    HashProvider.isMimcEnable = true;
     assertThat(HashProvider.mimc(input))
         .isEqualTo(
             Bytes32.fromHexString(
