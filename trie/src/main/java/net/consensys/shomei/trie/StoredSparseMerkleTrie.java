@@ -24,7 +24,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
 
-import org.apache.commons.lang3.tuple.Pair;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Hash;
@@ -71,11 +70,13 @@ public class StoredSparseMerkleTrie {
     return root.accept(getGetVisitor(), path).getValue();
   }
 
-  public Pair<Optional<Bytes>, List<Node<Bytes>>> getAndProve(final Bytes path) {
+  record GetAndProve(Optional<Bytes> nodeValue, List<Node<Bytes>> proof) {}
+
+  public GetAndProve getAndProve(final Bytes path) {
     checkNotNull(path);
     final GetVisitor<Bytes> getVisitor = getGetVisitor();
     final Node<Bytes> node = root.accept(getVisitor, path);
-    return Pair.of(node.getValue(), getVisitor.getProof());
+    return new GetAndProve(node.getValue(), getVisitor.getProof());
   }
 
   public void put(final Bytes path, final Bytes value) {

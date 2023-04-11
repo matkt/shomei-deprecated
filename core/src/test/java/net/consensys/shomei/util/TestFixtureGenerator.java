@@ -28,7 +28,7 @@ public class TestFixtureGenerator {
     return Address.wrap(mutableBytes);
   }
 
-  public static Bytes32 createDumDiggest(int value) {
+  public static Bytes32 createDumDigest(int value) {
     MutableBytes32 mutableBytes = MutableBytes32.create();
     mutableBytes.set(Bytes32.SIZE - 1, (byte) value);
     return mutableBytes;

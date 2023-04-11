@@ -18,13 +18,20 @@ tasks.named('jar') {
 dependencies {
 
     implementation 'org.apache.tuweni:tuweni-bytes'
-
     implementation 'org.apache.tuweni:tuweni-bytes'
+
     implementation 'org.hyperledger.besu:besu-datatypes'
+
     implementation 'org.hyperledger.besu:mimc'
     implementation 'net.java.dev.jna:jna'
+
+    api 'org.slf4j:slf4j-api'
+    implementation 'org.apache.logging.log4j:log4j-slf4j2-impl'
+    implementation 'org.apache.logging.log4j:log4j-core'
 
     testImplementation 'junit:junit'
     testImplementation 'org.assertj:assertj-core'
     testImplementation 'org.junit.jupiter:junit-jupiter'
+
+
 }

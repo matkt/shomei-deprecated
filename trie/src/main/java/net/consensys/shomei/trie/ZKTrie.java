@@ -15,6 +15,7 @@ package net.consensys.shomei.trie;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
+import net.consensys.shomei.trie.StoredSparseMerkleTrie.GetAndProve;
 import net.consensys.shomei.trie.model.StateLeafValue;
 import net.consensys.shomei.trie.node.EmptyLeafNode;
 import net.consensys.shomei.trie.proof.DeleteTrace;
@@ -35,7 +36,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import org.apache.commons.lang3.tuple.Pair;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Hash;
@@ -137,7 +137,7 @@ public class ZKTrie {
   }
 
   public Bytes32 getSubRootHash() {
-    return state.getNode(pathResolver.geRootPath()).getHash();
+    return getSubRootNode().getHash();
   }
 
   public Bytes32 getTopRootHash() {
@@ -165,15 +165,15 @@ public class ZKTrie {
       // GET path of HKey+
       final Bytes rightLeafPath = pathResolver.getLeafPath(nearestKeys.getRightNodeIndex());
 
-      final Pair<Optional<Bytes>, List<Node<Bytes>>> leftData = state.getAndProve(leftLeafPath);
-      final Pair<Optional<Bytes>, List<Node<Bytes>>> rightData = state.getAndProve(rightLeafPath);
+      final GetAndProve leftData = state.getAndProve(leftLeafPath);
+      final GetAndProve rightData = state.getAndProve(rightLeafPath);
 
       readZeroTrace.setKey(key);
       readZeroTrace.setNextFreeNode(pathResolver.getNextFreeLeafNodeIndex());
-      readZeroTrace.setLeftLeaf(leftData.getKey().map(StateLeafValue::readFrom).orElseThrow());
-      readZeroTrace.setRightLeaf(rightData.getKey().map(StateLeafValue::readFrom).orElseThrow());
-      readZeroTrace.setProofLeft(new Proof(nearestKeys.getLeftNodeIndex(), leftData.getValue()));
-      readZeroTrace.setProofRight(new Proof(nearestKeys.getRightNodeIndex(), rightData.getValue()));
+      readZeroTrace.setLeftLeaf(leftData.nodeValue().map(StateLeafValue::readFrom).orElseThrow());
+      readZeroTrace.setRightLeaf(rightData.nodeValue().map(StateLeafValue::readFrom).orElseThrow());
+      readZeroTrace.setProofLeft(new Proof(nearestKeys.getLeftNodeIndex(), leftData.proof()));
+      readZeroTrace.setProofRight(new Proof(nearestKeys.getRightNodeIndex(), rightData.proof()));
 
       return readZeroTrace;
     } else {
@@ -184,14 +184,13 @@ public class ZKTrie {
       final Bytes leafPath =
           pathResolver.getLeafPath(nearestKeys.getCenterNodeIndex().orElseThrow());
       // READ hash(k)
-      final Pair<Optional<Bytes>, List<Node<Bytes>>> data = state.getAndProve(leafPath);
+      final GetAndProve data = state.getAndProve(leafPath);
 
       readTrace.setKey(key);
       readTrace.setValue(value);
       readTrace.setNextFreeNode(pathResolver.getNextFreeLeafNodeIndex());
-      readTrace.setLeaf(data.getKey().map(StateLeafValue::readFrom).orElseThrow());
-      readTrace.setProof(
-          new Proof(nearestKeys.getCenterNodeIndex().orElseThrow(), data.getValue()));
+      readTrace.setLeaf(data.nodeValue().map(StateLeafValue::readFrom).orElseThrow());
+      readTrace.setProof(new Proof(nearestKeys.getCenterNodeIndex().orElseThrow(), data.proof()));
 
       return readTrace;
     }
@@ -239,7 +238,7 @@ public class ZKTrie {
       // PUT hash(k) with HKey- for Prev and HKey+ for next
       final Bytes leafPathToAdd = pathResolver.getLeafPath(nextFreeNode);
       leafIndexManager.putKeyIndex(hKey, nextFreeNode);
-      final StateLeafValue newKey =
+      final StateLeafValue newLeafValue =
           new StateLeafValue(
               nearestKeys.getLeftNodeIndex(),
               nearestKeys.getRightNodeIndex(),
@@ -247,7 +246,7 @@ public class ZKTrie {
               HashProvider.mimc(newValue));
 
       final List<Node<Bytes>> centerSiblings =
-          state.putAndProve(leafPathToAdd, newKey.getEncodesBytes());
+          state.putAndProve(leafPathToAdd, newLeafValue.getEncodesBytes());
 
       // UPDATE HKey+ with hash(k) for prev
       final StateLeafValue priorRightLeaf =

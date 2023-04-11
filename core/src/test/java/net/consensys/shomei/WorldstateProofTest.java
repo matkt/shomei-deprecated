@@ -17,7 +17,7 @@ import static net.consensys.shomei.ZkAccount.EMPTY_CODE_HASH;
 import static net.consensys.shomei.ZkAccount.EMPTY_KECCAK_CODE_HASH;
 import static net.consensys.shomei.trie.StoredSparseMerkleTrie.EMPTY_TRIE_ROOT;
 import static net.consensys.shomei.util.TestFixtureGenerator.createDumAddress;
-import static net.consensys.shomei.util.TestFixtureGenerator.createDumDiggest;
+import static net.consensys.shomei.util.TestFixtureGenerator.createDumDigest;
 import static net.consensys.shomei.util.TestFixtureGenerator.createDumFullBytes;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -73,7 +73,7 @@ public class WorldstateProofTest {
   @Test
   public void testTraceReadZero() throws IOException {
 
-    final Bytes key = createDumDiggest(36);
+    final Bytes key = createDumDigest(36);
     final Hash hkey = HashProvider.mimc(key);
 
     ZKTrie accountStateTrie = ZKTrie.createInMemoryTrie();
@@ -87,9 +87,9 @@ public class WorldstateProofTest {
   @Test
   public void testTraceRead() throws IOException {
 
-    final Bytes key = createDumDiggest(36);
+    final Bytes key = createDumDigest(36);
     final Hash hkey = HashProvider.mimc(key);
-    final Bytes value = createDumDiggest(32);
+    final Bytes value = createDumDigest(32);
 
     ZKTrie accountStateTrie = ZKTrie.createInMemoryTrie();
 
@@ -160,7 +160,7 @@ public class WorldstateProofTest {
         new ZkAccount(
             address2,
             createDumFullBytes(15),
-            Hash.wrap(createDumDiggest(75)),
+            Hash.wrap(createDumDigest(75)),
             7L,
             41,
             Wei.of(15353),
@@ -191,7 +191,7 @@ public class WorldstateProofTest {
         new MutableZkAccount(
             address2,
             createDumFullBytes(15),
-            Hash.wrap(createDumDiggest(75)),
+            Hash.wrap(createDumDigest(75)),
             7L,
             41,
             Wei.of(15353),
@@ -242,7 +242,7 @@ public class WorldstateProofTest {
         new MutableZkAccount(
             address2,
             createDumFullBytes(15),
-            Hash.wrap(createDumDiggest(75)),
+            Hash.wrap(createDumDigest(75)),
             7L,
             41,
             Wei.of(15353),
@@ -321,7 +321,7 @@ public class WorldstateProofTest {
         new ZkAccount(
             address2,
             createDumFullBytes(15),
-            Hash.wrap(createDumDiggest(75)),
+            Hash.wrap(createDumDigest(75)),
             7L,
             41,
             Wei.of(15353),
@@ -331,7 +331,7 @@ public class WorldstateProofTest {
         new ZkAccount(
             address3,
             createDumFullBytes(85),
-            Hash.wrap(createDumDiggest(54)),
+            Hash.wrap(createDumDigest(54)),
             19L,
             48,
             Wei.of(9835),

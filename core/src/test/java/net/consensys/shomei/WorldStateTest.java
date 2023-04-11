@@ -17,7 +17,7 @@ import static net.consensys.shomei.ZkAccount.EMPTY_CODE_HASH;
 import static net.consensys.shomei.ZkAccount.EMPTY_KECCAK_CODE_HASH;
 import static net.consensys.shomei.trie.StoredSparseMerkleTrie.EMPTY_TRIE_ROOT;
 import static net.consensys.shomei.util.TestFixtureGenerator.createDumAddress;
-import static net.consensys.shomei.util.TestFixtureGenerator.createDumDiggest;
+import static net.consensys.shomei.util.TestFixtureGenerator.createDumDigest;
 import static net.consensys.shomei.util.TestFixtureGenerator.createDumFullBytes;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -103,7 +103,7 @@ public class WorldStateTest {
         new ZkAccount(
             address2,
             createDumFullBytes(15),
-            Hash.wrap(createDumDiggest(75)),
+            Hash.wrap(createDumDigest(75)),
             7L,
             41,
             Wei.of(15353),
@@ -133,7 +133,7 @@ public class WorldStateTest {
         new MutableZkAccount(
             address2,
             createDumFullBytes(15),
-            Hash.wrap(createDumDiggest(75)),
+            Hash.wrap(createDumDigest(75)),
             7L,
             41,
             Wei.of(15353),
@@ -177,7 +177,7 @@ public class WorldStateTest {
         new MutableZkAccount(
             address2,
             createDumFullBytes(15),
-            Hash.wrap(createDumDiggest(75)),
+            Hash.wrap(createDumDigest(75)),
             7L,
             41,
             Wei.of(15353),
@@ -253,7 +253,7 @@ public class WorldStateTest {
         new ZkAccount(
             address2,
             createDumFullBytes(15),
-            Hash.wrap(createDumDiggest(75)),
+            Hash.wrap(createDumDigest(75)),
             7L,
             41,
             Wei.of(15353),
@@ -263,7 +263,7 @@ public class WorldStateTest {
         new ZkAccount(
             address3,
             createDumFullBytes(85),
-            Hash.wrap(createDumDiggest(54)),
+            Hash.wrap(createDumDigest(54)),
             19L,
             48,
             Wei.of(9835),
@@ -296,7 +296,7 @@ public class WorldStateTest {
         new ZkAccount(
             address2,
             createDumFullBytes(15),
-            Hash.wrap(createDumDiggest(75)),
+            Hash.wrap(createDumDigest(75)),
             7L,
             41,
             Wei.of(15353),
