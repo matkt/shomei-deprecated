@@ -26,58 +26,58 @@ import org.hyperledger.besu.datatypes.Hash;
 public class StateLeafValue {
 
   public static final StateLeafValue HEAD =
-      new StateLeafValue(UInt256.ZERO, UInt256.valueOf(1), Hash.wrap(Bytes32.ZERO), Bytes32.ZERO);
+      new StateLeafValue(0, 1, Hash.wrap(Bytes32.ZERO), Bytes32.ZERO);
 
   public static final StateLeafValue TAIL =
       new StateLeafValue(
-          UInt256.ZERO,
-          UInt256.valueOf(1),
-          Hash.fromHexString("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"),
+          0,
+          1,
+          Hash.fromHexString("30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000000"),
           Bytes32.ZERO);
 
   private final Hash hkey;
 
-  private Bytes value;
+  private Bytes hval;
 
-  private UInt256 prevLeaf;
+  private long prevLeaf;
 
-  private UInt256 nextLeaf;
+  private long nextLeaf;
 
-  public StateLeafValue(final Hash hkey, final UInt256 value) {
+  public StateLeafValue(final Hash hkey, final UInt256 hval) {
     this.hkey = hkey;
-    this.value = value;
-    this.prevLeaf = UInt256.ZERO;
-    this.nextLeaf = UInt256.valueOf(1);
+    this.hval = hval;
+    this.prevLeaf = 0;
+    this.nextLeaf = 1;
   }
 
   public StateLeafValue(
-      final UInt256 prevLeaf, final UInt256 nextLeaf, final Hash hkey, final Bytes value) {
+      final long prevLeaf, final long nextLeaf, final Hash hkey, final Bytes hval) {
     this.hkey = hkey;
-    this.value = value;
+    this.hval = hval;
     this.prevLeaf = prevLeaf;
     this.nextLeaf = nextLeaf;
   }
 
   public StateLeafValue(final StateLeafValue stateLeafValue) {
     this.hkey = stateLeafValue.hkey;
-    this.value = stateLeafValue.value;
+    this.hval = stateLeafValue.hval;
     this.prevLeaf = stateLeafValue.prevLeaf;
     this.nextLeaf = stateLeafValue.nextLeaf;
   }
 
-  public UInt256 getPrevLeaf() {
+  public long getPrevLeaf() {
     return prevLeaf;
   }
 
-  public UInt256 getNextLeaf() {
+  public long getNextLeaf() {
     return nextLeaf;
   }
 
-  public void setPrevLeaf(final UInt256 prevLeaf) {
+  public void setPrevLeaf(final long prevLeaf) {
     this.prevLeaf = prevLeaf;
   }
 
-  public void setNextLeaf(final UInt256 nextLeaf) {
+  public void setNextLeaf(final long nextLeaf) {
     this.nextLeaf = nextLeaf;
   }
 
@@ -85,12 +85,12 @@ public class StateLeafValue {
     return hkey;
   }
 
-  public Bytes getValue() {
-    return value;
+  public Bytes getHval() {
+    return hval;
   }
 
-  public void setValue(Bytes value) {
-    this.value = value;
+  public void setHval(Bytes hval) {
+    this.hval = hval;
   }
 
   @Override
@@ -102,15 +102,15 @@ public class StateLeafValue {
       return false;
     }
     StateLeafValue that = (StateLeafValue) o;
-    return Objects.equals(hkey, that.hkey)
-        && Objects.equals(value, that.value)
-        && Objects.equals(prevLeaf, that.prevLeaf)
-        && Objects.equals(nextLeaf, that.nextLeaf);
+    return prevLeaf == that.prevLeaf
+        && nextLeaf == that.nextLeaf
+        && Objects.equals(hkey, that.hkey)
+        && Objects.equals(hval, that.hval);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(hkey, value, prevLeaf, nextLeaf);
+    return Objects.hash(hkey, hval, prevLeaf, nextLeaf);
   }
 
   public static StateLeafValue readFrom(final Bytes encodedBytes) {
@@ -118,17 +118,17 @@ public class StateLeafValue {
         encodedBytes,
         bytesInput ->
             new StateLeafValue(
-                bytesInput.readUInt256(),
-                bytesInput.readUInt256(),
+                bytesInput.readUInt256().toLong(),
+                bytesInput.readUInt256().toLong(),
                 Hash.wrap(bytesInput.readBytes32()),
                 bytesInput.readBytes32()));
   }
 
   public Bytes getEncodesBytes() {
     return Bytes.concatenate(
-        prevLeaf, // Prev
-        nextLeaf, // Next ,
+        UInt256.valueOf(prevLeaf), // Prev
+        UInt256.valueOf(nextLeaf), // Next ,
         hkey, // HKEY
-        value); // VALUE
+        hval); // HVALUE
   }
 }

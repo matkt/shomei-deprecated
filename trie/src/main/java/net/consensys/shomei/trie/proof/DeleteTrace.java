@@ -13,13 +13,16 @@
 
 package net.consensys.shomei.trie.proof;
 
+import net.consensys.shomei.trie.model.StateLeafValue;
+
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.ethereum.trie.Node;
 
 public class DeleteTrace implements Trace {
 
-  public Node<Bytes> oldRoot;
-  public Node<Bytes> newRoot;
+  private long newNextFreeNode;
+  public Node<Bytes> oldSubRoot;
+  public Node<Bytes> newSubRoot;
 
   // `New` correspond to the inserted leaf
   public Proof proofLeft; // HKEY -
@@ -28,24 +31,32 @@ public class DeleteTrace implements Trace {
   public Bytes key;
 
   // Value of the leaf opening before being modified
-  public Bytes priorLeftLeaf;
-  public Bytes priorDeletedLeaf;
-  public Bytes priorRightLeaf;
+  public StateLeafValue priorLeftLeaf;
+  public StateLeafValue priorDeletedLeaf;
+  public StateLeafValue priorRightLeaf;
 
-  public DeleteTrace(final Node<Bytes> oldRoot) {
-    this.oldRoot = oldRoot;
+  public DeleteTrace(final Node<Bytes> oldSubRoot) {
+    this.oldSubRoot = oldSubRoot;
   }
 
-  public Node<Bytes> getOldRoot() {
-    return oldRoot;
+  public long getNewNextFreeNode() {
+    return newNextFreeNode;
   }
 
-  public Node<Bytes> getNewRoot() {
-    return newRoot;
+  public void setNewNextFreeNode(final long newNextFreeNode) {
+    this.newNextFreeNode = newNextFreeNode;
   }
 
-  public void setNewRoot(final Node<Bytes> newRoot) {
-    this.newRoot = newRoot;
+  public Node<Bytes> getOldSubRoot() {
+    return oldSubRoot;
+  }
+
+  public Node<Bytes> getNewSubRoot() {
+    return newSubRoot;
+  }
+
+  public void setNewSubRoot(final Node<Bytes> newSubRoot) {
+    this.newSubRoot = newSubRoot;
   }
 
   public Proof getProofLeft() {
@@ -80,27 +91,27 @@ public class DeleteTrace implements Trace {
     this.key = key;
   }
 
-  public Bytes getPriorLeftLeaf() {
+  public StateLeafValue getPriorLeftLeaf() {
     return priorLeftLeaf;
   }
 
-  public void setPriorLeftLeaf(final Bytes priorLeftLeaf) {
+  public void setPriorLeftLeaf(final StateLeafValue priorLeftLeaf) {
     this.priorLeftLeaf = priorLeftLeaf;
   }
 
-  public Bytes getPriorDeletedLeaf() {
+  public StateLeafValue getPriorDeletedLeaf() {
     return priorDeletedLeaf;
   }
 
-  public void setPriorDeletedLeaf(final Bytes priorDeletedLeaf) {
+  public void setPriorDeletedLeaf(final StateLeafValue priorDeletedLeaf) {
     this.priorDeletedLeaf = priorDeletedLeaf;
   }
 
-  public Bytes getPriorRightLeaf() {
+  public StateLeafValue getPriorRightLeaf() {
     return priorRightLeaf;
   }
 
-  public void setPriorRightLeaf(final Bytes priorRightLeaf) {
+  public void setPriorRightLeaf(final StateLeafValue priorRightLeaf) {
     this.priorRightLeaf = priorRightLeaf;
   }
 }

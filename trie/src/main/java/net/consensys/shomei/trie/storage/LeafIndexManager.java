@@ -13,71 +13,64 @@
 
 package net.consensys.shomei.trie.storage;
 
-import java.util.Comparator;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.Optional;
-import java.util.TreeMap;
 
-import org.apache.tuweni.bytes.Bytes;
-import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Hash;
 
-public class LeafIndexManager implements LeafIndexLoader, LeafIndexUpdater {
+public interface LeafIndexManager {
 
-  TreeMap<Bytes, Long> flatDB;
+  Optional<Long> getKeyIndex(Hash key);
 
-  public LeafIndexManager(final TreeMap<Bytes, Long> flatDB) {
-    this.flatDB = flatDB;
-  }
+  Range getNearestKeys(Hash key);
 
-  public LeafIndexManager() {
-    this(new TreeMap<>(Comparator.naturalOrder()));
-  }
+  void putKeyIndex(Hash key, Long index);
 
-  @Override
-  public Optional<Long> getKeyIndex(final Hash key) {
-    return Optional.ofNullable(flatDB.get(wrapKey(key)));
-  }
+  void removeKeyIndex(Hash key);
 
-  @Override
-  public void putKeyIndex(final Hash key, final Long index) {
-    flatDB.put(wrapKey(key), index);
-  }
+  void commit();
 
-  @Override
-  public void removeKeyIndex(final Hash key) {
-    flatDB.remove(wrapKey(key));
-  }
+  class Range {
+    private final Map.Entry<Hash, Long> leftNode;
 
-  @Override
-  public Range getNearestKeys(final Hash key) {
+    private final Optional<Map.Entry<Hash, Long>> centerNode;
+    private final Map.Entry<Hash, Long> rightNode;
 
-    final Bytes wrappedKey = wrapKey(key);
-    final Iterator<Map.Entry<Bytes, Long>> iterator = flatDB.entrySet().iterator();
-    Map.Entry<Bytes, Long> next = Map.entry(Bytes32.ZERO, 0L);
-    Map.Entry<Bytes, Long> left = next;
-    Optional<Map.Entry<Bytes, Long>> maybeMiddle = Optional.empty();
-    int compKeyResult;
-    while (iterator.hasNext() && (compKeyResult = next.getKey().compareTo(wrappedKey)) <= 0) {
-      if (compKeyResult == 0) {
-        maybeMiddle = Optional.of(next);
-      } else {
-        left = next;
-      }
-      next = iterator.next();
+    public Range(
+        final Map.Entry<Hash, Long> leftNode,
+        final Optional<Map.Entry<Hash, Long>> centerNode,
+        final Map.Entry<Hash, Long> rightNode) {
+      this.leftNode = leftNode;
+      this.centerNode = centerNode;
+      this.rightNode = rightNode;
     }
-    return new Range(
-        Map.entry(unwrapKey(left.getKey()), left.getValue()),
-        maybeMiddle.map(middle -> Map.entry(unwrapKey(middle.getKey()), middle.getValue())),
-        Map.entry(unwrapKey(next.getKey()), next.getValue()));
-  }
 
-  public Bytes wrapKey(final Hash key) {
-    return key;
-  }
+    public Range(final Map.Entry<Hash, Long> leftNode, final Map.Entry<Hash, Long> rightNode) {
+      this(leftNode, Optional.empty(), rightNode);
+    }
 
-  public Hash unwrapKey(final Bytes key) {
-    return Hash.wrap(Bytes32.wrap(key));
+    public Hash getLeftNodeKey() {
+      return leftNode.getKey();
+    }
+
+    public Optional<Hash> getCenterNodeKey() {
+      return centerNode.map(Map.Entry::getKey);
+    }
+
+    public Hash getRightNodeKey() {
+      return rightNode.getKey();
+    }
+
+    public Long getLeftNodeIndex() {
+      return leftNode.getValue();
+    }
+
+    public Optional<Long> getCenterNodeIndex() {
+      return centerNode.map(Map.Entry::getValue);
+    }
+
+    public Long getRightNodeIndex() {
+      return rightNode.getValue();
+    }
   }
 }

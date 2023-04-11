@@ -14,6 +14,8 @@
 package net.consensys.shomei.trielog;
 
 import net.consensys.shomei.ZkAccount;
+import net.consensys.shomei.trie.StoredSparseMerkleTrie;
+import net.consensys.shomei.util.bytes.FullBytes;
 
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Hash;
@@ -26,7 +28,7 @@ public class TrieLogAccountValue {
   private final long nonce;
   private final Wei balance;
   private final Hash storageRoot;
-  private final Hash codeHash;
+  private final FullBytes codeHash;
 
   private final Hash mimcCodeHash;
 
@@ -36,7 +38,7 @@ public class TrieLogAccountValue {
       final long nonce,
       final Wei balance,
       final Hash storageRoot,
-      final Hash codeHash,
+      final FullBytes codeHash,
       final Hash mimcCodeHash,
       final Long codeSize) {
     this.nonce = nonce;
@@ -88,7 +90,7 @@ public class TrieLogAccountValue {
    *
    * @return the hash of the account code (which may be {@link Hash#EMPTY}).
    */
-  public Hash getCodeHash() {
+  public FullBytes getCodeHash() {
     return codeHash;
   }
 
@@ -128,11 +130,11 @@ public class TrieLogAccountValue {
     final long nonce = in.readLongScalar();
     final Wei balance = Wei.of(in.readUInt256Scalar());
     Bytes32 storageRoot;
-    Bytes32 keccakCodeHash;
+    FullBytes keccakCodeHash;
     Bytes32 mimcCodeHash;
     long codeSize;
     if (in.nextIsNull()) {
-      storageRoot = ZkAccount.EMPTY_TRIE_ROOT;
+      storageRoot = StoredSparseMerkleTrie.EMPTY_TRIE_ROOT;
       in.skipNext();
     } else {
       storageRoot = in.readBytes32();
@@ -141,7 +143,7 @@ public class TrieLogAccountValue {
       keccakCodeHash = ZkAccount.EMPTY_KECCAK_CODE_HASH;
       in.skipNext();
     } else {
-      keccakCodeHash = in.readBytes32();
+      keccakCodeHash = new FullBytes(in.readBytes32());
     }
 
     if (in.nextIsNull()) {
@@ -161,11 +163,6 @@ public class TrieLogAccountValue {
     in.leaveList();
 
     return new TrieLogAccountValue(
-        nonce,
-        balance,
-        Hash.wrap(storageRoot),
-        Hash.wrap(keccakCodeHash),
-        Hash.wrap(mimcCodeHash),
-        codeSize);
+        nonce, balance, Hash.wrap(storageRoot), keccakCodeHash, Hash.wrap(mimcCodeHash), codeSize);
   }
 }

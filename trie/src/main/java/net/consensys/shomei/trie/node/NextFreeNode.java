@@ -13,14 +13,20 @@
 
 package net.consensys.shomei.trie.node;
 
+import net.consensys.zkevm.HashProvider;
+
 import java.io.ByteArrayOutputStream;
+import java.lang.ref.SoftReference;
 import java.lang.ref.WeakReference;
 import java.util.function.Function;
 
 import org.apache.tuweni.bytes.Bytes;
+import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.ethereum.trie.NodeFactory;
 
 public class NextFreeNode<V> extends org.hyperledger.besu.ethereum.trie.patricia.LeafNode<V> {
+
+  private SoftReference<Bytes32> hash;
 
   public NextFreeNode(
       final Bytes path,
@@ -44,6 +50,19 @@ public class NextFreeNode<V> extends org.hyperledger.besu.ethereum.trie.patricia
     final Bytes encoded = Bytes.wrap(out.toByteArray());
     encodedBytes = new WeakReference<>(encoded);
     return encoded;
+  }
+
+  @Override
+  public Bytes32 getHash() {
+    if (hash != null) {
+      final Bytes32 hashed = hash.get();
+      if (hashed != null) {
+        return hashed;
+      }
+    }
+    final Bytes32 hashed = HashProvider.mimc(getEncodedBytes());
+    hash = new SoftReference<>(hashed);
+    return hashed;
   }
 
   @Override

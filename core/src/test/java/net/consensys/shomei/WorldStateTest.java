@@ -15,21 +15,22 @@ package net.consensys.shomei;
 
 import static net.consensys.shomei.ZkAccount.EMPTY_CODE_HASH;
 import static net.consensys.shomei.ZkAccount.EMPTY_KECCAK_CODE_HASH;
-import static net.consensys.shomei.ZkAccount.EMPTY_TRIE_ROOT;
-import static net.consensys.shomei.util.TestUtil.createDumAddress;
-import static net.consensys.shomei.util.TestUtil.createDumDigest;
-import static net.consensys.shomei.util.TestUtil.createSafeFieldElementSizeDumDigest;
+import static net.consensys.shomei.trie.StoredSparseMerkleTrie.EMPTY_TRIE_ROOT;
+import static net.consensys.shomei.util.TestFixtureGenerator.createDumAddress;
+import static net.consensys.shomei.util.TestFixtureGenerator.createDumDigest;
+import static net.consensys.shomei.util.TestFixtureGenerator.createDumFullBytes;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import net.consensys.shomei.trie.ZKTrie;
+import net.consensys.shomei.util.bytes.FullBytes;
 import net.consensys.zkevm.HashProvider;
 
+import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.Wei;
 import org.junit.Test;
 
-@SuppressWarnings("unused")
 public class WorldStateTest {
 
   @Test
@@ -40,16 +41,21 @@ public class WorldStateTest {
         new ZkAccount(
             address, EMPTY_KECCAK_CODE_HASH, EMPTY_CODE_HASH, 0L, 65, Wei.of(835), EMPTY_TRIE_ROOT);
 
-    assertThat(Hash.hash(zkAccount.serializeAccount()))
+    assertThat(HashProvider.mimc(zkAccount.serializeAccount()))
         .isEqualTo(
-            Hash.fromHexString("ab023fb58c760f385eb5e68491287a46a51a653f3d7609b035b82a79df93f413"));
+            Hash.fromHexString("25ddd6106526ffb2c9b923617cf3bcab669a5d57821d0ec81daa23155c1513ea"));
 
     ZKTrie accountStateTrie = ZKTrie.createInMemoryTrie();
-    accountStateTrie.putAndProve(zkAccount.getHkey(), zkAccount.serializeAccount());
+    accountStateTrie.putAndProve(
+        zkAccount.getHkey(), zkAccount.getAddress(), zkAccount.serializeAccount());
+
+    assertThat(accountStateTrie.getSubRootHash())
+        .isEqualTo(
+            Hash.fromHexString("15154ecb54514b439ed9cd51078e08e51676c30fc2067d04320ef6b6d263584e"));
 
     assertThat(accountStateTrie.getTopRootHash())
         .isEqualTo(
-            Hash.fromHexString("828dd273c29ec50463bd7fac90e06b04b4010b72fe880df82e299bf162046e41"));
+            Hash.fromHexString("11aed727a707f2f1962e399bd4787153ba0e69b7224e8eecf4d1e4e6a8e8dafd"));
   }
 
   @Test
@@ -70,17 +76,19 @@ public class WorldStateTest {
             Wei.of(354),
             EMPTY_TRIE_ROOT);
 
-    assertThat(Hash.hash(zkAccount.serializeAccount()))
+    assertThat(HashProvider.mimc(zkAccount.serializeAccount()))
         .isEqualTo(
-            Hash.fromHexString("ab023fb58c760f385eb5e68491287a46a51a653f3d7609b035b82a79df93f413"));
+            Hash.fromHexString("25ddd6106526ffb2c9b923617cf3bcab669a5d57821d0ec81daa23155c1513ea"));
 
     ZKTrie accountStateTrie = ZKTrie.createInMemoryTrie();
-    accountStateTrie.putAndProve(zkAccount.getHkey(), zkAccount.serializeAccount());
-    accountStateTrie.putAndProve(zkAccount2.getHkey(), zkAccount2.serializeAccount());
+    accountStateTrie.putAndProve(
+        zkAccount.getHkey(), zkAccount.getAddress(), zkAccount.serializeAccount());
+    accountStateTrie.putAndProve(
+        zkAccount2.getHkey(), zkAccount2.getAddress(), zkAccount2.serializeAccount());
 
     assertThat(accountStateTrie.getTopRootHash())
         .isEqualTo(
-            Hash.fromHexString("527e480b526f4976528ef828ef90fc07b5758bf9f4e7db77e9bf5122b5935f2a"));
+            Hash.fromHexString("1f8b53f5cf08c25611e11f8bfd2ffdbdab2f12f7e0578e54282f31e0e6267ab4"));
   }
 
   @Test
@@ -94,7 +102,7 @@ public class WorldStateTest {
     final ZkAccount zkAccount2 =
         new ZkAccount(
             address2,
-            Hash.wrap(createDumDigest(15)),
+            createDumFullBytes(15),
             Hash.wrap(createDumDigest(75)),
             7L,
             41,
@@ -102,12 +110,14 @@ public class WorldStateTest {
             EMPTY_TRIE_ROOT);
 
     ZKTrie accountStateTrie = ZKTrie.createInMemoryTrie();
-    accountStateTrie.putAndProve(zkAccount.getHkey(), zkAccount.serializeAccount());
-    accountStateTrie.putAndProve(zkAccount2.getHkey(), zkAccount2.serializeAccount());
+    accountStateTrie.putAndProve(
+        zkAccount.getHkey(), zkAccount.getAddress(), zkAccount.serializeAccount());
+    accountStateTrie.putAndProve(
+        zkAccount2.getHkey(), zkAccount2.getAddress(), zkAccount2.serializeAccount());
 
     assertThat(accountStateTrie.getTopRootHash())
         .isEqualTo(
-            Hash.fromHexString("2990341de1a14455fee8441d7efca5ce7d6dcba95dc1655e1408af66f8b6dcd7"));
+            Hash.fromHexString("15471b9c6443332dccaef5b1544c5881e2c2a6e4576ad1696cec3d1769061e21"));
   }
 
   @Test
@@ -122,7 +132,7 @@ public class WorldStateTest {
     final MutableZkAccount zkAccount2 =
         new MutableZkAccount(
             address2,
-            Hash.wrap(createDumDigest(15)),
+            createDumFullBytes(15),
             Hash.wrap(createDumDigest(75)),
             7L,
             41,
@@ -130,20 +140,28 @@ public class WorldStateTest {
             EMPTY_TRIE_ROOT);
 
     ZKTrie accountStateTrie = ZKTrie.createInMemoryTrie();
-    accountStateTrie.putAndProve(zkAccount.getHkey(), zkAccount.serializeAccount());
-    accountStateTrie.putAndProve(zkAccount2.getHkey(), zkAccount2.serializeAccount());
+    accountStateTrie.putAndProve(
+        zkAccount.getHkey(), zkAccount.getAddress(), zkAccount.serializeAccount());
+    accountStateTrie.putAndProve(
+        zkAccount2.getHkey(), zkAccount2.getAddress(), zkAccount2.serializeAccount());
 
     // Write something in the storage of B
+    final Bytes zkAccount2PriorValue = zkAccount2.serializeAccount();
     final ZKTrie account2Storage = ZKTrie.createInMemoryTrie();
-    account2Storage.putAndProve(
-        HashProvider.mimc(createSafeFieldElementSizeDumDigest(14)),
-        createSafeFieldElementSizeDumDigest(18));
+    final FullBytes slotKey = createDumFullBytes(14);
+    final Hash slotKeyHash = HashProvider.mimc(slotKey);
+    final FullBytes slotValue = createDumFullBytes(18);
+    account2Storage.putAndProve(slotKeyHash, slotKey, slotValue);
     zkAccount2.setStorageRoot(Hash.wrap(account2Storage.getTopRootHash()));
-    accountStateTrie.putAndProve(zkAccount2.getHkey(), zkAccount2.serializeAccount());
+    accountStateTrie.putAndProve(
+        zkAccount2.getHkey(),
+        zkAccount2.getAddress(),
+        zkAccount2PriorValue,
+        zkAccount2.serializeAccount());
 
     assertThat(accountStateTrie.getTopRootHash())
         .isEqualTo(
-            Hash.fromHexString("e98f0b735c00b52c526b50a50386bdd7c8bbee1f4ffb7bc39a7aa8ab5814d0ca"));
+            Hash.fromHexString("16df792bd76d708e98bccd2f037d15e5b8d5fa816febf0bf0a30487b8e0ba117"));
   }
 
   @Test
@@ -158,7 +176,7 @@ public class WorldStateTest {
     final MutableZkAccount zkAccount2 =
         new MutableZkAccount(
             address2,
-            Hash.wrap(createDumDigest(15)),
+            createDumFullBytes(15),
             Hash.wrap(createDumDigest(75)),
             7L,
             41,
@@ -166,40 +184,59 @@ public class WorldStateTest {
             EMPTY_TRIE_ROOT);
 
     ZKTrie accountStateTrie = ZKTrie.createInMemoryTrie();
-    accountStateTrie.putAndProve(zkAccount.getHkey(), zkAccount.serializeAccount());
-    accountStateTrie.putAndProve(zkAccount2.getHkey(), zkAccount2.serializeAccount());
+    accountStateTrie.putAndProve(
+        zkAccount.getHkey(), zkAccount.getAddress(), zkAccount.serializeAccount());
+    accountStateTrie.putAndProve(
+        zkAccount2.getHkey(), zkAccount2.getAddress(), zkAccount2.serializeAccount());
 
     // Write something in the storage of B
+    Bytes zkAccount2PriorValue = zkAccount2.serializeAccount();
     final ZKTrie account2StorageTrie = ZKTrie.createInMemoryTrie();
-    account2StorageTrie.putAndProve(
-        HashProvider.mimc(createSafeFieldElementSizeDumDigest(14)),
-        createSafeFieldElementSizeDumDigest(18));
+    final FullBytes slotKey = createDumFullBytes(14);
+    final Hash slotKeyHash = HashProvider.mimc(slotKey);
+    final FullBytes slotValue = createDumFullBytes(18);
+    account2StorageTrie.putAndProve(slotKeyHash, slotKey, slotValue);
     zkAccount2.setStorageRoot(Hash.wrap(account2StorageTrie.getTopRootHash()));
-    accountStateTrie.putAndProve(zkAccount2.getHkey(), zkAccount2.serializeAccount());
+    accountStateTrie.putAndProve(
+        zkAccount2.getHkey(),
+        zkAccount2.getAddress(),
+        zkAccount2PriorValue,
+        zkAccount2.serializeAccount());
 
     // Delete account 1
-    accountStateTrie.removeAndProve(zkAccount.getHkey());
+    accountStateTrie.removeAndProve(zkAccount.getHkey(), zkAccount.getAddress());
     assertThat(accountStateTrie.getTopRootHash())
         .isEqualTo(
-            Hash.fromHexString("21a3343df41b60ef5359cdb31444748049fb9151b2663c44daf36dc77b253efa"));
+            Hash.fromHexString("2e603c5f62481d627428d9efbfccd33fc1474e1d191b9e93cefa337b4a0e67da"));
 
     // clean storage B
-    account2StorageTrie.removeAndProve(HashProvider.mimc(createSafeFieldElementSizeDumDigest(14)));
+    zkAccount2PriorValue = zkAccount2.serializeAccount();
+    account2StorageTrie.removeAndProve(slotKeyHash, slotKey);
     zkAccount2.setStorageRoot(Hash.wrap(account2StorageTrie.getTopRootHash()));
-    accountStateTrie.putAndProve(zkAccount2.getHkey(), zkAccount2.serializeAccount());
+    accountStateTrie.putAndProve(
+        zkAccount2.getHkey(),
+        zkAccount2.getAddress(),
+        zkAccount2PriorValue,
+        zkAccount2.serializeAccount());
     assertThat(accountStateTrie.getTopRootHash())
         .isEqualTo(
-            Hash.fromHexString("5e017ff976bb15f2b52d636e8cb0dab7dfa7b048d91e448dc891001bf1024d3e"));
+            Hash.fromHexString("1aee37cbf805a51f827b48eb8fab44a7012575876045dca6ea6faaaa2233b0b5"));
 
     // Write again, somewhere else
-    account2StorageTrie.putAndProve(
-        HashProvider.mimc(createSafeFieldElementSizeDumDigest(11)),
-        createSafeFieldElementSizeDumDigest(78));
+    zkAccount2PriorValue = zkAccount2.serializeAccount();
+    final FullBytes newSlotKey = createDumFullBytes(11);
+    final Hash newSlotKeyHash = HashProvider.mimc(newSlotKey);
+    final FullBytes newSlotValue = createDumFullBytes(78);
+    account2StorageTrie.putAndProve(newSlotKeyHash, newSlotKey, newSlotValue);
     zkAccount2.setStorageRoot(Hash.wrap(account2StorageTrie.getTopRootHash()));
-    accountStateTrie.putAndProve(zkAccount2.getHkey(), zkAccount2.serializeAccount());
+    accountStateTrie.putAndProve(
+        zkAccount2.getHkey(),
+        zkAccount2.getAddress(),
+        zkAccount2PriorValue,
+        zkAccount2.serializeAccount());
     assertThat(accountStateTrie.getTopRootHash())
         .isEqualTo(
-            Hash.fromHexString("7bd8507a3009144e2cf9b78fb40287a4befcdbb0ac525f7cc630e7f413e8edef"));
+            Hash.fromHexString("02b9fb86c95b0e45a3ad401f1267b62f80e1ec16057d1491c2c9b32b36a1478f"));
   }
 
   @Test
@@ -215,7 +252,7 @@ public class WorldStateTest {
     final ZkAccount zkAccount2 =
         new ZkAccount(
             address2,
-            Hash.wrap(createDumDigest(15)),
+            createDumFullBytes(15),
             Hash.wrap(createDumDigest(75)),
             7L,
             41,
@@ -225,7 +262,7 @@ public class WorldStateTest {
     final ZkAccount zkAccount3 =
         new ZkAccount(
             address3,
-            Hash.wrap(createDumDigest(85)),
+            createDumFullBytes(85),
             Hash.wrap(createDumDigest(54)),
             19L,
             48,
@@ -233,21 +270,23 @@ public class WorldStateTest {
             EMPTY_TRIE_ROOT);
 
     ZKTrie accountStateTrie = ZKTrie.createInMemoryTrie();
-    accountStateTrie.putAndProve(zkAccount.getHkey(), zkAccount.serializeAccount());
-    accountStateTrie.putAndProve(zkAccount2.getHkey(), zkAccount2.serializeAccount());
-    accountStateTrie.removeAndProve(zkAccount.getHkey());
-    accountStateTrie.putAndProve(zkAccount3.getHkey(), zkAccount3.serializeAccount());
+    accountStateTrie.putAndProve(
+        zkAccount.getHkey(), zkAccount.getAddress(), zkAccount.serializeAccount());
+    accountStateTrie.putAndProve(
+        zkAccount2.getHkey(), zkAccount2.getAddress(), zkAccount2.serializeAccount());
+    accountStateTrie.removeAndProve(zkAccount.getHkey(), zkAccount.getAddress());
+    accountStateTrie.putAndProve(
+        zkAccount3.getHkey(), zkAccount3.getAddress(), zkAccount3.serializeAccount());
 
     assertThat(accountStateTrie.getTopRootHash())
         .isEqualTo(
-            Hash.fromHexString("0ccd7afcd88c99d9df5c00a914e44b5195dd0ff27696e79ad817a7d94ce7cfed"));
+            Hash.fromHexString("1cb213eb41f295fded1c6850d570beec729ca15541a33586320e0f097f0ed11b"));
   }
 
   @Test
   public void testRevertAddAccount() {
     final Address address = createDumAddress(36);
     final Address address2 = createDumAddress(47);
-    final Address address3 = createDumAddress(120);
 
     final ZkAccount zkAccount =
         new ZkAccount(
@@ -256,7 +295,7 @@ public class WorldStateTest {
     final ZkAccount zkAccount2 =
         new ZkAccount(
             address2,
-            Hash.wrap(createDumDigest(15)),
+            createDumFullBytes(15),
             Hash.wrap(createDumDigest(75)),
             7L,
             41,
@@ -265,26 +304,32 @@ public class WorldStateTest {
 
     ZKTrie accountStateTrie = ZKTrie.createInMemoryTrie();
     // add account
-    accountStateTrie.putAndProve(zkAccount.getHkey(), zkAccount.serializeAccount());
-    accountStateTrie.putAndProve(zkAccount2.getHkey(), zkAccount2.serializeAccount());
+    accountStateTrie.putAndProve(
+        zkAccount.getHkey(), zkAccount.getAddress(), zkAccount.serializeAccount());
+    accountStateTrie.putAndProve(
+        zkAccount2.getHkey(), zkAccount2.getAddress(), zkAccount2.serializeAccount());
     assertThat(accountStateTrie.getTopRootHash())
         .isEqualTo(
-            Hash.fromHexString("2990341de1a14455fee8441d7efca5ce7d6dcba95dc1655e1408af66f8b6dcd7"));
+            Hash.fromHexString(
+                "0x15471b9c6443332dccaef5b1544c5881e2c2a6e4576ad1696cec3d1769061e21"));
     accountStateTrie.commit();
     // revert all addition
-    accountStateTrie.removeAndProve(zkAccount.getHkey());
+    accountStateTrie.removeAndProve(zkAccount.getHkey(), zkAccount.getAddress());
     accountStateTrie.decrementNextFreeNode();
-    accountStateTrie.removeAndProve(zkAccount2.getHkey());
+    accountStateTrie.removeAndProve(zkAccount2.getHkey(), zkAccount2.getAddress());
     accountStateTrie.decrementNextFreeNode();
     assertThat(accountStateTrie.getTopRootHash())
         .isEqualTo(
-            Hash.fromHexString("a222476ab21332f448fdf2496ce1b8442761140856b48300d1fce9c5395e4305"));
+            Hash.fromHexString("2e7942bb21022172cbad3ffc38d1c59e998f1ab6ab52feb15345d04bbf859f14"));
     accountStateTrie.commit();
     // add account again
-    accountStateTrie.putAndProve(zkAccount.getHkey(), zkAccount.serializeAccount());
-    accountStateTrie.putAndProve(zkAccount2.getHkey(), zkAccount2.serializeAccount());
+    accountStateTrie.putAndProve(
+        zkAccount.getHkey(), zkAccount.getAddress(), zkAccount.serializeAccount());
+    accountStateTrie.putAndProve(
+        zkAccount2.getHkey(), zkAccount2.getAddress(), zkAccount2.serializeAccount());
     assertThat(accountStateTrie.getTopRootHash())
         .isEqualTo(
-            Hash.fromHexString("2990341de1a14455fee8441d7efca5ce7d6dcba95dc1655e1408af66f8b6dcd7"));
+            Hash.fromHexString(
+                "0x15471b9c6443332dccaef5b1544c5881e2c2a6e4576ad1696cec3d1769061e21"));
   }
 }

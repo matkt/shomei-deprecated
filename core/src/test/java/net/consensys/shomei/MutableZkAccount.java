@@ -14,6 +14,7 @@
 package net.consensys.shomei;
 
 import net.consensys.shomei.trielog.TrieLogAccountValue;
+import net.consensys.shomei.util.bytes.FullBytes;
 
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Hash;
@@ -23,7 +24,7 @@ public class MutableZkAccount extends ZkAccount {
 
   public MutableZkAccount(
       final Address address,
-      final Hash keccakCodeHash,
+      final FullBytes keccakCodeHash,
       final Hash mimcCodeHash,
       final long codeSize,
       final long nonce,
@@ -35,7 +36,7 @@ public class MutableZkAccount extends ZkAccount {
   public MutableZkAccount(
       final Hash hkey,
       final Address address,
-      final Hash keccakCodeHash,
+      final FullBytes keccakCodeHash,
       final Hash mimcCodeHash,
       final long codeSize,
       final long nonce,
@@ -57,7 +58,7 @@ public class MutableZkAccount extends ZkAccount {
     this.address = address;
   }
 
-  public void setKeccakCodeHash(final Hash keccakCodeHash) {
+  public void setKeccakCodeHash(final FullBytes keccakCodeHash) {
     this.keccakCodeHash = keccakCodeHash;
   }
 

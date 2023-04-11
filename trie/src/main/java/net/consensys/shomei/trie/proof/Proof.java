@@ -35,4 +35,8 @@ public class Proof {
   public List<Node<Bytes>> getSiblings() {
     return siblings;
   }
+
+  public void load() {
+    siblings.parallelStream().forEach(Node::getHash);
+  }
 }

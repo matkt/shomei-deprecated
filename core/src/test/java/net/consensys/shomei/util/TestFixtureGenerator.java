@@ -13,15 +13,14 @@
 
 package net.consensys.shomei.util;
 
-import static net.consensys.shomei.util.bytes.FieldElementsUtil.convertToSafeFieldElementsSize;
+import net.consensys.shomei.util.bytes.FullBytes;
 
-import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.bytes.MutableBytes;
 import org.apache.tuweni.bytes.MutableBytes32;
 import org.hyperledger.besu.datatypes.Address;
 
-public class TestUtil {
+public class TestFixtureGenerator {
 
   public static Address createDumAddress(int value) {
     MutableBytes mutableBytes = MutableBytes.create(Address.SIZE);
@@ -31,11 +30,13 @@ public class TestUtil {
 
   public static Bytes32 createDumDigest(int value) {
     MutableBytes32 mutableBytes = MutableBytes32.create();
-    mutableBytes.set(0, (byte) value);
+    mutableBytes.set(Bytes32.SIZE - 1, (byte) value);
     return mutableBytes;
   }
 
-  public static Bytes createSafeFieldElementSizeDumDigest(int value) {
-    return convertToSafeFieldElementsSize(createDumDigest(value));
+  public static FullBytes createDumFullBytes(int value) {
+    MutableBytes32 mutableBytes = MutableBytes32.create();
+    mutableBytes.set(0, (byte) value);
+    return new FullBytes(mutableBytes);
   }
 }

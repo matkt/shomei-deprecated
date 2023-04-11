@@ -109,6 +109,10 @@ public class ZkEvmWorldStateUpdateAccumulator {
       final TrieLogAccountValue expectedValue,
       final TrieLogAccountValue replacementValue,
       final boolean isRollforward) {
+    if (!isRollforward && Objects.equals(expectedValue, replacementValue)) {
+      // not needed for a rollback
+      return;
+    }
     ZkValue<Address, ZkAccount> accountValue = accountsToUpdate.get(hkey);
     if (accountValue == null && expectedValue != null) {
       accountValue =
@@ -155,8 +159,13 @@ public class ZkEvmWorldStateUpdateAccumulator {
       final UInt256 expectedValue,
       final UInt256 replacementValue,
       final boolean isRollforward) {
-    if (replacementValue == null && expectedValue != null && expectedValue.isZero()) {
-      // corner case on deletes, non-change
+    if (!isRollforward && Objects.equals(expectedValue, replacementValue)) {
+      // not needed for a rollback
+      return;
+    }
+    if (!isRollforward
+        && (replacementValue == null && expectedValue != null && expectedValue.isZero())) {
+      // not needed for a rollback
       return;
     }
     final Map<Hash, ZkValue<UInt256, UInt256>> storageMap = storageToUpdate.get(hkey);

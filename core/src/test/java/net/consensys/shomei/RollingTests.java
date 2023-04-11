@@ -15,14 +15,14 @@ package net.consensys.shomei;
 
 import static net.consensys.shomei.ZkAccount.EMPTY_CODE_HASH;
 import static net.consensys.shomei.ZkAccount.EMPTY_KECCAK_CODE_HASH;
-import static net.consensys.shomei.ZkAccount.EMPTY_TRIE_ROOT;
-import static net.consensys.shomei.util.TestUtil.createDumAddress;
-import static net.consensys.shomei.util.bytes.FieldElementsUtil.convertToSafeFieldElementsSize;
+import static net.consensys.shomei.trie.StoredSparseMerkleTrie.EMPTY_TRIE_ROOT;
+import static net.consensys.shomei.util.TestFixtureGenerator.createDumAddress;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import net.consensys.shomei.trie.ZKTrie;
 import net.consensys.shomei.trielog.TrieLogAccountValue;
 import net.consensys.shomei.trielog.TrieLogLayer;
+import net.consensys.shomei.util.bytes.FullBytes;
 import net.consensys.shomei.worldview.ZKEvmWorldState;
 import net.consensys.zkevm.HashProvider;
 
@@ -50,11 +50,13 @@ public class RollingTests {
 
     ZKTrie accountStateTrieOne = ZKTrie.createInMemoryTrie();
 
-    accountStateTrieOne.putAndProve(ZK_ACCOUNT.getHkey(), ZK_ACCOUNT.serializeAccount());
+    accountStateTrieOne.putAndProve(
+        ZK_ACCOUNT.getHkey(), ZK_ACCOUNT.getAddress(), ZK_ACCOUNT.serializeAccount());
+
     Hash topRootHash = Hash.wrap(accountStateTrieOne.getTopRootHash());
     assertThat(topRootHash)
         .isEqualTo(
-            Hash.fromHexString("828dd273c29ec50463bd7fac90e06b04b4010b72fe880df82e299bf162046e41"));
+            Hash.fromHexString("11aed727a707f2f1962e399bd4787153ba0e69b7224e8eecf4d1e4e6a8e8dafd"));
 
     TrieLogLayer trieLogLayer = new TrieLogLayer();
     trieLogLayer.addAccountChange(ACCOUNT_1, null, new TrieLogAccountValue(ZK_ACCOUNT));
@@ -71,22 +73,27 @@ public class RollingTests {
 
     ZKTrie accountStateTrieOne = ZKTrie.createInMemoryTrie();
 
-    MutableZkAccount account1 = new MutableZkAccount(ZK_ACCOUNT);
-    accountStateTrieOne.putAndProve(account1.getHkey(), account1.serializeAccount());
-    account1.setBalance(Wei.of(100));
-    accountStateTrieOne.putAndProve(account1.getHkey(), account1.serializeAccount());
+    MutableZkAccount accountUpdated = new MutableZkAccount(ZK_ACCOUNT);
+    accountStateTrieOne.putAndProve(
+        ZK_ACCOUNT.getHkey(), ZK_ACCOUNT.getAddress(), ZK_ACCOUNT.serializeAccount());
+    accountUpdated.setBalance(Wei.of(100));
+    accountStateTrieOne.putAndProve(
+        accountUpdated.getHkey(),
+        accountUpdated.getAddress(),
+        ZK_ACCOUNT.serializeAccount(),
+        accountUpdated.serializeAccount());
     Hash topRootHash = Hash.wrap(accountStateTrieOne.getTopRootHash());
     assertThat(topRootHash)
         .isEqualTo(
             Hash.fromHexString(
-                "0xceb3ac18141ddf7cf476384ec31ff9233a739596552360affa2602060b5f4bed"));
+                "0x271a0e17054a194a6a1e227ddfa4bec3f22c55a0b061c5056a089bba1ae24ec9"));
 
     TrieLogLayer trieLogLayer = new TrieLogLayer();
     trieLogLayer.addAccountChange(ACCOUNT_1, null, new TrieLogAccountValue(ZK_ACCOUNT));
 
     TrieLogLayer trieLogLayer2 = new TrieLogLayer();
     trieLogLayer2.addAccountChange(
-        ACCOUNT_1, new TrieLogAccountValue(ZK_ACCOUNT), new TrieLogAccountValue(account1));
+        ACCOUNT_1, new TrieLogAccountValue(ZK_ACCOUNT), new TrieLogAccountValue(accountUpdated));
 
     ZKEvmWorldState zkEvmWorldState = new ZKEvmWorldState(EMPTY_TRIE_ROOT, Hash.EMPTY);
     assertThat(zkEvmWorldState.getRootHash()).isEqualTo(EMPTY_TRIE_ROOT);
@@ -94,7 +101,7 @@ public class RollingTests {
     zkEvmWorldState.commit(null);
     assertThat(zkEvmWorldState.getRootHash())
         .isEqualTo(
-            Hash.fromHexString("828dd273c29ec50463bd7fac90e06b04b4010b72fe880df82e299bf162046e41"));
+            Hash.fromHexString("11aed727a707f2f1962e399bd4787153ba0e69b7224e8eecf4d1e4e6a8e8dafd"));
     zkEvmWorldState.getAccumulator().rollForward(trieLogLayer2);
     zkEvmWorldState.commit(null);
     assertThat(zkEvmWorldState.getRootHash()).isEqualTo(topRootHash);
@@ -105,22 +112,27 @@ public class RollingTests {
 
     ZKTrie accountStateTrieOne = ZKTrie.createInMemoryTrie();
 
-    MutableZkAccount account1 = new MutableZkAccount(ZK_ACCOUNT);
-    accountStateTrieOne.putAndProve(account1.getHkey(), account1.serializeAccount());
-    account1.setBalance(Wei.of(100));
-    accountStateTrieOne.putAndProve(account1.getHkey(), account1.serializeAccount());
+    MutableZkAccount accountUpdated = new MutableZkAccount(ZK_ACCOUNT);
+    accountStateTrieOne.putAndProve(
+        ZK_ACCOUNT.getHkey(), ZK_ACCOUNT.getAddress(), ZK_ACCOUNT.serializeAccount());
+    accountUpdated.setBalance(Wei.of(100));
+    accountStateTrieOne.putAndProve(
+        accountUpdated.getHkey(),
+        accountUpdated.getAddress(),
+        ZK_ACCOUNT.serializeAccount(),
+        accountUpdated.serializeAccount());
     Hash topRootHash = Hash.wrap(accountStateTrieOne.getTopRootHash());
     assertThat(topRootHash)
         .isEqualTo(
             Hash.fromHexString(
-                "0xceb3ac18141ddf7cf476384ec31ff9233a739596552360affa2602060b5f4bed"));
+                "0x271a0e17054a194a6a1e227ddfa4bec3f22c55a0b061c5056a089bba1ae24ec9"));
 
     TrieLogLayer trieLogLayer = new TrieLogLayer();
     trieLogLayer.addAccountChange(ACCOUNT_1, null, new TrieLogAccountValue(ZK_ACCOUNT));
 
     TrieLogLayer trieLogLayer2 = new TrieLogLayer();
     trieLogLayer2.addAccountChange(
-        ACCOUNT_1, new TrieLogAccountValue(ZK_ACCOUNT), new TrieLogAccountValue(account1));
+        ACCOUNT_1, new TrieLogAccountValue(ZK_ACCOUNT), new TrieLogAccountValue(accountUpdated));
 
     ZKEvmWorldState zkEvmWorldState = new ZKEvmWorldState(EMPTY_TRIE_ROOT, Hash.EMPTY);
     assertThat(zkEvmWorldState.getRootHash()).isEqualTo(EMPTY_TRIE_ROOT);
@@ -131,17 +143,23 @@ public class RollingTests {
   }
 
   @Test
-  public void rollingForwardTwoAccount() {
+  public void rollingForwardTwoAccounts() {
 
     ZKTrie accountStateTrieOne = ZKTrie.createInMemoryTrie();
 
-    accountStateTrieOne.putAndProve(ZK_ACCOUNT.getHkey(), ZK_ACCOUNT.serializeAccount());
-    accountStateTrieOne.putAndProve(ZK_ACCOUNT_2.getHkey(), ZK_ACCOUNT_2.serializeAccount());
+    accountStateTrieOne.putAndProve(
+        ZK_ACCOUNT_2.getHkey(),
+        ZK_ACCOUNT_2.getAddress(),
+        ZK_ACCOUNT_2
+            .serializeAccount()); // respect the order of hkey because they are in the same batch
+    accountStateTrieOne.putAndProve(
+        ZK_ACCOUNT.getHkey(), ZK_ACCOUNT.getAddress(), ZK_ACCOUNT.serializeAccount());
+
     Hash topRootHash = Hash.wrap(accountStateTrieOne.getTopRootHash());
 
     TrieLogLayer trieLogLayer = new TrieLogLayer();
-    trieLogLayer.addAccountChange(ACCOUNT_1, null, new TrieLogAccountValue(ZK_ACCOUNT));
     trieLogLayer.addAccountChange(ACCOUNT_2, null, new TrieLogAccountValue(ZK_ACCOUNT_2));
+    trieLogLayer.addAccountChange(ACCOUNT_1, null, new TrieLogAccountValue(ZK_ACCOUNT));
 
     ZKEvmWorldState zkEvmWorldState = new ZKEvmWorldState(EMPTY_TRIE_ROOT, Hash.EMPTY);
     assertThat(zkEvmWorldState.getRootHash()).isEqualTo(EMPTY_TRIE_ROOT);
@@ -155,26 +173,35 @@ public class RollingTests {
     ZKTrie accountStateTrieOne = ZKTrie.createInMemoryTrie();
 
     final MutableZkAccount contract = new MutableZkAccount(ZK_ACCOUNT_2);
-    final UInt256 storageKey = UInt256.valueOf(14);
-    final Hash storageKeyHash = HashProvider.mimc(convertToSafeFieldElementsSize(storageKey));
-    ;
-    final UInt256 storageValue = UInt256.valueOf(12);
+
+    final FullBytes storageKey = new FullBytes(UInt256.valueOf(14));
+    final Hash storageKeyHash = HashProvider.mimc(storageKey);
+    final FullBytes storageValue = new FullBytes(UInt256.valueOf(12));
 
     final ZKTrie contractStorageTrie = ZKTrie.createInMemoryTrie();
-    contractStorageTrie.putAndProve(storageKeyHash, storageValue);
+    contractStorageTrie.putAndProve(storageKeyHash, storageKey, storageValue);
     contract.setStorageRoot(Hash.wrap(contractStorageTrie.getTopRootHash()));
 
-    // add simple account
-    accountStateTrieOne.putAndProve(ZK_ACCOUNT.getHkey(), ZK_ACCOUNT.serializeAccount());
     // add contract
-    accountStateTrieOne.putAndProve(contract.getHkey(), contract.serializeAccount());
+    accountStateTrieOne.putAndProve(
+        contract.getHkey(),
+        contract.getAddress(),
+        contract
+            .serializeAccount()); // respect the order of hkey because they are in the same batch
+    // add simple account
+    accountStateTrieOne.putAndProve(
+        ZK_ACCOUNT.getHkey(), ZK_ACCOUNT.getAddress(), ZK_ACCOUNT.serializeAccount());
 
     Hash topRootHash = Hash.wrap(accountStateTrieOne.getTopRootHash());
 
     TrieLogLayer trieLogLayer = new TrieLogLayer();
-    trieLogLayer.addAccountChange(ACCOUNT_1, null, new TrieLogAccountValue(ZK_ACCOUNT));
     trieLogLayer.addAccountChange(ACCOUNT_2, null, new TrieLogAccountValue(contract));
-    trieLogLayer.addStorageChange(ACCOUNT_2, storageKey, null, storageValue);
+    trieLogLayer.addAccountChange(ACCOUNT_1, null, new TrieLogAccountValue(ZK_ACCOUNT));
+    trieLogLayer.addStorageChange(
+        ACCOUNT_2,
+        UInt256.fromBytes(storageKey.getOriginalValue()),
+        null,
+        UInt256.fromBytes(storageValue.getOriginalValue()));
 
     ZKEvmWorldState zkEvmWorldState = new ZKEvmWorldState(EMPTY_TRIE_ROOT, Hash.EMPTY);
     assertThat(zkEvmWorldState.getRootHash()).isEqualTo(EMPTY_TRIE_ROOT);
@@ -296,20 +323,24 @@ public class RollingTests {
 
     // create contract with storage
     final MutableZkAccount contract = new MutableZkAccount(ZK_ACCOUNT);
-    final UInt256 storageKey = UInt256.valueOf(14);
-    final Hash storageKeyHash = HashProvider.mimc(convertToSafeFieldElementsSize(storageKey));
-    final UInt256 storageValue = UInt256.valueOf(12);
+    final FullBytes storageKey = new FullBytes(UInt256.valueOf(14));
+    final Hash storageKeyHash = HashProvider.mimc(storageKey);
+    final FullBytes storageValue = new FullBytes(UInt256.valueOf(12));
     final ZKTrie contractStorageTrie = ZKTrie.createInMemoryTrie();
-    contractStorageTrie.putAndProve(storageKeyHash, storageValue);
+    contractStorageTrie.putAndProve(storageKeyHash, storageKey, storageValue);
     contract.setStorageRoot(Hash.wrap(contractStorageTrie.getTopRootHash()));
 
     TrieLogLayer trieLogLayer = new TrieLogLayer();
     trieLogLayer.addAccountChange(contract.getAddress(), null, new TrieLogAccountValue(contract));
-    trieLogLayer.addStorageChange(contract.getAddress(), storageKey, null, storageValue);
+    trieLogLayer.addStorageChange(
+        contract.getAddress(),
+        UInt256.fromBytes(storageKey.getOriginalValue()),
+        null,
+        UInt256.fromBytes(storageValue.getOriginalValue()));
 
     // remove slot
     final MutableZkAccount updatedContract = new MutableZkAccount(contract);
-    contractStorageTrie.removeAndProve(storageKeyHash);
+    contractStorageTrie.removeAndProve(storageKeyHash, storageKey);
     updatedContract.setStorageRoot(Hash.wrap(contractStorageTrie.getTopRootHash()));
 
     TrieLogLayer trieLogLayer2 = new TrieLogLayer();
@@ -317,7 +348,11 @@ public class RollingTests {
         updatedContract.getAddress(),
         new TrieLogAccountValue(contract),
         new TrieLogAccountValue(updatedContract));
-    trieLogLayer2.addStorageChange(updatedContract.getAddress(), storageKey, storageValue, null);
+    trieLogLayer2.addStorageChange(
+        updatedContract.getAddress(),
+        UInt256.fromBytes(storageKey.getOriginalValue()),
+        UInt256.fromBytes(storageValue.getOriginalValue()),
+        null);
 
     // roll forward account creation
     ZKEvmWorldState zkEvmWorldState = new ZKEvmWorldState(EMPTY_TRIE_ROOT, Hash.EMPTY);
@@ -347,21 +382,25 @@ public class RollingTests {
 
     // create contract with storage
     final MutableZkAccount contract = new MutableZkAccount(ZK_ACCOUNT);
-    final UInt256 storageKey = UInt256.valueOf(14);
-    final Hash storageKeyHash = HashProvider.mimc(convertToSafeFieldElementsSize(storageKey));
-    final UInt256 storageValue = UInt256.valueOf(12);
+    final FullBytes storageKey = new FullBytes(UInt256.valueOf(14));
+    final Hash storageKeyHash = HashProvider.mimc(storageKey);
+    final FullBytes storageValue = new FullBytes(UInt256.valueOf(12));
     final ZKTrie contractStorageTrie = ZKTrie.createInMemoryTrie();
-    contractStorageTrie.putAndProve(storageKeyHash, storageValue);
+    contractStorageTrie.putAndProve(storageKeyHash, storageKey, storageValue);
     contract.setStorageRoot(Hash.wrap(contractStorageTrie.getTopRootHash()));
 
     TrieLogLayer trieLogLayer = new TrieLogLayer();
     trieLogLayer.addAccountChange(contract.getAddress(), null, new TrieLogAccountValue(contract));
-    trieLogLayer.addStorageChange(contract.getAddress(), storageKey, null, storageValue);
+    trieLogLayer.addStorageChange(
+        contract.getAddress(),
+        UInt256.fromBytes(storageKey.getOriginalValue()),
+        null,
+        UInt256.fromBytes(storageValue.getOriginalValue()));
 
     // update slot
     final MutableZkAccount updatedContract = new MutableZkAccount(contract);
-    final UInt256 updatedStorageValue = UInt256.valueOf(19);
-    contractStorageTrie.putAndProve(storageKeyHash, updatedStorageValue);
+    final FullBytes updatedStorageValue = new FullBytes(UInt256.valueOf(19));
+    contractStorageTrie.putAndProve(storageKeyHash, storageKey, storageValue, updatedStorageValue);
     updatedContract.setStorageRoot(Hash.wrap(contractStorageTrie.getTopRootHash()));
 
     TrieLogLayer trieLogLayer2 = new TrieLogLayer();
@@ -370,7 +409,10 @@ public class RollingTests {
         new TrieLogAccountValue(contract),
         new TrieLogAccountValue(updatedContract));
     trieLogLayer2.addStorageChange(
-        updatedContract.getAddress(), storageKey, storageValue, updatedStorageValue);
+        contract.getAddress(),
+        UInt256.fromBytes(storageKey.getOriginalValue()),
+        UInt256.fromBytes(storageValue.getOriginalValue()),
+        UInt256.fromBytes(updatedStorageValue.getOriginalValue()));
 
     // roll forward account creation
     ZKEvmWorldState zkEvmWorldState = new ZKEvmWorldState(EMPTY_TRIE_ROOT, Hash.EMPTY);

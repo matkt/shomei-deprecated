@@ -15,8 +15,25 @@ package net.consensys.shomei.util.bytes;
 
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
+import org.apache.tuweni.bytes.DelegatingBytes;
 
-public class FieldElementsUtil {
+public class FullBytes extends DelegatingBytes implements Bytes {
+
+  private final Bytes32 originalValue;
+
+  public FullBytes(final Bytes32 delegate) {
+    super(convertToSafeFieldElementsSize(delegate));
+    this.originalValue = delegate;
+  }
+
+  @Override
+  public String toHexString() {
+    return originalValue.toHexString();
+  }
+
+  public Bytes32 getOriginalValue() {
+    return originalValue;
+  }
 
   /**
    * Fhe fields elements hold on 32 bytes but do not allow to contain 32 bytes entirely. For some
@@ -27,7 +44,7 @@ public class FieldElementsUtil {
    * @param value to format
    * @return formated value
    */
-  public static Bytes convertToSafeFieldElementsSize(Bytes32 value) {
+  private static Bytes convertToSafeFieldElementsSize(Bytes32 value) {
     Bytes32 lsb = Bytes32.leftPad(value.slice(16, 16));
     Bytes32 msb = Bytes32.leftPad(value.slice(0, 16));
     return Bytes.concatenate(lsb, msb);

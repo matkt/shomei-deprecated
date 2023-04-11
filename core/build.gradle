@@ -32,6 +32,7 @@ dependencies {
 
 
     testImplementation project(':util')
+    testImplementation 'com.google.code.gson:gson'
     testImplementation 'junit:junit'
     testImplementation 'org.assertj:assertj-core'
     testImplementation 'org.junit.jupiter:junit-jupiter'

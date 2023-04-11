@@ -15,11 +15,15 @@ package net.consensys.shomei.worldview;
 
 import net.consensys.shomei.ZkAccount;
 import net.consensys.shomei.ZkValue;
+import net.consensys.shomei.trie.StoredSparseMerkleTrie;
 import net.consensys.shomei.trie.ZKTrie;
+import net.consensys.shomei.trie.storage.InMemoryLeafIndexManager;
 import net.consensys.shomei.trie.storage.LeafIndexManager;
+import net.consensys.shomei.util.bytes.FullBytes;
 
 import java.util.Comparator;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
@@ -66,10 +70,12 @@ public class ZKEvmWorldState {
 
   private Hash calculateRootHash() {
     final ZKTrie zkAccountTrie = loadAccountTrie();
-    accumulator
-        .getAccountsToUpdate()
+    accumulator.getAccountsToUpdate().entrySet().stream()
+        .sorted(Map.Entry.comparingByKey())
         .forEach(
-            (hkey, accountValue) -> {
+            (entry) -> {
+              final Hash hkey = entry.getKey();
+              final ZkValue<Address, ZkAccount> accountValue = entry.getValue();
               final Map<Hash, ZkValue<UInt256, UInt256>> storageToUpdate =
                   accumulator.getStorageToUpdate().get(hkey);
               if (storageToUpdate != null) {
@@ -78,34 +84,81 @@ public class ZKEvmWorldState {
                 final Hash targetStorageRootHash =
                     Optional.ofNullable(accountValue.getUpdated())
                         .map(ZkAccount::getStorageRoot)
-                        .orElse(ZkAccount.EMPTY_TRIE_ROOT);
-                storageToUpdate.forEach(
-                    (slotKeyHash, storageValue) -> {
-                      if (!storageValue.isRollforward() // rollbackward
-                          && (storageValue.getUpdated() == null
-                              || storageValue.getPrior() == null)) {
-                        zkStorageTrie.decrementNextFreeNode();
-                      }
-                      if (storageValue.getUpdated() == null) {
-                        zkStorageTrie.removeAndProve(slotKeyHash);
-                      } else {
-                        zkStorageTrie.putAndProve(slotKeyHash, storageValue.getUpdated());
-                      }
-                    });
+                        .orElse(StoredSparseMerkleTrie.EMPTY_TRIE_ROOT);
+                storageToUpdate.entrySet().stream()
+                    .sorted(Map.Entry.comparingByKey())
+                    .forEach(
+                        (storageEntry) -> {
+                          final Hash slotKeyHash = storageEntry.getKey();
+                          final ZkValue<UInt256, UInt256> storageValue = storageEntry.getValue();
+                          // check read and read zero for rollfoward
+                          if (storageValue.isRollforward()) {
+                            if (storageValue.getPrior() == null
+                                && storageValue.getUpdated() == null) {
+                              // read zero
+                              zkStorageTrie.readZeroAndProve(
+                                  slotKeyHash, new FullBytes(storageValue.getKey()));
+                            } else if (Objects.equals(
+                                storageValue.getPrior(), storageValue.getUpdated())) {
+                              // read non zero
+                              zkAccountTrie.readAndProve(
+                                  slotKeyHash,
+                                  new FullBytes(storageValue.getKey()),
+                                  new FullBytes(storageValue.getPrior()));
+                            }
+                          }
+                          // check remove, update and insert
+                          if (!storageValue.isRollforward() // rollbackward
+                              && (storageValue.getUpdated() == null
+                                  || storageValue.getPrior() == null)) {
+                            zkStorageTrie.decrementNextFreeNode();
+                          }
+                          if (storageValue.getUpdated() == null) {
+                            zkStorageTrie.removeAndProve(
+                                slotKeyHash, new FullBytes(storageValue.getKey()));
+                          } else {
+                            zkStorageTrie.putAndProve(
+                                slotKeyHash,
+                                new FullBytes(storageValue.getKey()),
+                                storageValue.getPrior() == null
+                                    ? null
+                                    : new FullBytes(storageValue.getPrior()),
+                                storageValue.getUpdated() == null
+                                    ? null
+                                    : new FullBytes(storageValue.getUpdated()));
+                          }
+                        });
                 if (!zkStorageTrie.getTopRootHash().equals(targetStorageRootHash)) {
                   throw new RuntimeException("invalid trie log");
                 }
                 zkStorageTrie.commit();
               }
-              if (!accountValue.isRollforward() // rollbackward
+              // check read and read zero for rollfoward
+              if (accountValue.isRollforward()) {
+                if (accountValue.getPrior() == null && accountValue.getUpdated() == null) {
+                  // read zero
+                  zkAccountTrie.readZeroAndProve(hkey, accountValue.getKey());
+                } else if (Objects.equals(accountValue.getPrior(), accountValue.getUpdated())) {
+                  // read non zero
+                  zkAccountTrie.readAndProve(
+                      hkey, accountValue.getKey(), accountValue.getPrior().serializeAccount());
+                }
+              }
+              // check remove, update and insert
+              if (!accountValue.isRollforward()
                   && (accountValue.getUpdated() == null || accountValue.getPrior() == null)) {
                 zkAccountTrie.decrementNextFreeNode();
               }
               if (accountValue.getUpdated() == null) {
-                zkAccountTrie.removeAndProve(accountValue.getPrior().getHkey());
+                zkAccountTrie.removeAndProve(
+                    accountValue.getPrior().getHkey(), accountValue.getKey());
               } else {
                 zkAccountTrie.putAndProve(
                     accountValue.getUpdated().getHkey(),
+                    accountValue.getKey(),
+                    accountValue.getPrior() == null
+                        ? null
+                        : accountValue.getPrior().serializeAccount(),
                     accountValue.getUpdated().serializeAccount());
               }
             });
@@ -127,8 +180,8 @@ public class ZKEvmWorldState {
   }
 
   private ZKTrie loadAccountTrie() {
-    final LeafIndexManager leafIndexManager = new LeafIndexManager(flatDB);
-    if (rootHash.equals(ZkAccount.EMPTY_TRIE_ROOT)) {
+    final InMemoryLeafIndexManager leafIndexManager = new InMemoryLeafIndexManager(flatDB);
+    if (rootHash.equals(StoredSparseMerkleTrie.EMPTY_TRIE_ROOT)) {
       return ZKTrie.createTrie(
           leafIndexManager,
           (location, hash) -> Optional.ofNullable(storage.get(hash)),
@@ -144,7 +197,7 @@ public class ZKEvmWorldState {
 
   private ZKTrie loadStorageTrie(final ZkValue<Address, ZkAccount> zkAccount) {
     final LeafIndexManager leafIndexManager =
-        new LeafIndexManager(flatDB) {
+        new InMemoryLeafIndexManager(flatDB) {
           @Override
           public Bytes wrapKey(final Hash key) {
             return Bytes.concatenate(zkAccount.getKey(), key);
@@ -156,7 +209,7 @@ public class ZKEvmWorldState {
           }
         };
     if (zkAccount.getPrior() == null
-        || zkAccount.getPrior().getStorageRoot().equals(ZkAccount.EMPTY_TRIE_ROOT)) {
+        || zkAccount.getPrior().getStorageRoot().equals(StoredSparseMerkleTrie.EMPTY_TRIE_ROOT)) {
       return ZKTrie.createTrie(
           leafIndexManager,
           (location, hash) -> Optional.ofNullable(storage.get(hash)),

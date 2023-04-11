@@ -13,17 +13,43 @@
 
 package net.consensys.zkevm;
 
+import com.sun.jna.Native;
 import org.apache.tuweni.bytes.Bytes;
+import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Hash;
+import org.hyperledger.besu.nativelib.mimc.LibMimc;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class HashProvider {
+
+  private static final Logger LOG = LoggerFactory.getLogger(HashProvider.class);
+
+  @SuppressWarnings("WeakerAccess")
+  public static final boolean ENABLED;
+
+  static {
+    boolean enabled;
+    try {
+      Native.register(LibMimc.class, "mimc_jni");
+      enabled = true;
+    } catch (final Throwable t) {
+      LOG.atError()
+          .setMessage("Unable to load MIMC native library with error : {}")
+          .addArgument(t.getMessage())
+          .log();
+      enabled = false;
+    }
+    ENABLED = enabled;
+  }
 
   public static Hash keccak256(final Bytes bytes) {
     return Hash.hash(bytes);
   }
 
-  // TODO change to use mimc
   public static Hash mimc(final Bytes bytes) {
-    return Hash.hash(bytes);
+    final byte[] output = new byte[Bytes32.SIZE];
+    LibMimc.compute(bytes.toArrayUnsafe(), bytes.size(), output);
+    return Hash.wrap(Bytes32.wrap(output));
   }
 }

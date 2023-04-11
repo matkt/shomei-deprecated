@@ -27,7 +27,6 @@ import java.util.function.Function;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Hash;
-import org.hyperledger.besu.ethereum.trie.MerkleTrie;
 import org.hyperledger.besu.ethereum.trie.Node;
 import org.hyperledger.besu.ethereum.trie.NodeFactory;
 import org.hyperledger.besu.ethereum.trie.NodeLoader;
@@ -37,6 +36,9 @@ import org.hyperledger.besu.ethereum.trie.StoredNode;
 
 /** A {@link StoredSparseMerkleTrie} that persists trie nodes to a key/value store. */
 public class StoredSparseMerkleTrie {
+
+  public static final Hash EMPTY_TRIE_ROOT =
+      Hash.wrap(ZKTrie.createInMemoryTrie().getTopRootHash());
 
   protected final NodeFactory<Bytes> nodeFactory;
 
@@ -49,7 +51,7 @@ public class StoredSparseMerkleTrie {
       final Function<Bytes, Bytes> valueDeserializer) {
     this.nodeFactory = new StoredNodeFactory(nodeLoader, valueSerializer, valueDeserializer);
     this.root =
-        rootHash.equals(MerkleTrie.EMPTY_TRIE_NODE_HASH)
+        rootHash.equals(EMPTY_TRIE_ROOT)
             ? NullNode.instance()
             : new StoredNode<>(nodeFactory, Bytes.EMPTY, rootHash);
   }
@@ -68,13 +70,22 @@ public class StoredSparseMerkleTrie {
     return root.accept(getGetVisitor(), path).getValue();
   }
 
+  record GetAndProve(Optional<Bytes> nodeValue, List<Node<Bytes>> proof) {}
+
+  public GetAndProve getAndProve(final Bytes path) {
+    checkNotNull(path);
+    final GetVisitor<Bytes> getVisitor = getGetVisitor();
+    final Node<Bytes> node = root.accept(getVisitor, path);
+    return new GetAndProve(node.getValue(), getVisitor.getProof());
+  }
+
   public void put(final Bytes path, final Bytes value) {
     checkNotNull(path);
     checkNotNull(value);
     this.root = root.accept(getPutVisitor(value), path);
   }
 
-  public List<Node<Bytes>> putAndProve(final Hash key, final Bytes path, final Bytes value) {
+  public List<Node<Bytes>> putAndProve(final Bytes path, final Bytes value) {
     checkNotNull(path);
     checkNotNull(value);
     final PutVisitor<Bytes> putVisitor = getPutVisitor(value);
@@ -82,12 +93,7 @@ public class StoredSparseMerkleTrie {
     return putVisitor.getProof();
   }
 
-  public void remove(final Bytes path) {
-    checkNotNull(path);
-    this.root = root.accept(getRemoveVisitor(), path);
-  }
-
-  public List<Node<Bytes>> removeAndProve(final Hash key, final Bytes path) {
+  public List<Node<Bytes>> removeAndProve(final Bytes path) {
     checkNotNull(path);
     final RemoveVisitor<Bytes> removeVisitor = getRemoveVisitor();
     this.root = root.accept(removeVisitor, path);
@@ -104,12 +110,7 @@ public class StoredSparseMerkleTrie {
     if (root.isDirty() && root.getEncodedBytesRef().size() < 32) {
       nodeUpdater.store(Bytes.EMPTY, root.getHash(), root.getEncodedBytesRef());
     }
-    // Reset root so dirty nodes can be garbage collected
-    final Bytes32 rootHash = root.getHash();
-    this.root =
-        rootHash.equals(MerkleTrie.EMPTY_TRIE_NODE_HASH)
-            ? NullNode.instance()
-            : new StoredNode<>(nodeFactory, Bytes.EMPTY, rootHash);
+    this.root = new StoredNode<>(nodeFactory, Bytes.EMPTY, root.getHash());
   }
 
   public GetVisitor<Bytes> getGetVisitor() {
