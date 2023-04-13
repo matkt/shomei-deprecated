@@ -26,6 +26,7 @@ import net.consensys.shomei.trie.proof.ReadTrace;
 import net.consensys.shomei.trie.proof.ReadZeroTrace;
 import net.consensys.shomei.trie.proof.Trace;
 import net.consensys.shomei.trie.proof.UpdateTrace;
+import net.consensys.shomei.trie.storage.InMemoryStorage;
 import net.consensys.shomei.trie.storage.StorageProxy;
 import net.consensys.shomei.trie.storage.StorageProxy.Range;
 import net.consensys.zkevm.HashProvider;
@@ -41,6 +42,12 @@ import org.hyperledger.besu.ethereum.trie.Node;
 import org.hyperledger.besu.ethereum.trie.NodeUpdater;
 
 public class ZKTrie {
+
+  public static final Hash EMPTY_TRIE_ROOT =
+      Hash.wrap(ZKTrie.createTrie(new InMemoryStorage()).getTopRootHash());
+
+  public static final Hash EMPTY_TRIE_SUB_ROOT =
+      Hash.wrap(ZKTrie.createTrie(new InMemoryStorage()).getSubRootHash());
 
   private static final int ZK_TRIE_DEPTH = 40;
 
@@ -344,6 +351,5 @@ public class ZKTrie {
 
   public void commit() {
     state.commit(updater::putTrieNode);
-    // updater.commit();
   }
 }

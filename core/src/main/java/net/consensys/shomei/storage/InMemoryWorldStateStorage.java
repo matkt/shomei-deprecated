@@ -20,10 +20,42 @@ import java.util.Optional;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Hash;
 
-public class InMemoryWorldStateStorage extends InMemoryStorage implements WorldStateStorage {
+public class InMemoryWorldStateStorage extends InMemoryStorage
+    implements WorldStateStorage, WorldStateStorage.WorldStateUpdater {
+
+  private Optional<Long> currentBlockNumber = Optional.empty();
+
+  private Optional<Hash> currentBlockHash = Optional.empty();
+
+  private Optional<Hash> currentStateRootHash = Optional.empty();
 
   @Override
   public Optional<Bytes> getTrieLog(final Hash blockHash) {
     throw new UnsupportedOperationException("not implemented yet");
+  }
+
+  @Override
+  public Optional<Hash> getWorldStateRootHash() {
+    return currentStateRootHash;
+  }
+
+  @Override
+  public Optional<Hash> getWorldStateBlockHash() {
+    return currentBlockHash;
+  }
+
+  @Override
+  public Optional<Long> getWorldStateBlockNumber() {
+    return currentBlockNumber;
+  }
+
+  @Override
+  public void setBlockHash(final Hash blockHash) {
+    this.currentBlockHash = Optional.ofNullable(blockHash);
+  }
+
+  @Override
+  public void setBlockNumber(final long blockNumber) {
+    this.currentBlockNumber = Optional.ofNullable(blockNumber);
   }
 }

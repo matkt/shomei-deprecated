@@ -14,8 +14,8 @@
 package net.consensys.shomei.trie;
 
 import static com.google.common.base.Preconditions.checkNotNull;
+import static net.consensys.shomei.trie.ZKTrie.EMPTY_TRIE_ROOT;
 
-import net.consensys.shomei.trie.storage.InMemoryStorage;
 import net.consensys.shomei.trie.visitor.CommitVisitor;
 import net.consensys.shomei.trie.visitor.GetVisitor;
 import net.consensys.shomei.trie.visitor.PutVisitor;
@@ -27,7 +27,6 @@ import java.util.function.Function;
 
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
-import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.ethereum.trie.Node;
 import org.hyperledger.besu.ethereum.trie.NodeFactory;
 import org.hyperledger.besu.ethereum.trie.NodeLoader;
@@ -37,9 +36,6 @@ import org.hyperledger.besu.ethereum.trie.StoredNode;
 
 /** A {@link StoredSparseMerkleTrie} that persists trie nodes to a key/value store. */
 public class StoredSparseMerkleTrie {
-
-  public static final Hash EMPTY_TRIE_ROOT =
-      Hash.wrap(ZKTrie.createTrie(new InMemoryStorage()).getTopRootHash());
 
   protected final NodeFactory<Bytes> nodeFactory;
 

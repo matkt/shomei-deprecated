@@ -20,26 +20,40 @@ import java.util.Optional;
 import java.util.function.Function;
 
 import org.apache.tuweni.bytes.Bytes;
-import org.hyperledger.besu.datatypes.Hash;
 
-public class WorldStateStorageProxy implements WorldStateStorage {
+public class WorldStateStorageProxy implements StorageProxy {
 
   private final Function<Bytes, Bytes> keySerializer;
 
   private final Function<Bytes, Bytes> keyDeserializer;
   private final WorldStateStorage worldStateStorage;
 
+  private final Optional<StorageProxy.Updater> updater;
+
   public WorldStateStorageProxy(final WorldStateStorage worldStateStorage) {
-    this(Optional.empty(), worldStateStorage);
+    this(Optional.empty(), worldStateStorage, null);
   }
 
   public WorldStateStorageProxy(
       final Optional<Bytes> keyPrefix, final WorldStateStorage worldStateStorage) {
+    this(keyPrefix, worldStateStorage, null);
+  }
+
+  public WorldStateStorageProxy(
+      final WorldStateStorage worldStateStorage, final StorageProxy.Updater updater) {
+    this(Optional.empty(), worldStateStorage, updater);
+  }
+
+  public WorldStateStorageProxy(
+      final Optional<Bytes> keyPrefix,
+      final WorldStateStorage worldStateStorage,
+      final StorageProxy.Updater updater) {
     this.keySerializer =
         input -> keyPrefix.map(prefS -> Bytes.concatenate(prefS, input)).orElse(input);
     this.keyDeserializer =
         input -> keyPrefix.map(prefD -> input.slice(0, prefD.size())).orElse(input);
     this.worldStateStorage = worldStateStorage;
+    this.updater = Optional.ofNullable(updater);
   }
 
   @Override
@@ -66,11 +80,6 @@ public class WorldStateStorageProxy implements WorldStateStorage {
   }
 
   @Override
-  public Optional<Bytes> getTrieLog(final Hash blockHash) {
-    return worldStateStorage.getTrieLog(blockHash);
-  }
-
-  @Override
   public Optional<Bytes> getTrieNode(final Bytes location, final Bytes nodeHash) {
     return worldStateStorage.getTrieNode(
         keySerializer.apply(location), keySerializer.apply(nodeHash));
@@ -78,7 +87,7 @@ public class WorldStateStorageProxy implements WorldStateStorage {
 
   @Override
   public StorageProxy.Updater updater() {
-    return new Updater(keySerializer, worldStateStorage.updater());
+    return new Updater(keySerializer, updater.orElseGet(worldStateStorage::updater));
   }
 
   public static class Updater implements StorageProxy.Updater {

@@ -15,6 +15,7 @@ package net.consensys.shomei.storage;
 
 import net.consensys.shomei.trie.storage.StorageProxy;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 
 import org.apache.tuweni.bytes.Bytes;
@@ -22,5 +23,24 @@ import org.hyperledger.besu.datatypes.Hash;
 
 public interface WorldStateStorage extends StorageProxy {
 
+  byte[] WORLD_STATE_ROOT_HASH_KEY = "stateRootHash".getBytes(StandardCharsets.UTF_8);
+
+  byte[] WORLD_BLOCK_HASH_KEY = "blockHash".getBytes(StandardCharsets.UTF_8);
+
+  byte[] WORLD_BLOCK_NUMBER_KEY = "blockNumber".getBytes(StandardCharsets.UTF_8);
+
+  Optional<Long> getWorldStateBlockNumber();
+
+  Optional<Hash> getWorldStateBlockHash();
+
+  Optional<Hash> getWorldStateRootHash();
+
   Optional<Bytes> getTrieLog(final Hash blockHash);
+
+  interface WorldStateUpdater extends Updater {
+
+    void setBlockHash(final Hash blockHash);
+
+    void setBlockNumber(final long blockNumber);
+  }
 }

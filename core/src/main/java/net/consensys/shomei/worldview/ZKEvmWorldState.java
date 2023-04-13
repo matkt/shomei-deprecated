@@ -13,12 +13,15 @@
 
 package net.consensys.shomei.worldview;
 
+import static net.consensys.shomei.trie.ZKTrie.EMPTY_TRIE_ROOT;
+
 import net.consensys.shomei.ZkAccount;
 import net.consensys.shomei.ZkValue;
 import net.consensys.shomei.storage.WorldStateStorage;
 import net.consensys.shomei.storage.WorldStateStorageProxy;
-import net.consensys.shomei.trie.StoredSparseMerkleTrie;
 import net.consensys.shomei.trie.ZKTrie;
+import net.consensys.shomei.trie.storage.StorageProxy;
+import net.consensys.shomei.trie.storage.StorageProxy.Updater;
 import net.consensys.shomei.util.bytes.FullBytes;
 
 import java.util.Map;
@@ -29,7 +32,6 @@ import com.google.common.annotations.VisibleForTesting;
 import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Hash;
-import org.hyperledger.besu.ethereum.core.BlockHeader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,32 +40,44 @@ public class ZKEvmWorldState {
   private static final Logger LOG = LoggerFactory.getLogger(ZKEvmWorldState.class);
 
   private final ZkEvmWorldStateUpdateAccumulator accumulator;
-  private Hash rootHash;
+  private Hash stateRoot;
+
+  private long blockNumber;
   private Hash blockHash;
 
   private final WorldStateStorage zkEvmWorldStateStorage;
 
-  public ZKEvmWorldState(
-      final Hash rootHash, final Hash blockHash, final WorldStateStorage zkEvmWorldStateStorage) {
-    this.rootHash = rootHash; // read from database
-    this.blockHash = blockHash; // read from database
+  public ZKEvmWorldState(final WorldStateStorage zkEvmWorldStateStorage) {
+    this.stateRoot = zkEvmWorldStateStorage.getWorldStateRootHash().orElse(EMPTY_TRIE_ROOT);
+    this.blockNumber =
+        zkEvmWorldStateStorage.getWorldStateBlockNumber().orElse(0L); // -1 when not state yet
+    this.blockHash = zkEvmWorldStateStorage.getWorldStateBlockHash().orElse(Hash.EMPTY);
     this.accumulator = new ZkEvmWorldStateUpdateAccumulator();
     this.zkEvmWorldStateStorage = zkEvmWorldStateStorage;
   }
 
-  public void commit(final BlockHeader blockHeader) {
-    final Optional<BlockHeader> maybeBlockHeader = Optional.ofNullable(blockHeader);
-    LOG.atDebug().setMessage("Commit world state for block {}").addArgument(maybeBlockHeader).log();
-    rootHash = calculateRootHash();
-    blockHash = maybeBlockHeader.map(BlockHeader::getHash).orElse(null);
-    accumulator.reset();
-    // persist
+  public void commit(final long blockNumber, final Hash blockHash) {
+    LOG.atDebug()
+        .setMessage("Commit world state for block number {} and block hash {}")
+        .addArgument(blockNumber)
+        .addArgument(blockHash)
+        .log();
+    final WorldStateStorage.WorldStateUpdater updater =
+        (WorldStateStorage.WorldStateUpdater) zkEvmWorldStateStorage.updater();
+    this.stateRoot = calculateRootHash(updater);
+    this.blockNumber = blockNumber;
+    this.blockHash = blockHash;
 
-    // TODO: sup brah
+    updater.setBlockHash(blockHash);
+    updater.setBlockNumber(blockNumber);
+    // persist
+    // updater.commit();
+    accumulator.reset();
   }
 
-  private Hash calculateRootHash() {
-    final ZKTrie zkAccountTrie = loadAccountTrie();
+  private Hash calculateRootHash(final Updater updater) {
+    final ZKTrie zkAccountTrie =
+        loadAccountTrie(new WorldStateStorageProxy(zkEvmWorldStateStorage, updater));
     accumulator.getAccountsToUpdate().entrySet().stream()
         .sorted(Map.Entry.comparingByKey())
         .forEach(
@@ -74,11 +88,14 @@ public class ZKEvmWorldState {
                   accumulator.getStorageToUpdate().get(hkey);
               if (storageToUpdate != null) {
                 // load the account storage trie
-                final ZKTrie zkStorageTrie = loadStorageTrie(accountValue);
+                final WorldStateStorageProxy storageAdapter =
+                    new WorldStateStorageProxy(
+                        Optional.of(accountValue.getKey()), zkEvmWorldStateStorage, updater);
+                final ZKTrie zkStorageTrie = loadStorageTrie(accountValue, storageAdapter);
                 final Hash targetStorageRootHash =
                     Optional.ofNullable(accountValue.getUpdated())
                         .map(ZkAccount::getStorageRoot)
-                        .orElse(StoredSparseMerkleTrie.EMPTY_TRIE_ROOT);
+                        .orElse(EMPTY_TRIE_ROOT);
                 storageToUpdate.entrySet().stream()
                     .sorted(Map.Entry.comparingByKey())
                     .forEach(
@@ -160,8 +177,12 @@ public class ZKEvmWorldState {
     return Hash.wrap(zkAccountTrie.getTopRootHash());
   }
 
-  public Hash getRootHash() {
-    return rootHash;
+  public Hash getStateRootHash() {
+    return stateRoot;
+  }
+
+  public long getBlockNumber() {
+    return blockNumber;
   }
 
   public Hash getBlockHash() {
@@ -173,22 +194,21 @@ public class ZKEvmWorldState {
     return accumulator;
   }
 
-  private ZKTrie loadAccountTrie() {
-    if (rootHash.equals(StoredSparseMerkleTrie.EMPTY_TRIE_ROOT)) {
-      return ZKTrie.createTrie(new WorldStateStorageProxy(zkEvmWorldStateStorage));
+  private ZKTrie loadAccountTrie(final StorageProxy storageProxy) {
+    if (stateRoot.equals(EMPTY_TRIE_ROOT)) {
+      return ZKTrie.createTrie(storageProxy);
     } else {
-      return ZKTrie.loadTrie(rootHash, new WorldStateStorageProxy(zkEvmWorldStateStorage));
+      return ZKTrie.loadTrie(stateRoot, new WorldStateStorageProxy(zkEvmWorldStateStorage));
     }
   }
 
-  private ZKTrie loadStorageTrie(final ZkValue<Address, ZkAccount> zkAccount) {
-    final WorldStateStorageProxy storageAdapter =
-        new WorldStateStorageProxy(Optional.of(zkAccount.getKey()), zkEvmWorldStateStorage);
+  private ZKTrie loadStorageTrie(
+      final ZkValue<Address, ZkAccount> zkAccount, final StorageProxy storageProxy) {
     if (zkAccount.getPrior() == null
-        || zkAccount.getPrior().getStorageRoot().equals(StoredSparseMerkleTrie.EMPTY_TRIE_ROOT)) {
-      return ZKTrie.createTrie(storageAdapter);
+        || zkAccount.getPrior().getStorageRoot().equals(EMPTY_TRIE_ROOT)) {
+      return ZKTrie.createTrie(storageProxy);
     } else {
-      return ZKTrie.loadTrie(zkAccount.getPrior().getStorageRoot(), storageAdapter);
+      return ZKTrie.loadTrie(zkAccount.getPrior().getStorageRoot(), storageProxy);
     }
   }
 }

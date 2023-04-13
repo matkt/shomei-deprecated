@@ -95,6 +95,21 @@ public class PersistedWorldStateStorage implements WorldStateStorage {
   }
 
   @Override
+  public Optional<Hash> getWorldStateRootHash() {
+    return trieNodeStorage.get(WORLD_STATE_ROOT_HASH_KEY).map(Bytes32::wrap).map(Hash::wrap);
+  }
+
+  @Override
+  public Optional<Hash> getWorldStateBlockHash() {
+    return trieNodeStorage.get(WORLD_BLOCK_HASH_KEY).map(Bytes32::wrap).map(Hash::wrap);
+  }
+
+  @Override
+  public Optional<Long> getWorldStateBlockNumber() {
+    return trieNodeStorage.get(WORLD_BLOCK_NUMBER_KEY).map(Longs::fromByteArray);
+  }
+
+  @Override
   public Updater updater() {
     return null;
   }
