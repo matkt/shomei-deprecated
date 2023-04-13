@@ -28,6 +28,10 @@ public class InMemoryStorage implements StorageProxy, StorageProxy.Updater {
   private final TreeMap<Bytes, Long> leafIndexStorage = new TreeMap<>(Comparator.naturalOrder());
   private final Map<Bytes, Bytes> trieNodeStorage = new ConcurrentHashMap<>();
 
+  public TreeMap<Bytes, Long> getLeafIndexStorage() {
+    return leafIndexStorage;
+  }
+
   public Map<Bytes, Bytes> getTrieNodeStorage() {
     return trieNodeStorage;
   }
