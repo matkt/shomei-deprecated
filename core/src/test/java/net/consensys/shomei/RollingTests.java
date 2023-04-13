@@ -19,12 +19,16 @@ import static net.consensys.shomei.trie.StoredSparseMerkleTrie.EMPTY_TRIE_ROOT;
 import static net.consensys.shomei.util.TestFixtureGenerator.createDumAddress;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import net.consensys.shomei.storage.InMemoryWorldStateStorage;
+import net.consensys.shomei.storage.WorldStateStorageProxy;
 import net.consensys.shomei.trie.ZKTrie;
 import net.consensys.shomei.trielog.TrieLogAccountValue;
 import net.consensys.shomei.trielog.TrieLogLayer;
 import net.consensys.shomei.util.bytes.FullBytes;
 import net.consensys.shomei.worldview.ZKEvmWorldState;
 import net.consensys.zkevm.HashProvider;
+
+import java.util.Optional;
 
 import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.datatypes.Address;
@@ -47,8 +51,8 @@ public class RollingTests {
 
   @Test
   public void rollingForwardOneAccount() {
-
-    ZKTrie accountStateTrieOne = ZKTrie.createInMemoryTrie();
+    ZKTrie accountStateTrieOne =
+        ZKTrie.createTrie(new WorldStateStorageProxy(new InMemoryWorldStateStorage()));
 
     accountStateTrieOne.putAndProve(
         ZK_ACCOUNT.getHkey(), ZK_ACCOUNT.getAddress(), ZK_ACCOUNT.serializeAccount());
@@ -61,7 +65,8 @@ public class RollingTests {
     TrieLogLayer trieLogLayer = new TrieLogLayer();
     trieLogLayer.addAccountChange(ACCOUNT_1, null, new TrieLogAccountValue(ZK_ACCOUNT));
 
-    ZKEvmWorldState zkEvmWorldState = new ZKEvmWorldState(EMPTY_TRIE_ROOT, Hash.EMPTY);
+    ZKEvmWorldState zkEvmWorldState =
+        new ZKEvmWorldState(EMPTY_TRIE_ROOT, Hash.EMPTY, new InMemoryWorldStateStorage());
     assertThat(zkEvmWorldState.getRootHash()).isEqualTo(EMPTY_TRIE_ROOT);
     zkEvmWorldState.getAccumulator().rollForward(trieLogLayer);
     zkEvmWorldState.commit(null);
@@ -71,7 +76,8 @@ public class RollingTests {
   @Test
   public void rollingForwardUpdatingAccount() {
 
-    ZKTrie accountStateTrieOne = ZKTrie.createInMemoryTrie();
+    ZKTrie accountStateTrieOne =
+        ZKTrie.createTrie(new WorldStateStorageProxy(new InMemoryWorldStateStorage()));
 
     MutableZkAccount accountUpdated = new MutableZkAccount(ZK_ACCOUNT);
     accountStateTrieOne.putAndProve(
@@ -95,7 +101,8 @@ public class RollingTests {
     trieLogLayer2.addAccountChange(
         ACCOUNT_1, new TrieLogAccountValue(ZK_ACCOUNT), new TrieLogAccountValue(accountUpdated));
 
-    ZKEvmWorldState zkEvmWorldState = new ZKEvmWorldState(EMPTY_TRIE_ROOT, Hash.EMPTY);
+    ZKEvmWorldState zkEvmWorldState =
+        new ZKEvmWorldState(EMPTY_TRIE_ROOT, Hash.EMPTY, new InMemoryWorldStateStorage());
     assertThat(zkEvmWorldState.getRootHash()).isEqualTo(EMPTY_TRIE_ROOT);
     zkEvmWorldState.getAccumulator().rollForward(trieLogLayer);
     zkEvmWorldState.commit(null);
@@ -110,7 +117,8 @@ public class RollingTests {
   @Test
   public void rollingForwardUpdatingAccountWithSeveralTrieLogs() {
 
-    ZKTrie accountStateTrieOne = ZKTrie.createInMemoryTrie();
+    ZKTrie accountStateTrieOne =
+        ZKTrie.createTrie(new WorldStateStorageProxy(new InMemoryWorldStateStorage()));
 
     MutableZkAccount accountUpdated = new MutableZkAccount(ZK_ACCOUNT);
     accountStateTrieOne.putAndProve(
@@ -134,7 +142,8 @@ public class RollingTests {
     trieLogLayer2.addAccountChange(
         ACCOUNT_1, new TrieLogAccountValue(ZK_ACCOUNT), new TrieLogAccountValue(accountUpdated));
 
-    ZKEvmWorldState zkEvmWorldState = new ZKEvmWorldState(EMPTY_TRIE_ROOT, Hash.EMPTY);
+    ZKEvmWorldState zkEvmWorldState =
+        new ZKEvmWorldState(EMPTY_TRIE_ROOT, Hash.EMPTY, new InMemoryWorldStateStorage());
     assertThat(zkEvmWorldState.getRootHash()).isEqualTo(EMPTY_TRIE_ROOT);
     zkEvmWorldState.getAccumulator().rollForward(trieLogLayer);
     zkEvmWorldState.getAccumulator().rollForward(trieLogLayer2);
@@ -145,7 +154,8 @@ public class RollingTests {
   @Test
   public void rollingForwardTwoAccounts() {
 
-    ZKTrie accountStateTrieOne = ZKTrie.createInMemoryTrie();
+    ZKTrie accountStateTrieOne =
+        ZKTrie.createTrie(new WorldStateStorageProxy(new InMemoryWorldStateStorage()));
 
     accountStateTrieOne.putAndProve(
         ZK_ACCOUNT_2.getHkey(),
@@ -161,7 +171,8 @@ public class RollingTests {
     trieLogLayer.addAccountChange(ACCOUNT_2, null, new TrieLogAccountValue(ZK_ACCOUNT_2));
     trieLogLayer.addAccountChange(ACCOUNT_1, null, new TrieLogAccountValue(ZK_ACCOUNT));
 
-    ZKEvmWorldState zkEvmWorldState = new ZKEvmWorldState(EMPTY_TRIE_ROOT, Hash.EMPTY);
+    ZKEvmWorldState zkEvmWorldState =
+        new ZKEvmWorldState(EMPTY_TRIE_ROOT, Hash.EMPTY, new InMemoryWorldStateStorage());
     assertThat(zkEvmWorldState.getRootHash()).isEqualTo(EMPTY_TRIE_ROOT);
     zkEvmWorldState.getAccumulator().rollForward(trieLogLayer);
     zkEvmWorldState.commit(null);
@@ -170,7 +181,9 @@ public class RollingTests {
 
   @Test
   public void rollingForwardContractWithStorage() {
-    ZKTrie accountStateTrieOne = ZKTrie.createInMemoryTrie();
+
+    ZKTrie accountStateTrieOne =
+        ZKTrie.createTrie(new WorldStateStorageProxy(new InMemoryWorldStateStorage()));
 
     final MutableZkAccount contract = new MutableZkAccount(ZK_ACCOUNT_2);
 
@@ -178,7 +191,10 @@ public class RollingTests {
     final Hash storageKeyHash = HashProvider.mimc(storageKey);
     final FullBytes storageValue = new FullBytes(UInt256.valueOf(12));
 
-    final ZKTrie contractStorageTrie = ZKTrie.createInMemoryTrie();
+    final ZKTrie contractStorageTrie =
+        ZKTrie.createTrie(
+            new WorldStateStorageProxy(
+                Optional.of(ZK_ACCOUNT_2.address), new InMemoryWorldStateStorage()));
     contractStorageTrie.putAndProve(storageKeyHash, storageKey, storageValue);
     contract.setStorageRoot(Hash.wrap(contractStorageTrie.getTopRootHash()));
 
@@ -203,7 +219,8 @@ public class RollingTests {
         null,
         UInt256.fromBytes(storageValue.getOriginalValue()));
 
-    ZKEvmWorldState zkEvmWorldState = new ZKEvmWorldState(EMPTY_TRIE_ROOT, Hash.EMPTY);
+    ZKEvmWorldState zkEvmWorldState =
+        new ZKEvmWorldState(EMPTY_TRIE_ROOT, Hash.EMPTY, new InMemoryWorldStateStorage());
     assertThat(zkEvmWorldState.getRootHash()).isEqualTo(EMPTY_TRIE_ROOT);
     zkEvmWorldState.getAccumulator().rollForward(trieLogLayer);
     zkEvmWorldState.commit(null);
@@ -215,7 +232,8 @@ public class RollingTests {
     TrieLogLayer trieLog = new TrieLogLayer();
     trieLog.addAccountChange(ACCOUNT_1, null, new TrieLogAccountValue(ZK_ACCOUNT));
 
-    ZKEvmWorldState zkEvmWorldState = new ZKEvmWorldState(EMPTY_TRIE_ROOT, Hash.EMPTY);
+    ZKEvmWorldState zkEvmWorldState =
+        new ZKEvmWorldState(EMPTY_TRIE_ROOT, Hash.EMPTY, new InMemoryWorldStateStorage());
     assertThat(zkEvmWorldState.getRootHash()).isEqualTo(EMPTY_TRIE_ROOT);
 
     // rollforward and adding an account
@@ -235,7 +253,8 @@ public class RollingTests {
     trieLog.addAccountChange(ACCOUNT_1, null, new TrieLogAccountValue(ZK_ACCOUNT));
     trieLog.addAccountChange(ACCOUNT_2, null, new TrieLogAccountValue(ZK_ACCOUNT_2));
 
-    ZKEvmWorldState zkEvmWorldState = new ZKEvmWorldState(EMPTY_TRIE_ROOT, Hash.EMPTY);
+    ZKEvmWorldState zkEvmWorldState =
+        new ZKEvmWorldState(EMPTY_TRIE_ROOT, Hash.EMPTY, new InMemoryWorldStateStorage());
     assertThat(zkEvmWorldState.getRootHash()).isEqualTo(EMPTY_TRIE_ROOT);
 
     // rollforward and adding an account
@@ -262,7 +281,8 @@ public class RollingTests {
         ACCOUNT_1, new TrieLogAccountValue(ZK_ACCOUNT), new TrieLogAccountValue(account1));
 
     // roll forward account creation
-    ZKEvmWorldState zkEvmWorldState = new ZKEvmWorldState(EMPTY_TRIE_ROOT, Hash.EMPTY);
+    ZKEvmWorldState zkEvmWorldState =
+        new ZKEvmWorldState(EMPTY_TRIE_ROOT, Hash.EMPTY, new InMemoryWorldStateStorage());
     assertThat(zkEvmWorldState.getRootHash()).isEqualTo(EMPTY_TRIE_ROOT);
     zkEvmWorldState.getAccumulator().rollForward(trieLogLayer);
     zkEvmWorldState.commit(null);
@@ -295,7 +315,8 @@ public class RollingTests {
     trieLogLayer2.addAccountChange(ACCOUNT_1, new TrieLogAccountValue(ZK_ACCOUNT), null);
 
     // roll forward account creation
-    ZKEvmWorldState zkEvmWorldState = new ZKEvmWorldState(EMPTY_TRIE_ROOT, Hash.EMPTY);
+    ZKEvmWorldState zkEvmWorldState =
+        new ZKEvmWorldState(EMPTY_TRIE_ROOT, Hash.EMPTY, new InMemoryWorldStateStorage());
     assertThat(zkEvmWorldState.getRootHash()).isEqualTo(EMPTY_TRIE_ROOT);
     zkEvmWorldState.getAccumulator().rollForward(trieLogLayer);
     zkEvmWorldState.commit(null);
@@ -326,7 +347,8 @@ public class RollingTests {
     final FullBytes storageKey = new FullBytes(UInt256.valueOf(14));
     final Hash storageKeyHash = HashProvider.mimc(storageKey);
     final FullBytes storageValue = new FullBytes(UInt256.valueOf(12));
-    final ZKTrie contractStorageTrie = ZKTrie.createInMemoryTrie();
+    final ZKTrie contractStorageTrie =
+        ZKTrie.createTrie(new WorldStateStorageProxy(new InMemoryWorldStateStorage()));
     contractStorageTrie.putAndProve(storageKeyHash, storageKey, storageValue);
     contract.setStorageRoot(Hash.wrap(contractStorageTrie.getTopRootHash()));
 
@@ -355,7 +377,8 @@ public class RollingTests {
         null);
 
     // roll forward account creation
-    ZKEvmWorldState zkEvmWorldState = new ZKEvmWorldState(EMPTY_TRIE_ROOT, Hash.EMPTY);
+    ZKEvmWorldState zkEvmWorldState =
+        new ZKEvmWorldState(EMPTY_TRIE_ROOT, Hash.EMPTY, new InMemoryWorldStateStorage());
     assertThat(zkEvmWorldState.getRootHash()).isEqualTo(EMPTY_TRIE_ROOT);
     zkEvmWorldState.getAccumulator().rollForward(trieLogLayer);
     zkEvmWorldState.commit(null);
@@ -385,7 +408,8 @@ public class RollingTests {
     final FullBytes storageKey = new FullBytes(UInt256.valueOf(14));
     final Hash storageKeyHash = HashProvider.mimc(storageKey);
     final FullBytes storageValue = new FullBytes(UInt256.valueOf(12));
-    final ZKTrie contractStorageTrie = ZKTrie.createInMemoryTrie();
+    final ZKTrie contractStorageTrie =
+        ZKTrie.createTrie(new WorldStateStorageProxy(new InMemoryWorldStateStorage()));
     contractStorageTrie.putAndProve(storageKeyHash, storageKey, storageValue);
     contract.setStorageRoot(Hash.wrap(contractStorageTrie.getTopRootHash()));
 
@@ -415,7 +439,8 @@ public class RollingTests {
         UInt256.fromBytes(updatedStorageValue.getOriginalValue()));
 
     // roll forward account creation
-    ZKEvmWorldState zkEvmWorldState = new ZKEvmWorldState(EMPTY_TRIE_ROOT, Hash.EMPTY);
+    ZKEvmWorldState zkEvmWorldState =
+        new ZKEvmWorldState(EMPTY_TRIE_ROOT, Hash.EMPTY, new InMemoryWorldStateStorage());
     assertThat(zkEvmWorldState.getRootHash()).isEqualTo(EMPTY_TRIE_ROOT);
     zkEvmWorldState.getAccumulator().rollForward(trieLogLayer);
     zkEvmWorldState.commit(null);

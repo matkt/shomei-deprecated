@@ -74,6 +74,7 @@ public class RocksDBSegmentedStorage implements AutoCloseable {
   private final AtomicBoolean closed = new AtomicBoolean(false);
   // TODO: concurrent hashmap and move truncation into outer class
   private final Map<RocksDBSegmentIdentifier, RocksDBSegment> columnHandlesByName;
+
   private final WriteOptions tryDeleteOptions =
       new WriteOptions().setNoSlowdown(true).setIgnoreMissingColumnFamilies(true);
 
@@ -187,7 +188,7 @@ public class RocksDBSegmentedStorage implements AutoCloseable {
     return new RocksDBKeyValueSegment(columnHandlesByName.get(segmentId));
   }
 
-  class RocksDBSegment {
+  protected class RocksDBSegment {
 
     private final AtomicReference<ColumnFamilyHandle> reference;
 

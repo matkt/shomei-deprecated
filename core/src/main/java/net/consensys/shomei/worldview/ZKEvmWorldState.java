@@ -15,22 +15,17 @@ package net.consensys.shomei.worldview;
 
 import net.consensys.shomei.ZkAccount;
 import net.consensys.shomei.ZkValue;
+import net.consensys.shomei.storage.WorldStateStorage;
+import net.consensys.shomei.storage.WorldStateStorageProxy;
 import net.consensys.shomei.trie.StoredSparseMerkleTrie;
 import net.consensys.shomei.trie.ZKTrie;
-import net.consensys.shomei.trie.storage.InMemoryLeafIndexManager;
-import net.consensys.shomei.trie.storage.LeafIndexManager;
 import net.consensys.shomei.util.bytes.FullBytes;
 
-import java.util.Comparator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.TreeMap;
-import java.util.concurrent.ConcurrentHashMap;
 
 import com.google.common.annotations.VisibleForTesting;
-import org.apache.tuweni.bytes.Bytes;
-import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Hash;
@@ -46,15 +41,14 @@ public class ZKEvmWorldState {
   private Hash rootHash;
   private Hash blockHash;
 
-  // TODO change with rocksdb
+  private final WorldStateStorage zkEvmWorldStateStorage;
 
-  final TreeMap<Bytes, Long> flatDB = new TreeMap<>(Comparator.naturalOrder());
-  private final Map<Bytes, Bytes> storage = new ConcurrentHashMap<>();
-
-  public ZKEvmWorldState(final Hash rootHash, final Hash blockHash) {
+  public ZKEvmWorldState(
+      final Hash rootHash, final Hash blockHash, final WorldStateStorage zkEvmWorldStateStorage) {
     this.rootHash = rootHash; // read from database
     this.blockHash = blockHash; // read from database
     this.accumulator = new ZkEvmWorldStateUpdateAccumulator();
+    this.zkEvmWorldStateStorage = zkEvmWorldStateStorage;
   }
 
   public void commit(final BlockHeader blockHeader) {
@@ -180,46 +174,21 @@ public class ZKEvmWorldState {
   }
 
   private ZKTrie loadAccountTrie() {
-    final InMemoryLeafIndexManager leafIndexManager = new InMemoryLeafIndexManager(flatDB);
     if (rootHash.equals(StoredSparseMerkleTrie.EMPTY_TRIE_ROOT)) {
-      return ZKTrie.createTrie(
-          leafIndexManager,
-          (location, hash) -> Optional.ofNullable(storage.get(hash)),
-          (location, hash, value) -> storage.put(hash, value));
+      return ZKTrie.createTrie(new WorldStateStorageProxy(zkEvmWorldStateStorage));
     } else {
-      return ZKTrie.loadTrie(
-          rootHash,
-          leafIndexManager,
-          (location, hash) -> Optional.ofNullable(storage.get(hash)),
-          (location, hash, value) -> storage.put(hash, value));
+      return ZKTrie.loadTrie(rootHash, new WorldStateStorageProxy(zkEvmWorldStateStorage));
     }
   }
 
   private ZKTrie loadStorageTrie(final ZkValue<Address, ZkAccount> zkAccount) {
-    final LeafIndexManager leafIndexManager =
-        new InMemoryLeafIndexManager(flatDB) {
-          @Override
-          public Bytes wrapKey(final Hash key) {
-            return Bytes.concatenate(zkAccount.getKey(), key);
-          }
-
-          @Override
-          public Hash unwrapKey(final Bytes key) {
-            return Hash.wrap(Bytes32.wrap(key.slice(zkAccount.getKey().size())));
-          }
-        };
+    final WorldStateStorageProxy storageAdapter =
+        new WorldStateStorageProxy(Optional.of(zkAccount.getKey()), zkEvmWorldStateStorage);
     if (zkAccount.getPrior() == null
         || zkAccount.getPrior().getStorageRoot().equals(StoredSparseMerkleTrie.EMPTY_TRIE_ROOT)) {
-      return ZKTrie.createTrie(
-          leafIndexManager,
-          (location, hash) -> Optional.ofNullable(storage.get(hash)),
-          (location, hash, value) -> storage.put(hash, value));
+      return ZKTrie.createTrie(storageAdapter);
     } else {
-      return ZKTrie.loadTrie(
-          zkAccount.getPrior().getStorageRoot(),
-          leafIndexManager,
-          (location, hash) -> Optional.ofNullable(storage.get(hash)),
-          (location, hash, value) -> storage.put(hash, value));
+      return ZKTrie.loadTrie(zkAccount.getPrior().getStorageRoot(), storageAdapter);
     }
   }
 }

@@ -11,15 +11,16 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package services.storage;
+package net.consensys.shomei.storage;
 
-import java.util.Iterator;
+import net.consensys.shomei.trie.storage.StorageProxy;
 
-public interface BidirectionalIterator<T> extends Iterator<T>, AutoCloseable {
+import java.util.Optional;
 
-  T current();
+import org.apache.tuweni.bytes.Bytes;
+import org.hyperledger.besu.datatypes.Hash;
 
-  boolean hasPrevious();
+public interface WorldStateStorage extends StorageProxy {
 
-  T previous();
+  Optional<Bytes> getTrieLog(final Hash blockHash);
 }

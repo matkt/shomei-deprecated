@@ -11,15 +11,19 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package services.storage;
+package net.consensys.shomei.storage;
 
-import java.util.Iterator;
+import net.consensys.shomei.trie.storage.InMemoryStorage;
 
-public interface BidirectionalIterator<T> extends Iterator<T>, AutoCloseable {
+import java.util.Optional;
 
-  T current();
+import org.apache.tuweni.bytes.Bytes;
+import org.hyperledger.besu.datatypes.Hash;
 
-  boolean hasPrevious();
+public class InMemoryWorldStateStorage extends InMemoryStorage implements WorldStateStorage {
 
-  T previous();
+  @Override
+  public Optional<Bytes> getTrieLog(final Hash blockHash) {
+    throw new UnsupportedOperationException("not implemented yet");
+  }
 }

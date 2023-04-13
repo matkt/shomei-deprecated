@@ -16,48 +16,58 @@ package net.consensys.shomei.trie.storage;
 import java.util.Map;
 import java.util.Optional;
 
-import org.hyperledger.besu.datatypes.Hash;
+import org.apache.tuweni.bytes.Bytes;
 
-public interface LeafIndexManager {
+public interface StorageProxy {
 
-  Optional<Long> getKeyIndex(Hash key);
+  Optional<Long> getLeafIndex(final Bytes hkey);
 
-  Range getNearestKeys(Hash key);
+  Range getNearestKeys(final Bytes hkey);
 
-  void putKeyIndex(Hash key, Long index);
+  Optional<Bytes> getTrieNode(final Bytes location, final Bytes nodeHash);
 
-  void removeKeyIndex(Hash key);
+  Updater updater();
 
-  void commit();
+  interface Updater {
+
+    void putKeyIndex(final Bytes key, final Long index);
+
+    void putTrieNode(final Bytes location, final Bytes nodeHash, final Bytes value);
+
+    void removeKeyIndex(final Bytes key);
+  }
 
   class Range {
-    private final Map.Entry<Hash, Long> leftNode;
-
-    private final Optional<Map.Entry<Hash, Long>> centerNode;
-    private final Map.Entry<Hash, Long> rightNode;
+    private final Map.Entry<Bytes, Long> leftNode;
+    private final Optional<Map.Entry<Bytes, Long>> centerNode;
+    private final Map.Entry<Bytes, Long> rightNode;
 
     public Range(
-        final Map.Entry<Hash, Long> leftNode,
-        final Optional<Map.Entry<Hash, Long>> centerNode,
-        final Map.Entry<Hash, Long> rightNode) {
+        final Map.Entry<Bytes, Long> leftNode,
+        final Optional<Map.Entry<Bytes, Long>> centerNode,
+        final Map.Entry<Bytes, Long> rightNode) {
       this.leftNode = leftNode;
       this.centerNode = centerNode;
       this.rightNode = rightNode;
     }
 
-    public Range(final Map.Entry<Hash, Long> leftNode, final Map.Entry<Hash, Long> rightNode) {
+    public Range(final Map.Entry<Bytes, Long> leftNode, final Map.Entry<Bytes, Long> rightNode) {
       this(leftNode, Optional.empty(), rightNode);
     }
 
-    public Hash getLeftNodeKey() {
+    public Optional<Map.Entry<Bytes, Long>> getCenterNode() {
+      return centerNode;
+    }
+
+    public Bytes getLeftNodeKey() {
       return leftNode.getKey();
     }
 
-    public Optional<Hash> getCenterNodeKey() {
+    public Optional<Bytes> getCenterNodeKey() {
       return centerNode.map(Map.Entry::getKey);
     }
 
-    public Hash getRightNodeKey() {
+    public Bytes getRightNodeKey() {
       return rightNode.getKey();
     }
 

@@ -18,7 +18,7 @@ dependencies {
 
     implementation 'org.hyperledger.besu:besu-datatypes'
     implementation 'org.hyperledger.besu.internal:trie'
-    implementation 'org.hyperledger.besu.internal:crypto'
+    implementation 'org.hyperledger.besu.internal:algorithms'
     implementation 'org.hyperledger.besu.internal:rlp'
 
     implementation 'com.google.guava:guava'

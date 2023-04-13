@@ -29,7 +29,7 @@ import org.slf4j.LoggerFactory;
 import services.storage.BidirectionalIterator;
 import services.storage.KeyValueStorage.KeyValuePair;
 
-public class RocksDBIterator implements BidirectionalIterator<KeyValuePair>, AutoCloseable {
+public class RocksDBIterator implements BidirectionalIterator<KeyValuePair> {
   private static final Logger LOG = LoggerFactory.getLogger(RocksDBIterator.class);
 
   private final RocksIterator rocksIterator;
@@ -41,6 +41,16 @@ public class RocksDBIterator implements BidirectionalIterator<KeyValuePair>, Aut
 
   public static RocksDBIterator create(final RocksIterator rocksIterator) {
     return new RocksDBIterator(rocksIterator);
+  }
+
+  @Override
+  public KeyValuePair current() {
+    assertOpen();
+    checkStatus();
+    if (!hasNext()) {
+      throw new NoSuchElementException();
+    }
+    return new KeyValuePair(rocksIterator.key(), rocksIterator.value());
   }
 
   @Override
