@@ -167,6 +167,30 @@ public class ZkAccount {
   }
 
   @Override
+  public boolean equals(final Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    ZkAccount zkAccount = (ZkAccount) o;
+    return codeSize == zkAccount.codeSize
+        && nonce == zkAccount.nonce
+        && Objects.equals(address, zkAccount.address)
+        && Objects.equals(keccakCodeHash, zkAccount.keccakCodeHash)
+        && Objects.equals(mimcCodeHash, zkAccount.mimcCodeHash)
+        && Objects.equals(balance, zkAccount.balance)
+        && Objects.equals(storageRoot, zkAccount.storageRoot);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(
+        hkey, address, keccakCodeHash, mimcCodeHash, codeSize, nonce, balance, storageRoot);
+  }
+
+  @Override
   public String toString() {
     return "ZkAccount{"
         + ", hkey="

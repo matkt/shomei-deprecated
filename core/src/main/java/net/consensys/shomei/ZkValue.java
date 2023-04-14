@@ -64,6 +64,10 @@ public class ZkValue<T> {
     return this;
   }
 
+  public boolean isCleared() {
+    return isCleared;
+  }
+
   public boolean isUnchanged() {
     return Objects.equals(updated, prior);
   }

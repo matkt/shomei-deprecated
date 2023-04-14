@@ -14,11 +14,14 @@
 package net.consensys.shomei.storage;
 
 import net.consensys.shomei.trie.storage.StorageProxy;
+import net.consensys.shomei.trielog.AccountKey;
 
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
 
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.primitives.Longs;
 import org.apache.tuweni.bytes.Bytes;
 
 public class WorldStateStorageProxy implements StorageProxy {
@@ -30,21 +33,37 @@ public class WorldStateStorageProxy implements StorageProxy {
 
   private final Optional<StorageProxy.Updater> updater;
 
+  public static WorldStateStorageProxy createAccountProxy(
+      final WorldStateStorage worldStateStorage, final StorageProxy.Updater updater) {
+    return new WorldStateStorageProxy(Optional.empty(), worldStateStorage, updater);
+  }
+
+  public static WorldStateStorageProxy createStorageProxy(
+      final AccountKey accountKey,
+      final WorldStateStorage worldStateStorage,
+      final StorageProxy.Updater updater) {
+    return new WorldStateStorageProxy(
+        Optional.of(
+            worldStateStorage
+                .getLeafIndex(accountKey.accountHash())
+                .map(aLong -> Bytes.wrap(Longs.toByteArray(aLong)))
+                .orElseThrow()),
+        worldStateStorage,
+        updater);
+  }
+
+  @VisibleForTesting
   public WorldStateStorageProxy(final WorldStateStorage worldStateStorage) {
     this(Optional.empty(), worldStateStorage, null);
   }
 
+  @VisibleForTesting
   public WorldStateStorageProxy(
       final Optional<Bytes> keyPrefix, final WorldStateStorage worldStateStorage) {
     this(keyPrefix, worldStateStorage, null);
   }
 
-  public WorldStateStorageProxy(
-      final WorldStateStorage worldStateStorage, final StorageProxy.Updater updater) {
-    this(Optional.empty(), worldStateStorage, updater);
-  }
-
-  public WorldStateStorageProxy(
+  private WorldStateStorageProxy(
       final Optional<Bytes> keyPrefix,
       final WorldStateStorage worldStateStorage,
       final StorageProxy.Updater updater) {
