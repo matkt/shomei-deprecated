@@ -22,6 +22,8 @@ import net.consensys.shomei.storage.WorldStateStorageProxy;
 import net.consensys.shomei.trie.ZKTrie;
 import net.consensys.shomei.trie.storage.StorageProxy;
 import net.consensys.shomei.trie.storage.StorageProxy.Updater;
+import net.consensys.shomei.trielog.AccountKey;
+import net.consensys.shomei.trielog.StorageSlotKey;
 import net.consensys.shomei.util.bytes.FullBytes;
 
 import java.util.Map;
@@ -30,7 +32,6 @@ import java.util.Optional;
 
 import com.google.common.annotations.VisibleForTesting;
 import org.apache.tuweni.units.bigints.UInt256;
-import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Hash;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -82,15 +83,15 @@ public class ZKEvmWorldState {
         .sorted(Map.Entry.comparingByKey())
         .forEach(
             (entry) -> {
-              final Hash hkey = entry.getKey();
-              final ZkValue<Address, ZkAccount> accountValue = entry.getValue();
-              final Map<Hash, ZkValue<UInt256, UInt256>> storageToUpdate =
-                  accumulator.getStorageToUpdate().get(hkey);
+              final AccountKey accountKey = entry.getKey();
+              final ZkValue<ZkAccount> accountValue = entry.getValue();
+              final Map<StorageSlotKey, ZkValue<UInt256>> storageToUpdate =
+                  accumulator.getStorageToUpdate().get(accountKey);
               if (storageToUpdate != null) {
                 // load the account storage trie
                 final WorldStateStorageProxy storageAdapter =
                     new WorldStateStorageProxy(
-                        Optional.of(accountValue.getKey()), zkEvmWorldStateStorage, updater);
+                        Optional.of(accountKey.accountHash()), zkEvmWorldStateStorage, updater);
                 final ZKTrie zkStorageTrie = loadStorageTrie(accountValue, storageAdapter);
                 final Hash targetStorageRootHash =
                     Optional.ofNullable(accountValue.getUpdated())
@@ -100,21 +101,22 @@ public class ZKEvmWorldState {
                     .sorted(Map.Entry.comparingByKey())
                     .forEach(
                         (storageEntry) -> {
-                          final Hash slotKeyHash = storageEntry.getKey();
-                          final ZkValue<UInt256, UInt256> storageValue = storageEntry.getValue();
+                          final StorageSlotKey storageSlotKey = storageEntry.getKey();
+                          final ZkValue<UInt256> storageValue = storageEntry.getValue();
                           // check read and read zero for rollfoward
                           if (storageValue.isRollforward()) {
                             if (storageValue.getPrior() == null
                                 && storageValue.getUpdated() == null) {
                               // read zero
                               zkStorageTrie.readZeroAndProve(
-                                  slotKeyHash, new FullBytes(storageValue.getKey()));
+                                  storageSlotKey.slotHash(),
+                                  new FullBytes(storageSlotKey.slotKey().orElseThrow()));
                             } else if (Objects.equals(
                                 storageValue.getPrior(), storageValue.getUpdated())) {
                               // read non zero
                               zkAccountTrie.readAndProve(
-                                  slotKeyHash,
-                                  new FullBytes(storageValue.getKey()),
+                                  storageSlotKey.slotHash(),
+                                  new FullBytes(storageSlotKey.slotKey().orElseThrow()),
                                   new FullBytes(storageValue.getPrior()));
                             }
                           }
@@ -126,11 +128,12 @@ public class ZKEvmWorldState {
                           }
                           if (storageValue.getUpdated() == null) {
                             zkStorageTrie.removeAndProve(
-                                slotKeyHash, new FullBytes(storageValue.getKey()));
+                                storageSlotKey.slotHash(),
+                                new FullBytes(storageSlotKey.slotKey().orElseThrow()));
                           } else {
                             zkStorageTrie.putAndProve(
-                                slotKeyHash,
-                                new FullBytes(storageValue.getKey()),
+                                storageSlotKey.slotHash(),
+                                new FullBytes(storageSlotKey.slotKey().orElseThrow()),
                                 storageValue.getPrior() == null
                                     ? null
                                     : new FullBytes(storageValue.getPrior()),
@@ -148,11 +151,13 @@ public class ZKEvmWorldState {
               if (accountValue.isRollforward()) {
                 if (accountValue.getPrior() == null && accountValue.getUpdated() == null) {
                   // read zero
-                  zkAccountTrie.readZeroAndProve(hkey, accountValue.getKey());
+                  zkAccountTrie.readZeroAndProve(accountKey.accountHash(), accountKey.address());
                 } else if (Objects.equals(accountValue.getPrior(), accountValue.getUpdated())) {
                   // read non zero
                   zkAccountTrie.readAndProve(
-                      hkey, accountValue.getKey(), accountValue.getPrior().serializeAccount());
+                      accountKey.accountHash(),
+                      accountKey.address(),
+                      accountValue.getPrior().serializeAccount());
                 }
               }
               // check remove, update and insert
@@ -162,11 +167,11 @@ public class ZKEvmWorldState {
               }
               if (accountValue.getUpdated() == null) {
                 zkAccountTrie.removeAndProve(
-                    accountValue.getPrior().getHkey(), accountValue.getKey());
+                    accountValue.getPrior().getHkey(), accountKey.address());
               } else {
                 zkAccountTrie.putAndProve(
                     accountValue.getUpdated().getHkey(),
-                    accountValue.getKey(),
+                    accountKey.address(),
                     accountValue.getPrior() == null
                         ? null
                         : accountValue.getPrior().serializeAccount(),
@@ -203,7 +208,7 @@ public class ZKEvmWorldState {
   }
 
   private ZKTrie loadStorageTrie(
-      final ZkValue<Address, ZkAccount> zkAccount, final StorageProxy storageProxy) {
+      final ZkValue<ZkAccount> zkAccount, final StorageProxy storageProxy) {
     if (zkAccount.getPrior() == null
         || zkAccount.getPrior().getStorageRoot().equals(EMPTY_TRIE_ROOT)) {
       return ZKTrie.createTrie(storageProxy);

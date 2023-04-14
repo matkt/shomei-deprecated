@@ -18,34 +18,26 @@ import java.util.function.BiConsumer;
 
 import org.hyperledger.besu.ethereum.rlp.RLPOutput;
 
-public class ZkValue<U, T> {
-
-  private final U key;
+public class ZkValue<T> {
 
   private T prior;
   private T updated;
 
   @SuppressWarnings({"FieldCanBeLocal", "unused"}) // TODO manage self destruct
-  private boolean hasBeenDestroyed; // it was destroyed between the two states
+  private boolean isCleared; // it was destroyed between the two states
 
   private boolean isRollforward;
 
-  public ZkValue(final U key, final T prior, final T updated) {
-    this.key = key;
+  public ZkValue(final T prior, final T updated) {
     this.prior = prior;
     this.updated = updated;
     this.isRollforward = false;
   }
 
-  public ZkValue(final U key, final T prior, final T updated, final boolean hasBeenDestroyed) {
-    this.key = key;
+  public ZkValue(final T prior, final T updated, final boolean isCleared) {
     this.prior = prior;
     this.updated = updated;
-    this.hasBeenDestroyed = hasBeenDestroyed;
-  }
-
-  public U getKey() {
-    return key;
+    this.isCleared = isCleared;
   }
 
   public T getPrior() {
@@ -56,14 +48,19 @@ public class ZkValue<U, T> {
     return updated;
   }
 
-  public ZkValue<U, T> setPrior(final T prior) {
+  public ZkValue<T> setPrior(final T prior) {
     this.prior = prior;
     return this;
   }
 
-  public ZkValue<U, T> setUpdated(final T updated) {
+  public ZkValue<T> setUpdated(final T updated) {
     this.isRollforward = updated == null;
     this.updated = updated;
+    return this;
+  }
+
+  public ZkValue<T> setCleared(final boolean cleared) {
+    this.isCleared = cleared;
     return this;
   }
 
@@ -96,19 +93,5 @@ public class ZkValue<U, T> {
     } else {
       writer.accept(output, updated);
     }
-  }
-
-  @Override
-  public String toString() {
-    return "ZkValue{"
-        + "key="
-        + key
-        + ", prior="
-        + prior
-        + ", updated="
-        + updated
-        + ", isRollforward="
-        + isRollforward
-        + '}';
   }
 }

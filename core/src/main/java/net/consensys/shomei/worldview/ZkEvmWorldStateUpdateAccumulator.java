@@ -15,6 +15,8 @@ package net.consensys.shomei.worldview;
 
 import net.consensys.shomei.ZkAccount;
 import net.consensys.shomei.ZkValue;
+import net.consensys.shomei.trielog.AccountKey;
+import net.consensys.shomei.trielog.StorageSlotKey;
 import net.consensys.shomei.trielog.TrieLogAccountValue;
 import net.consensys.shomei.trielog.TrieLogLayer;
 
@@ -23,14 +25,12 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.tuweni.units.bigints.UInt256;
-import org.hyperledger.besu.datatypes.Address;
-import org.hyperledger.besu.datatypes.Hash;
 
 public class ZkEvmWorldStateUpdateAccumulator {
 
-  private final Map<Hash, ZkValue<Address, ZkAccount>> accountsToUpdate = new ConcurrentHashMap<>();
+  private final Map<AccountKey, ZkValue<ZkAccount>> accountsToUpdate = new ConcurrentHashMap<>();
 
-  private final Map<Hash, Map<Hash, ZkValue<UInt256, UInt256>>> storageToUpdate =
+  private final Map<AccountKey, Map<StorageSlotKey, ZkValue<UInt256>>> storageToUpdate =
       new ConcurrentHashMap<>();
 
   private boolean isAccumulatorStateChanged;
@@ -39,11 +39,11 @@ public class ZkEvmWorldStateUpdateAccumulator {
     this.isAccumulatorStateChanged = false;
   }
 
-  public Map<Hash, ZkValue<Address, ZkAccount>> getAccountsToUpdate() {
+  public Map<AccountKey, ZkValue<ZkAccount>> getAccountsToUpdate() {
     return accountsToUpdate;
   }
 
-  public Map<Hash, Map<Hash, ZkValue<UInt256, UInt256>>> getStorageToUpdate() {
+  public Map<AccountKey, Map<StorageSlotKey, ZkValue<UInt256>>> getStorageToUpdate() {
     return storageToUpdate;
   }
 
@@ -54,7 +54,6 @@ public class ZkEvmWorldStateUpdateAccumulator {
             entry ->
                 rollAccountChange(
                     entry.getKey(),
-                    entry.getValue().getKey(),
                     entry.getValue().getPrior(),
                     entry.getValue().getUpdated(),
                     true));
@@ -65,11 +64,10 @@ public class ZkEvmWorldStateUpdateAccumulator {
                 entry
                     .getValue()
                     .forEach(
-                        (storageHash, value) ->
+                        (storageSlotKey, value) ->
                             rollStorageChange(
                                 entry.getKey(),
-                                storageHash,
-                                value.getKey(),
+                                storageSlotKey,
                                 value.getPrior(),
                                 value.getUpdated(),
                                 true)));
@@ -82,7 +80,6 @@ public class ZkEvmWorldStateUpdateAccumulator {
             entry ->
                 rollAccountChange(
                     entry.getKey(),
-                    entry.getValue().getKey(),
                     entry.getValue().getUpdated(),
                     entry.getValue().getPrior(),
                     false));
@@ -93,19 +90,17 @@ public class ZkEvmWorldStateUpdateAccumulator {
                 entry
                     .getValue()
                     .forEach(
-                        (slotHash, value) ->
+                        (storageSlotKey, value) ->
                             rollStorageChange(
                                 entry.getKey(),
-                                slotHash,
-                                value.getKey(),
+                                storageSlotKey,
                                 value.getUpdated(),
                                 value.getPrior(),
                                 false)));
   }
 
   private void rollAccountChange(
-      final Hash hkey,
-      final Address address,
+      final AccountKey accountKey,
       final TrieLogAccountValue expectedValue,
       final TrieLogAccountValue replacementValue,
       final boolean isRollforward) {
@@ -113,49 +108,53 @@ public class ZkEvmWorldStateUpdateAccumulator {
       // not needed for a rollback
       return;
     }
-    ZkValue<Address, ZkAccount> accountValue = accountsToUpdate.get(hkey);
+    ZkValue<ZkAccount> accountValue = accountsToUpdate.get(accountKey);
     if (accountValue == null && expectedValue != null) {
       accountValue =
           accountsToUpdate.compute(
-              hkey,
+              accountKey,
               (__, zkAccountZkValue) ->
                   new ZkValue<>(
-                      address,
-                      new ZkAccount(hkey, address, expectedValue),
-                      new ZkAccount(hkey, address, expectedValue)));
+                      new ZkAccount(accountKey.accountHash(), accountKey.address(), expectedValue),
+                      new ZkAccount(
+                          accountKey.accountHash(), accountKey.address(), expectedValue)));
     }
     if (accountValue == null) {
       accountValue =
           accountsToUpdate.compute(
-              hkey,
+              accountKey,
               (__, zkAccountZkValue) ->
-                  new ZkValue<>(address, null, new ZkAccount(hkey, address, replacementValue)));
+                  new ZkValue<>(
+                      null,
+                      new ZkAccount(
+                          accountKey.accountHash(), accountKey.address(), replacementValue)));
     } else {
       if (expectedValue == null) {
         if (accountValue.getUpdated() != null) {
           throw new IllegalStateException(
               String.format(
-                  "Expected to create account, but the account exists.  Address=%s", hkey));
+                  "Expected to create account, but the account exists.  Address=%s",
+                  accountKey.address()));
         }
       } else {
         ZkAccount.assertCloseEnoughForDiffing(
             accountValue.getUpdated(),
             expectedValue,
-            "Address=" + hkey + " Prior Value in Rolling Change");
+            "Address=" + accountKey.address() + " Prior Value in Rolling Change");
       }
       if (replacementValue == null) {
         accountValue.setUpdated(null);
       } else {
-        accountValue.setUpdated(new ZkAccount(hkey, address, replacementValue));
+        accountValue.setUpdated(
+            new ZkAccount(accountKey.accountHash(), accountKey.address(), replacementValue));
       }
     }
     accountValue.setRollforward(isRollforward);
   }
 
   private void rollStorageChange(
-      final Hash hkey,
-      final Hash storageHash,
-      final UInt256 storageKey,
+      final AccountKey accountKey,
+      final StorageSlotKey storageSlotKey,
       final UInt256 expectedValue,
       final UInt256 replacementValue,
       final boolean isRollforward) {
@@ -168,23 +167,22 @@ public class ZkEvmWorldStateUpdateAccumulator {
       // not needed for a rollback
       return;
     }
-    final Map<Hash, ZkValue<UInt256, UInt256>> storageMap = storageToUpdate.get(hkey);
-    ZkValue<UInt256, UInt256> slotValue = storageMap == null ? null : storageMap.get(storageHash);
+    final Map<StorageSlotKey, ZkValue<UInt256>> storageMap = storageToUpdate.get(accountKey);
+    ZkValue<UInt256> slotValue = storageMap == null ? null : storageMap.get(storageSlotKey);
     if (slotValue == null && expectedValue != null) {
       slotValue =
           new ZkValue<>(
-              storageKey,
               expectedValue.isZero() ? null : expectedValue,
               expectedValue.isZero() ? null : expectedValue);
       storageToUpdate
-          .computeIfAbsent(hkey, slotHash -> new ConcurrentHashMap<>())
-          .put(storageHash, slotValue);
+          .computeIfAbsent(accountKey, slotHash -> new ConcurrentHashMap<>())
+          .put(storageSlotKey, slotValue);
     }
     if (slotValue == null) {
-      slotValue = new ZkValue<>(storageKey, null, replacementValue);
+      slotValue = new ZkValue<>(null, replacementValue);
       storageToUpdate
-          .computeIfAbsent(hkey, slotHash -> new ConcurrentHashMap<>())
-          .put(storageHash, slotValue);
+          .computeIfAbsent(accountKey, slotHash -> new ConcurrentHashMap<>())
+          .put(storageSlotKey, slotValue);
     } else {
       final UInt256 existingSlotValue = slotValue.getUpdated();
       if ((expectedValue == null || expectedValue.isZero())
@@ -193,14 +191,14 @@ public class ZkEvmWorldStateUpdateAccumulator {
         throw new IllegalStateException(
             String.format(
                 "Expected to create slot, but the slot exists. Account=%s SlotHash=%s expectedValue=%s existingValue=%s",
-                hkey, storageHash, expectedValue, existingSlotValue));
+                accountKey.address(), storageSlotKey.slotHash(), expectedValue, existingSlotValue));
       }
       if (!isSlotEquals(expectedValue, existingSlotValue)) {
         throw new IllegalStateException(
             String.format(
                 "Old value of slot does not match expected value. Account=%s SlotHash=%s Expected=%s Actual=%s",
-                hkey,
-                storageHash,
+                accountKey.address(),
+                storageSlotKey.slotHash(),
                 expectedValue == null ? "null" : expectedValue.toShortHexString(),
                 existingSlotValue == null ? "null" : existingSlotValue.toShortHexString()));
       }

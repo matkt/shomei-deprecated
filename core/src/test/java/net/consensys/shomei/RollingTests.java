@@ -22,6 +22,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import net.consensys.shomei.storage.InMemoryWorldStateStorage;
 import net.consensys.shomei.storage.WorldStateStorageProxy;
 import net.consensys.shomei.trie.ZKTrie;
+import net.consensys.shomei.trielog.AccountKey;
+import net.consensys.shomei.trielog.ShomeiTrieLogLayer;
 import net.consensys.shomei.trielog.TrieLogAccountValue;
 import net.consensys.shomei.trielog.TrieLogLayer;
 import net.consensys.shomei.util.bytes.FullBytes;
@@ -62,7 +64,7 @@ public class RollingTests {
         .isEqualTo(
             Hash.fromHexString("11aed727a707f2f1962e399bd4787153ba0e69b7224e8eecf4d1e4e6a8e8dafd"));
 
-    TrieLogLayer trieLogLayer = new TrieLogLayer();
+    TrieLogLayer trieLogLayer = new ShomeiTrieLogLayer();
     trieLogLayer.addAccountChange(ACCOUNT_1, null, new TrieLogAccountValue(ZK_ACCOUNT));
 
     ZKEvmWorldState zkEvmWorldState = new ZKEvmWorldState(new InMemoryWorldStateStorage());
@@ -93,10 +95,10 @@ public class RollingTests {
             Hash.fromHexString(
                 "0x271a0e17054a194a6a1e227ddfa4bec3f22c55a0b061c5056a089bba1ae24ec9"));
 
-    TrieLogLayer trieLogLayer = new TrieLogLayer();
+    TrieLogLayer trieLogLayer = new ShomeiTrieLogLayer();
     trieLogLayer.addAccountChange(ACCOUNT_1, null, new TrieLogAccountValue(ZK_ACCOUNT));
 
-    TrieLogLayer trieLogLayer2 = new TrieLogLayer();
+    TrieLogLayer trieLogLayer2 = new ShomeiTrieLogLayer();
     trieLogLayer2.addAccountChange(
         ACCOUNT_1, new TrieLogAccountValue(ZK_ACCOUNT), new TrieLogAccountValue(accountUpdated));
 
@@ -133,10 +135,10 @@ public class RollingTests {
             Hash.fromHexString(
                 "0x271a0e17054a194a6a1e227ddfa4bec3f22c55a0b061c5056a089bba1ae24ec9"));
 
-    TrieLogLayer trieLogLayer = new TrieLogLayer();
+    TrieLogLayer trieLogLayer = new ShomeiTrieLogLayer();
     trieLogLayer.addAccountChange(ACCOUNT_1, null, new TrieLogAccountValue(ZK_ACCOUNT));
 
-    TrieLogLayer trieLogLayer2 = new TrieLogLayer();
+    TrieLogLayer trieLogLayer2 = new ShomeiTrieLogLayer();
     trieLogLayer2.addAccountChange(
         ACCOUNT_1, new TrieLogAccountValue(ZK_ACCOUNT), new TrieLogAccountValue(accountUpdated));
 
@@ -164,7 +166,7 @@ public class RollingTests {
 
     Hash topRootHash = Hash.wrap(accountStateTrieOne.getTopRootHash());
 
-    TrieLogLayer trieLogLayer = new TrieLogLayer();
+    TrieLogLayer trieLogLayer = new ShomeiTrieLogLayer();
     trieLogLayer.addAccountChange(ACCOUNT_2, null, new TrieLogAccountValue(ZK_ACCOUNT_2));
     trieLogLayer.addAccountChange(ACCOUNT_1, null, new TrieLogAccountValue(ZK_ACCOUNT));
 
@@ -206,11 +208,12 @@ public class RollingTests {
 
     Hash topRootHash = Hash.wrap(accountStateTrieOne.getTopRootHash());
 
-    TrieLogLayer trieLogLayer = new TrieLogLayer();
-    trieLogLayer.addAccountChange(ACCOUNT_2, null, new TrieLogAccountValue(contract));
+    TrieLogLayer trieLogLayer = new ShomeiTrieLogLayer();
+    final AccountKey accountKey2 =
+        trieLogLayer.addAccountChange(ACCOUNT_2, null, new TrieLogAccountValue(contract));
     trieLogLayer.addAccountChange(ACCOUNT_1, null, new TrieLogAccountValue(ZK_ACCOUNT));
     trieLogLayer.addStorageChange(
-        ACCOUNT_2,
+        accountKey2,
         UInt256.fromBytes(storageKey.getOriginalValue()),
         null,
         UInt256.fromBytes(storageValue.getOriginalValue()));
@@ -224,7 +227,7 @@ public class RollingTests {
 
   @Test
   public void rollingBackwardAccountCreation() {
-    TrieLogLayer trieLog = new TrieLogLayer();
+    TrieLogLayer trieLog = new ShomeiTrieLogLayer();
     trieLog.addAccountChange(ACCOUNT_1, null, new TrieLogAccountValue(ZK_ACCOUNT));
 
     ZKEvmWorldState zkEvmWorldState = new ZKEvmWorldState(new InMemoryWorldStateStorage());
@@ -243,7 +246,7 @@ public class RollingTests {
 
   @Test
   public void rollingBackwardTwoAccountsCreation() {
-    TrieLogLayer trieLog = new TrieLogLayer();
+    TrieLogLayer trieLog = new ShomeiTrieLogLayer();
     trieLog.addAccountChange(ACCOUNT_1, null, new TrieLogAccountValue(ZK_ACCOUNT));
     trieLog.addAccountChange(ACCOUNT_2, null, new TrieLogAccountValue(ZK_ACCOUNT_2));
 
@@ -264,10 +267,10 @@ public class RollingTests {
   @Test
   public void rollingBackwardUpdatingAccount() {
 
-    TrieLogLayer trieLogLayer = new TrieLogLayer();
+    TrieLogLayer trieLogLayer = new ShomeiTrieLogLayer();
     trieLogLayer.addAccountChange(ACCOUNT_1, null, new TrieLogAccountValue(ZK_ACCOUNT));
 
-    TrieLogLayer trieLogLayer2 = new TrieLogLayer();
+    TrieLogLayer trieLogLayer2 = new ShomeiTrieLogLayer();
     MutableZkAccount account1 = new MutableZkAccount(ZK_ACCOUNT);
     account1.setBalance(Wei.of(100));
     trieLogLayer2.addAccountChange(
@@ -300,10 +303,10 @@ public class RollingTests {
   public void rollingBackwardAccountDeletion() {
 
     // roll forward
-    TrieLogLayer trieLogLayer = new TrieLogLayer();
+    TrieLogLayer trieLogLayer = new ShomeiTrieLogLayer();
     trieLogLayer.addAccountChange(ACCOUNT_1, null, new TrieLogAccountValue(ZK_ACCOUNT));
 
-    TrieLogLayer trieLogLayer2 = new TrieLogLayer();
+    TrieLogLayer trieLogLayer2 = new ShomeiTrieLogLayer();
     trieLogLayer2.addAccountChange(ACCOUNT_1, new TrieLogAccountValue(ZK_ACCOUNT), null);
 
     // roll forward account creation
@@ -343,10 +346,12 @@ public class RollingTests {
     contractStorageTrie.putAndProve(storageKeyHash, storageKey, storageValue);
     contract.setStorageRoot(Hash.wrap(contractStorageTrie.getTopRootHash()));
 
-    TrieLogLayer trieLogLayer = new TrieLogLayer();
-    trieLogLayer.addAccountChange(contract.getAddress(), null, new TrieLogAccountValue(contract));
+    TrieLogLayer trieLogLayer = new ShomeiTrieLogLayer();
+    AccountKey accountKey =
+        trieLogLayer.addAccountChange(
+            contract.getAddress(), null, new TrieLogAccountValue(contract));
     trieLogLayer.addStorageChange(
-        contract.getAddress(),
+        accountKey,
         UInt256.fromBytes(storageKey.getOriginalValue()),
         null,
         UInt256.fromBytes(storageValue.getOriginalValue()));
@@ -356,13 +361,14 @@ public class RollingTests {
     contractStorageTrie.removeAndProve(storageKeyHash, storageKey);
     updatedContract.setStorageRoot(Hash.wrap(contractStorageTrie.getTopRootHash()));
 
-    TrieLogLayer trieLogLayer2 = new TrieLogLayer();
-    trieLogLayer2.addAccountChange(
-        updatedContract.getAddress(),
-        new TrieLogAccountValue(contract),
-        new TrieLogAccountValue(updatedContract));
+    TrieLogLayer trieLogLayer2 = new ShomeiTrieLogLayer();
+    AccountKey updateAccountKey =
+        trieLogLayer2.addAccountChange(
+            updatedContract.getAddress(),
+            new TrieLogAccountValue(contract),
+            new TrieLogAccountValue(updatedContract));
     trieLogLayer2.addStorageChange(
-        updatedContract.getAddress(),
+        updateAccountKey,
         UInt256.fromBytes(storageKey.getOriginalValue()),
         UInt256.fromBytes(storageValue.getOriginalValue()),
         null);
@@ -403,10 +409,12 @@ public class RollingTests {
     contractStorageTrie.putAndProve(storageKeyHash, storageKey, storageValue);
     contract.setStorageRoot(Hash.wrap(contractStorageTrie.getTopRootHash()));
 
-    TrieLogLayer trieLogLayer = new TrieLogLayer();
-    trieLogLayer.addAccountChange(contract.getAddress(), null, new TrieLogAccountValue(contract));
+    TrieLogLayer trieLogLayer = new ShomeiTrieLogLayer();
+    AccountKey contractAccountKey =
+        trieLogLayer.addAccountChange(
+            contract.getAddress(), null, new TrieLogAccountValue(contract));
     trieLogLayer.addStorageChange(
-        contract.getAddress(),
+        contractAccountKey,
         UInt256.fromBytes(storageKey.getOriginalValue()),
         null,
         UInt256.fromBytes(storageValue.getOriginalValue()));
@@ -417,13 +425,14 @@ public class RollingTests {
     contractStorageTrie.putAndProve(storageKeyHash, storageKey, storageValue, updatedStorageValue);
     updatedContract.setStorageRoot(Hash.wrap(contractStorageTrie.getTopRootHash()));
 
-    TrieLogLayer trieLogLayer2 = new TrieLogLayer();
-    trieLogLayer2.addAccountChange(
-        updatedContract.getAddress(),
-        new TrieLogAccountValue(contract),
-        new TrieLogAccountValue(updatedContract));
+    TrieLogLayer trieLogLayer2 = new ShomeiTrieLogLayer();
+    AccountKey updatedContractAccountKey =
+        trieLogLayer2.addAccountChange(
+            updatedContract.getAddress(),
+            new TrieLogAccountValue(contract),
+            new TrieLogAccountValue(updatedContract));
     trieLogLayer2.addStorageChange(
-        contract.getAddress(),
+        updatedContractAccountKey,
         UInt256.fromBytes(storageKey.getOriginalValue()),
         UInt256.fromBytes(storageValue.getOriginalValue()),
         UInt256.fromBytes(updatedStorageValue.getOriginalValue()));
