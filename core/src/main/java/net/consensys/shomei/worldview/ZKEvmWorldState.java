@@ -119,16 +119,20 @@ public class ZKEvmWorldState {
 
     // check read and read zero for rollfoward
     if (accountValue.isRollforward()) {
-      if (accountValue.getPrior() == null && accountValue.getUpdated() == null) {
-        // read zero
-        traces.add(zkAccountTrie.readZeroAndProve(accountKey.accountHash(), accountKey.address()));
-      } else if (Objects.equals(accountValue.getPrior(), accountValue.getUpdated())) {
-        // read non zero
-        traces.add(
-            zkAccountTrie.readAndProve(
-                accountKey.accountHash(),
-                accountKey.address(),
-                accountValue.getPrior().serializeAccount()));
+      if (!accountValue
+          .isCleared()) { // not trace the read account because we will selfdetruct the contract
+        if (accountValue.getPrior() == null && accountValue.getUpdated() == null) {
+          // read zero
+          traces.add(
+              zkAccountTrie.readZeroAndProve(accountKey.accountHash(), accountKey.address()));
+        } else if (Objects.equals(accountValue.getPrior(), accountValue.getUpdated())) {
+          // read non zero
+          traces.add(
+              zkAccountTrie.readAndProve(
+                  accountKey.accountHash(),
+                  accountKey.address(),
+                  accountValue.getPrior().serializeAccount()));
+        }
       }
       // only read if the contract already exist
       if (accountValue.getPrior() != null) {
@@ -150,18 +154,20 @@ public class ZKEvmWorldState {
       }
     }
 
-    // check update and insert
-    if (!Objects.equals(accountValue.getPrior(), accountValue.getUpdated())) {
-      if (!accountValue.isRollforward()
-          && accountValue.isCleared()) { // decrement again in case of selfdestruct
-        zkAccountTrie.decrementNextFreeNode();
-        zkAccountTrie.removeAndProve(accountKey.accountHash(), accountKey.address());
-        // TODO remove all slots from storage : if we not do that the rollback will not work
-        // get index leaf from DB and delete all keys starting by HKEY+index in trie branch
-      }
+    // check selfdestruct
+    if (!accountValue.isRollforward()
+        && accountValue.isCleared()) { // decrement again in case of selfdestruct
+      zkAccountTrie.decrementNextFreeNode();
+      zkAccountTrie.removeAndProve(accountKey.accountHash(), accountKey.address());
+      // TODO remove all slots from storage : if we not do that the rollback will not work
+      // get index leaf from DB and delete all keys starting by HKEY+index in trie branch
+    }
 
+    // check update and insert
+    if (!Objects.equals(accountValue.getPrior(), accountValue.getUpdated())
+        || accountValue.isCleared()) {
       // update account or create
-      if (accountValue.getUpdated() != null || accountValue.isCleared()) {
+      if (accountValue.getUpdated() != null) {
         traces.add(
             zkAccountTrie.putAndProve(
                 accountValue.getUpdated().getHkey(),
@@ -184,20 +190,21 @@ public class ZKEvmWorldState {
       // load the account storage trie
       final WorldStateStorageProxy storageAdapter =
           createStorageProxy(accountKey, zkEvmWorldStateStorage, updater);
-      final ZKTrie zkStorageTrie = loadStorageTrie(accountValue, storageAdapter);
+      final ZKTrie zkStorageTrie = loadStorageTrie(accountValue, false, storageAdapter);
       storageToRead.entrySet().stream()
           .sorted(Map.Entry.comparingByKey())
           .forEach(
               (storageEntry) -> {
                 final StorageSlotKey storageSlotKey = storageEntry.getKey();
                 final ZkValue<UInt256> storageValue = storageEntry.getValue();
-                if (storageValue.getPrior() == null
-                    && (storageValue.getUpdated() == null || accountValue.isCleared())) {
-                  // read zero
-                  traces.add(
-                      zkStorageTrie.readZeroAndProve(
-                          storageSlotKey.slotHash(),
-                          new FullBytes(storageSlotKey.slotKey().orElseThrow())));
+                if (storageValue.getPrior() == null) {
+                  if (storageValue.getUpdated() == null) {
+                    // read zero
+                    traces.add(
+                        zkStorageTrie.readZeroAndProve(
+                            storageSlotKey.slotHash(),
+                            new FullBytes(storageSlotKey.slotKey().orElseThrow())));
+                  }
                 } else if (Objects.equals(storageValue.getPrior(), storageValue.getUpdated())
                     || accountValue.isCleared()) {
                   // read non zero
@@ -221,7 +228,8 @@ public class ZKEvmWorldState {
       // load the account storage trie
       final WorldStateStorageProxy storageAdapter =
           createStorageProxy(accountKey, zkEvmWorldStateStorage, updater);
-      final ZKTrie zkStorageTrie = loadStorageTrie(accountValue, storageAdapter);
+      final ZKTrie zkStorageTrie =
+          loadStorageTrie(accountValue, accountValue.isCleared(), storageAdapter);
       final Hash targetStorageRootHash =
           Optional.ofNullable(accountValue.getUpdated())
               .map(ZkAccount::getStorageRoot)
@@ -232,7 +240,8 @@ public class ZKEvmWorldState {
               (storageEntry) -> {
                 final StorageSlotKey storageSlotKey = storageEntry.getKey();
                 final ZkValue<UInt256> storageValue = storageEntry.getValue();
-                traces.addAll(updateSlot(storageSlotKey, storageValue, zkStorageTrie));
+                traces.addAll(
+                    updateSlot(accountValue, storageSlotKey, storageValue, zkStorageTrie));
               });
       if (!zkStorageTrie.getTopRootHash().equals(targetStorageRootHash)) {
         throw new RuntimeException("invalid trie log");
@@ -243,24 +252,27 @@ public class ZKEvmWorldState {
   }
 
   public List<Trace> updateSlot(
+      final ZkValue<ZkAccount> accountValue,
       final StorageSlotKey storageSlotKey,
       final ZkValue<UInt256> storageValue,
       final ZKTrie zkStorageTrie) {
     final List<Trace> traces = new ArrayList<>();
-    // check update and insert
-    if (!Objects.equals(storageValue.getPrior(), storageValue.getUpdated())) {
-      if (storageValue.getPrior() == null || storageValue.getUpdated() == null) {
-        if (!storageValue.isRollforward()) {
-          zkStorageTrie.decrementNextFreeNode();
-        }
-        if (storageValue.getPrior() != null) {
-          traces.add(
-              zkStorageTrie.removeAndProve(
-                  storageSlotKey.slotHash(),
-                  new FullBytes(storageSlotKey.slotKey().orElseThrow())));
-        }
-      }
 
+    // check remove needed (not needed in case of selfdestruct contract)
+    if ((storageValue.getPrior() == null || storageValue.getUpdated() == null)
+        && !accountValue.isCleared()) {
+      if (!storageValue.isRollforward()) {
+        zkStorageTrie.decrementNextFreeNode();
+      }
+      if (storageValue.getPrior() != null) {
+        traces.add(
+            zkStorageTrie.removeAndProve(
+                storageSlotKey.slotHash(), new FullBytes(storageSlotKey.slotKey().orElseThrow())));
+      }
+    }
+    // check update and insert
+    if (!Objects.equals(storageValue.getPrior(), storageValue.getUpdated())
+        || accountValue.isCleared()) {
       // update account or create
       if (storageValue.getUpdated() != null) {
         traces.add(
@@ -304,9 +316,15 @@ public class ZKEvmWorldState {
   }
 
   private ZKTrie loadStorageTrie(
-      final ZkValue<ZkAccount> zkAccount, final StorageProxy storageProxy) {
-    if (zkAccount.getPrior() == null
-        || zkAccount.getPrior().getStorageRoot().equals(EMPTY_TRIE_ROOT)) {
+      final ZkValue<ZkAccount> zkAccount,
+      final boolean forceNewTrie,
+      final StorageProxy storageProxy) {
+    if (zkAccount.getPrior() == null // new contract
+        || zkAccount
+            .getPrior()
+            .getStorageRoot()
+            .equals(EMPTY_TRIE_ROOT) // first write in the storage
+        || forceNewTrie) { // recreate contract
       return ZKTrie.createTrie(storageProxy);
     } else {
       return ZKTrie.loadTrie(zkAccount.getPrior().getStorageRoot(), storageProxy);

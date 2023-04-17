@@ -187,7 +187,7 @@ public class RollingProofTests {
     final ZKTrie contractStorageTrie =
         ZKTrie.createTrie(
             new WorldStateStorageProxy(
-                Optional.of(ZK_ACCOUNT_2.address), new InMemoryWorldStateStorage()));
+                Optional.of(contract.getAddress()), new InMemoryWorldStateStorage()));
     expectedTraces.add(contractStorageTrie.putAndProve(storageKeyHash, storageKey, storageValue));
     contract.setStorageRoot(Hash.wrap(contractStorageTrie.getTopRootHash()));
 
@@ -236,7 +236,7 @@ public class RollingProofTests {
     final ZKTrie contractStorageTrie =
         ZKTrie.createTrie(
             new WorldStateStorageProxy(
-                Optional.of(ZK_ACCOUNT_2.address), new InMemoryWorldStateStorage()));
+                Optional.of(contract.getAddress()), new InMemoryWorldStateStorage()));
     contractStorageTrie.putAndProve(storageKeyHash, storageKey, storageValue);
     contract.setStorageRoot(Hash.wrap(contractStorageTrie.getTopRootHash()));
 
@@ -283,5 +283,247 @@ public class RollingProofTests {
     zkEvmWorldState.getAccumulator().rollForward(trieLogLayer2);
     zkEvmWorldState.commit(0L, null);
     assertThat(gson.toJson(zkEvmWorldState.getLastTraces())).isEqualTo(gson.toJson(expectedTraces));
+  }
+
+  @Test
+  public void rollingForwardAccountSelfDestructWithStorage() {
+
+    ZKTrie accountStateTrieOne =
+        ZKTrie.createTrie(new WorldStateStorageProxy(new InMemoryWorldStateStorage()));
+
+    // create contract with storage
+    final MutableZkAccount contract = new MutableZkAccount(ZK_ACCOUNT_2);
+
+    final FullBytes storageKey = new FullBytes(UInt256.valueOf(14));
+    final Hash storageKeyHash = HashProvider.mimc(storageKey);
+    final FullBytes storageValue = new FullBytes(UInt256.valueOf(12));
+
+    final ZKTrie contractStorageTrie =
+        ZKTrie.createTrie(
+            new WorldStateStorageProxy(
+                Optional.of(contract.getAddress()), new InMemoryWorldStateStorage()));
+    contractStorageTrie.putAndProve(storageKeyHash, storageKey, storageValue);
+    contract.setStorageRoot(Hash.wrap(contractStorageTrie.getTopRootHash()));
+    accountStateTrieOne.putAndProve(
+        contract.getHkey(), contract.getAddress(), contract.serializeAccount());
+
+    final List<Trace> expectedTraces = new ArrayList<>();
+    // read slot before selfdestruct
+    expectedTraces.add(contractStorageTrie.readAndProve(storageKeyHash, storageKey, storageValue));
+    // selfdestruct contract
+    expectedTraces.add(
+        accountStateTrieOne.removeAndProve(contract.getHkey(), contract.getAddress()));
+    // recreate contract
+    final ZKTrie contractStorageTrieNew =
+        ZKTrie.createTrie(
+            new WorldStateStorageProxy(
+                Optional.of(contract.getAddress()), new InMemoryWorldStateStorage()));
+    expectedTraces.add(
+        contractStorageTrieNew.putAndProve(storageKeyHash, storageKey, storageValue));
+    contract.setStorageRoot(Hash.wrap(contractStorageTrieNew.getTopRootHash()));
+    expectedTraces.add(
+        expectedTraces.size() - 1,
+        accountStateTrieOne.putAndProve(
+            contract.getHkey(), contract.getAddress(), contract.serializeAccount()));
+
+    Hash topRootHash = Hash.wrap(accountStateTrieOne.getTopRootHash());
+
+    ZKEvmWorldState zkEvmWorldState = new ZKEvmWorldState(new InMemoryWorldStateStorage());
+    assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(EMPTY_TRIE_ROOT);
+
+    // create account with the rolling
+    TrieLogLayer trieLogLayer = new ShomeiTrieLogLayer();
+    AccountKey accountKey =
+        trieLogLayer.addAccountChange(ACCOUNT_2, null, new TrieLogAccountValue(contract));
+    trieLogLayer.addStorageChange(
+        accountKey,
+        UInt256.fromBytes(storageKey.getOriginalValue()),
+        null,
+        UInt256.fromBytes(storageValue.getOriginalValue()));
+    zkEvmWorldState.getAccumulator().rollForward(trieLogLayer);
+    zkEvmWorldState.commit(0L, null);
+
+    // delete and recreate the contract in the same batch
+    TrieLogLayer trieLogLayer2 = new ShomeiTrieLogLayer();
+    accountKey =
+        trieLogLayer2.addAccountChange(
+            ACCOUNT_2, new TrieLogAccountValue(contract), new TrieLogAccountValue(contract), true);
+    trieLogLayer2.addStorageChange(
+        accountKey,
+        UInt256.fromBytes(storageKey.getOriginalValue()),
+        UInt256.fromBytes(storageValue.getOriginalValue()),
+        UInt256.fromBytes(storageValue.getOriginalValue()));
+    zkEvmWorldState.getAccumulator().rollForward(trieLogLayer2);
+    zkEvmWorldState.commit(0L, null);
+
+    assertThat(gson.toJson(zkEvmWorldState.getLastTraces())).isEqualTo(gson.toJson(expectedTraces));
+    assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(topRootHash);
+  }
+
+  @Test
+  public void rollingForwardAccountSelfDestructWithDifferentStorageValue() {
+
+    ZKTrie accountStateTrieOne =
+        ZKTrie.createTrie(new WorldStateStorageProxy(new InMemoryWorldStateStorage()));
+
+    // create contract with storage
+    final MutableZkAccount contract = new MutableZkAccount(ZK_ACCOUNT_2);
+
+    final FullBytes storageKey = new FullBytes(UInt256.valueOf(14));
+    final Hash storageKeyHash = HashProvider.mimc(storageKey);
+    final FullBytes storageValue = new FullBytes(UInt256.valueOf(12));
+
+    final ZKTrie contractStorageTrie =
+        ZKTrie.createTrie(
+            new WorldStateStorageProxy(
+                Optional.of(contract.getAddress()), new InMemoryWorldStateStorage()));
+    contractStorageTrie.putAndProve(storageKeyHash, storageKey, storageValue);
+    contract.setStorageRoot(Hash.wrap(contractStorageTrie.getTopRootHash()));
+    accountStateTrieOne.putAndProve(
+        contract.getHkey(), contract.getAddress(), contract.serializeAccount());
+
+    final List<Trace> expectedTraces = new ArrayList<>();
+    // read slot before selfdestruct
+    expectedTraces.add(contractStorageTrie.readAndProve(storageKeyHash, storageKey, storageValue));
+    // selfdestruct contract
+    expectedTraces.add(
+        accountStateTrieOne.removeAndProve(contract.getHkey(), contract.getAddress()));
+    // recreate contract
+    final MutableZkAccount contractNew = new MutableZkAccount(ZK_ACCOUNT_2);
+    final FullBytes storageValueNew = new FullBytes(UInt256.valueOf(13));
+    final ZKTrie contractStorageTrieNew =
+        ZKTrie.createTrie(
+            new WorldStateStorageProxy(
+                Optional.of(contractNew.getAddress()), new InMemoryWorldStateStorage()));
+    expectedTraces.add(
+        contractStorageTrieNew.putAndProve(storageKeyHash, storageKey, storageValueNew));
+    contractNew.setStorageRoot(Hash.wrap(contractStorageTrieNew.getTopRootHash()));
+    expectedTraces.add(
+        expectedTraces.size() - 1,
+        accountStateTrieOne.putAndProve(
+            contractNew.getHkey(), contractNew.getAddress(), contractNew.serializeAccount()));
+
+    Hash topRootHash = Hash.wrap(accountStateTrieOne.getTopRootHash());
+
+    ZKEvmWorldState zkEvmWorldState = new ZKEvmWorldState(new InMemoryWorldStateStorage());
+    assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(EMPTY_TRIE_ROOT);
+
+    // create account with the rolling
+    TrieLogLayer trieLogLayer = new ShomeiTrieLogLayer();
+    AccountKey accountKey =
+        trieLogLayer.addAccountChange(ACCOUNT_2, null, new TrieLogAccountValue(contract));
+    trieLogLayer.addStorageChange(
+        accountKey,
+        UInt256.fromBytes(storageKey.getOriginalValue()),
+        null,
+        UInt256.fromBytes(storageValue.getOriginalValue()));
+    zkEvmWorldState.getAccumulator().rollForward(trieLogLayer);
+    zkEvmWorldState.commit(0L, null);
+
+    // delete and recreate the contract in the same batch
+    TrieLogLayer trieLogLayer2 = new ShomeiTrieLogLayer();
+    accountKey =
+        trieLogLayer2.addAccountChange(
+            ACCOUNT_2,
+            new TrieLogAccountValue(contract),
+            new TrieLogAccountValue(contractNew),
+            true);
+    trieLogLayer2.addStorageChange(
+        accountKey,
+        UInt256.fromBytes(storageKey.getOriginalValue()),
+        UInt256.fromBytes(storageValue.getOriginalValue()),
+        UInt256.fromBytes(storageValueNew.getOriginalValue()));
+    zkEvmWorldState.getAccumulator().rollForward(trieLogLayer2);
+    zkEvmWorldState.commit(0L, null);
+
+    assertThat(gson.toJson(zkEvmWorldState.getLastTraces())).isEqualTo(gson.toJson(expectedTraces));
+    assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(topRootHash);
+  }
+
+  @Test
+  public void rollingForwardAccountSelfDestructWithDifferentStorageKeyAndValue() {
+
+    ZKTrie accountStateTrieOne =
+        ZKTrie.createTrie(new WorldStateStorageProxy(new InMemoryWorldStateStorage()));
+
+    // create contract with storage
+    final MutableZkAccount contract = new MutableZkAccount(ZK_ACCOUNT_2);
+
+    final FullBytes storageKey = new FullBytes(UInt256.valueOf(14));
+    final Hash storageKeyHash = HashProvider.mimc(storageKey);
+    final FullBytes storageValue = new FullBytes(UInt256.valueOf(12));
+
+    final ZKTrie contractStorageTrie =
+        ZKTrie.createTrie(
+            new WorldStateStorageProxy(
+                Optional.of(contract.getAddress()), new InMemoryWorldStateStorage()));
+    contractStorageTrie.putAndProve(storageKeyHash, storageKey, storageValue);
+    contract.setStorageRoot(Hash.wrap(contractStorageTrie.getTopRootHash()));
+    accountStateTrieOne.putAndProve(
+        contract.getHkey(), contract.getAddress(), contract.serializeAccount());
+
+    final List<Trace> expectedTraces = new ArrayList<>();
+    // read slot before selfdestruct
+    expectedTraces.add(contractStorageTrie.readAndProve(storageKeyHash, storageKey, storageValue));
+    // selfdestruct contract
+    expectedTraces.add(
+        accountStateTrieOne.removeAndProve(contract.getHkey(), contract.getAddress()));
+    // recreate contract
+    final MutableZkAccount contractNew = new MutableZkAccount(ZK_ACCOUNT_2);
+    final FullBytes storageKeyNew = new FullBytes(UInt256.valueOf(146));
+    final Hash storageKeyHashNew = HashProvider.mimc(storageKeyNew);
+    final FullBytes storageValueNew = new FullBytes(UInt256.valueOf(13));
+    final ZKTrie contractStorageTrieNew =
+        ZKTrie.createTrie(
+            new WorldStateStorageProxy(
+                Optional.of(contractNew.getAddress()), new InMemoryWorldStateStorage()));
+    expectedTraces.add(
+        contractStorageTrieNew.putAndProve(storageKeyHashNew, storageKeyNew, storageValueNew));
+    contractNew.setStorageRoot(Hash.wrap(contractStorageTrieNew.getTopRootHash()));
+    expectedTraces.add(
+        expectedTraces.size() - 1,
+        accountStateTrieOne.putAndProve(
+            contractNew.getHkey(), contractNew.getAddress(), contractNew.serializeAccount()));
+
+    Hash topRootHash = Hash.wrap(accountStateTrieOne.getTopRootHash());
+
+    ZKEvmWorldState zkEvmWorldState = new ZKEvmWorldState(new InMemoryWorldStateStorage());
+    assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(EMPTY_TRIE_ROOT);
+
+    // create account with the rolling
+    TrieLogLayer trieLogLayer = new ShomeiTrieLogLayer();
+    AccountKey accountKey =
+        trieLogLayer.addAccountChange(ACCOUNT_2, null, new TrieLogAccountValue(contract));
+    trieLogLayer.addStorageChange(
+        accountKey,
+        UInt256.fromBytes(storageKey.getOriginalValue()),
+        null,
+        UInt256.fromBytes(storageValue.getOriginalValue()));
+    zkEvmWorldState.getAccumulator().rollForward(trieLogLayer);
+    zkEvmWorldState.commit(0L, null);
+
+    // delete and recreate the contract in the same batch
+    TrieLogLayer trieLogLayer2 = new ShomeiTrieLogLayer();
+    accountKey =
+        trieLogLayer2.addAccountChange(
+            ACCOUNT_2,
+            new TrieLogAccountValue(contract),
+            new TrieLogAccountValue(contractNew),
+            true);
+    trieLogLayer2.addStorageChange(
+        accountKey,
+        UInt256.fromBytes(storageKey.getOriginalValue()),
+        UInt256.fromBytes(storageValue.getOriginalValue()),
+        null);
+    trieLogLayer2.addStorageChange(
+        accountKey,
+        UInt256.fromBytes(storageKeyNew.getOriginalValue()),
+        null,
+        UInt256.fromBytes(storageValueNew.getOriginalValue()));
+    zkEvmWorldState.getAccumulator().rollForward(trieLogLayer2);
+    zkEvmWorldState.commit(0L, null);
+
+    assertThat(gson.toJson(zkEvmWorldState.getLastTraces())).isEqualTo(gson.toJson(expectedTraces));
+    assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(topRootHash);
   }
 }

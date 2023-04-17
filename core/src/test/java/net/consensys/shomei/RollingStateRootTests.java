@@ -38,7 +38,7 @@ import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.Wei;
 import org.junit.Test;
 
-public class RollingTests {
+public class RollingStateRootTests {
 
   private static final Address ACCOUNT_1 = createDumAddress(36);
   private static final Address ACCOUNT_2 = createDumAddress(47);

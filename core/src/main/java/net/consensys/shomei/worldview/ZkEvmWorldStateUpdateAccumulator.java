@@ -56,6 +56,7 @@ public class ZkEvmWorldStateUpdateAccumulator {
                     entry.getKey(),
                     entry.getValue().getPrior(),
                     entry.getValue().getUpdated(),
+                    entry.getValue().isCleared(),
                     true));
     layer
         .streamStorageChanges()
@@ -82,6 +83,7 @@ public class ZkEvmWorldStateUpdateAccumulator {
                     entry.getKey(),
                     entry.getValue().getUpdated(),
                     entry.getValue().getPrior(),
+                    entry.getValue().isCleared(),
                     false));
     layer
         .streamStorageChanges()
@@ -103,6 +105,7 @@ public class ZkEvmWorldStateUpdateAccumulator {
       final AccountKey accountKey,
       final TrieLogAccountValue expectedValue,
       final TrieLogAccountValue replacementValue,
+      final boolean isCleared,
       final boolean isRollforward) {
     ZkValue<ZkAccount> accountValue = accountsToUpdate.get(accountKey);
     if (accountValue == null && expectedValue != null) {
@@ -112,8 +115,8 @@ public class ZkEvmWorldStateUpdateAccumulator {
               (__, zkAccountZkValue) ->
                   new ZkValue<>(
                       new ZkAccount(accountKey.accountHash(), accountKey.address(), expectedValue),
-                      new ZkAccount(
-                          accountKey.accountHash(), accountKey.address(), expectedValue)));
+                      new ZkAccount(accountKey.accountHash(), accountKey.address(), expectedValue),
+                      isCleared));
     }
     if (accountValue == null) {
       accountValue =
