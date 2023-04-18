@@ -26,73 +26,56 @@ import net.consensys.shomei.trie.proof.ReadTrace;
 import net.consensys.shomei.trie.proof.ReadZeroTrace;
 import net.consensys.shomei.trie.proof.Trace;
 import net.consensys.shomei.trie.proof.UpdateTrace;
-import net.consensys.shomei.trie.storage.InMemoryLeafIndexManager;
-import net.consensys.shomei.trie.storage.LeafIndexManager;
+import net.consensys.shomei.trie.storage.InMemoryStorage;
+import net.consensys.shomei.trie.storage.StorageProxy;
+import net.consensys.shomei.trie.storage.StorageProxy.Range;
 import net.consensys.zkevm.HashProvider;
 
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.ethereum.trie.Node;
-import org.hyperledger.besu.ethereum.trie.NodeLoader;
 import org.hyperledger.besu.ethereum.trie.NodeUpdater;
 
 public class ZKTrie {
+
+  public static final Hash EMPTY_TRIE_ROOT =
+      Hash.wrap(ZKTrie.createTrie(new InMemoryStorage()).getTopRootHash());
+
+  public static final Hash EMPTY_TRIE_SUB_ROOT =
+      Hash.wrap(ZKTrie.createTrie(new InMemoryStorage()).getSubRootHash());
 
   private static final int ZK_TRIE_DEPTH = 40;
 
   private final PathResolver pathResolver;
   private final StoredSparseMerkleTrie state;
-  private final LeafIndexManager leafIndexManager;
+  private final StorageProxy worldStateStorage;
 
-  private final NodeUpdater nodeUpdater;
+  private final StorageProxy.Updater updater;
 
-  private ZKTrie(
-      final Bytes32 rootHash,
-      final LeafIndexManager leafIndexManager,
-      final NodeLoader nodeLoader,
-      final NodeUpdater nodeUpdater) {
-    this.leafIndexManager = leafIndexManager;
-    this.state = new StoredSparseMerkleTrie(nodeLoader, rootHash, b -> b, b -> b);
+  private ZKTrie(final Bytes32 rootHash, final StorageProxy worldStateStorage) {
+    this.worldStateStorage = worldStateStorage;
+    this.updater = worldStateStorage.updater();
+    this.state =
+        new StoredSparseMerkleTrie(worldStateStorage::getTrieNode, rootHash, b -> b, b -> b);
     this.pathResolver = new PathResolver(ZK_TRIE_DEPTH, state);
-    this.nodeUpdater = nodeUpdater;
   }
 
-  public static ZKTrie createInMemoryTrie() {
-    final LeafIndexManager inMemoryLeafIndexManager = new InMemoryLeafIndexManager();
-    final Map<Bytes, Bytes> storage = new HashMap<>();
-    return createTrie(
-        inMemoryLeafIndexManager,
-        (location, hash) -> Optional.ofNullable(storage.get(hash)),
-        (location, hash, value) -> storage.put(hash, value));
-  }
-
-  public static ZKTrie createTrie(
-      final LeafIndexManager leafIndexManager,
-      final NodeLoader nodeLoader,
-      final NodeUpdater nodeUpdater) {
+  public static ZKTrie createTrie(final StorageProxy worldStateStorage) {
+    StorageProxy.Updater updater = worldStateStorage.updater();
     final ZKTrie trie =
-        new ZKTrie(
-            ZKTrie.initWorldState(nodeUpdater).getHash(),
-            leafIndexManager,
-            nodeLoader,
-            nodeUpdater);
+        new ZKTrie(ZKTrie.initWorldState(updater::putTrieNode).getHash(), worldStateStorage);
     trie.setHeadAndTail();
+    // updater.commit();
     return trie;
   }
 
-  public static ZKTrie loadTrie(
-      final Bytes32 rootHash,
-      final LeafIndexManager leafIndexManager,
-      final NodeLoader nodeLoader,
-      final NodeUpdater nodeUpdater) {
-    return new ZKTrie(rootHash, leafIndexManager, nodeLoader, nodeUpdater);
+  public static ZKTrie loadTrie(final Bytes32 rootHash, final StorageProxy worldStateStorage) {
+    return new ZKTrie(rootHash, worldStateStorage);
   }
 
   private static Node<Bytes> initWorldState(final NodeUpdater nodeUpdater) {
@@ -118,12 +101,12 @@ public class ZKTrie {
   public void setHeadAndTail() {
     // head
     final Long headIndex = pathResolver.getNextFreeLeafNodeIndex();
-    leafIndexManager.putKeyIndex(StateLeafValue.HEAD.getHkey(), headIndex);
+    updater.putKeyIndex(StateLeafValue.HEAD.getHkey(), headIndex);
     state.put(pathResolver.getLeafPath(headIndex), StateLeafValue.HEAD.getEncodesBytes());
     pathResolver.incrementNextFreeLeafNodeIndex();
     // tail
     final Long tailIndex = pathResolver.getNextFreeLeafNodeIndex();
-    leafIndexManager.putKeyIndex(StateLeafValue.TAIL.getHkey(), tailIndex);
+    updater.putKeyIndex(StateLeafValue.TAIL.getHkey(), tailIndex);
     state.put(pathResolver.getLeafPath(tailIndex), StateLeafValue.TAIL.getEncodesBytes());
     pathResolver.incrementNextFreeLeafNodeIndex();
   }
@@ -145,7 +128,7 @@ public class ZKTrie {
   }
 
   public Optional<Bytes> get(final Hash hkey) {
-    return leafIndexManager.getKeyIndex(hkey).map(pathResolver::getLeafPath).flatMap(this::get);
+    return worldStateStorage.getLeafIndex(hkey).map(pathResolver::getLeafPath).flatMap(this::get);
   }
 
   public Trace readZeroAndProve(final Hash hkey, final Bytes key) {
@@ -154,7 +137,7 @@ public class ZKTrie {
 
   public Trace readAndProve(final Hash hkey, final Bytes key, final Bytes value) {
     // GET the openings HKEY-,  hash(k) , HKEY+
-    final LeafIndexManager.Range nearestKeys = leafIndexManager.getNearestKeys(hkey);
+    final Range nearestKeys = worldStateStorage.getNearestKeys(hkey);
     // CHECK if hash(k) exist
     if (nearestKeys.getCenterNodeKey().isEmpty()) {
       // INIT trace
@@ -209,7 +192,7 @@ public class ZKTrie {
     checkArgument(hKey.size() == Bytes32.SIZE);
 
     // GET the openings HKEY-,  hash(k) , HKEY+
-    final LeafIndexManager.Range nearestKeys = leafIndexManager.getNearestKeys(hKey);
+    final Range nearestKeys = worldStateStorage.getNearestKeys(hKey);
 
     // CHECK if hash(k) exist
     if (nearestKeys.getCenterNodeKey().isEmpty()) {
@@ -237,7 +220,7 @@ public class ZKTrie {
 
       // PUT hash(k) with HKey- for Prev and HKey+ for next
       final Bytes leafPathToAdd = pathResolver.getLeafPath(nextFreeNode);
-      leafIndexManager.putKeyIndex(hKey, nextFreeNode);
+      updater.putKeyIndex(hKey, nextFreeNode);
       final StateLeafValue newLeafValue =
           new StateLeafValue(
               nearestKeys.getLeftNodeIndex(),
@@ -306,7 +289,7 @@ public class ZKTrie {
     checkArgument(hkey.size() == Bytes32.SIZE);
 
     // GET the openings HKEY-,  hash(k) , HKEY+
-    final LeafIndexManager.Range nearestKeys = leafIndexManager.getNearestKeys(hkey);
+    final Range nearestKeys = worldStateStorage.getNearestKeys(hkey);
 
     // CHECK if hash(k) exist
     if (nearestKeys.getCenterNodeIndex().isPresent()) {
@@ -332,7 +315,7 @@ public class ZKTrie {
           pathResolver.getLeafPath(nearestKeys.getCenterNodeIndex().orElseThrow());
       final StateLeafValue priorDeletedLeaf =
           get(leafPathToDelete).map(StateLeafValue::readFrom).orElseThrow();
-      leafIndexManager.removeKeyIndex(hkey);
+      updater.removeKeyIndex(hkey);
       final List<Node<Bytes>> centerSiblings = state.removeAndProve(leafPathToDelete);
 
       // UPDATE HKey+ with HKey- for prev
@@ -367,12 +350,6 @@ public class ZKTrie {
   }
 
   public void commit() {
-    state.commit(nodeUpdater);
-    leafIndexManager.commit();
-  }
-
-  public void commit(final NodeUpdater nodeUpdater) {
-    state.commit(nodeUpdater);
-    leafIndexManager.commit();
+    state.commit(updater::putTrieNode);
   }
 }

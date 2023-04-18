@@ -11,15 +11,18 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package services.storage;
+package net.consensys.shomei.exception;
 
-import java.util.Iterator;
+public class MissingTrieLogException extends Exception {
 
-public interface BidirectionalIterator<T> extends Iterator<T>, AutoCloseable {
+  private final long blockNumber;
 
-  T current();
+  public MissingTrieLogException(final long blockNumber) {
+    super("Unable to find trie log for block number %d".formatted(blockNumber));
+    this.blockNumber = blockNumber;
+  }
 
-  boolean hasPrevious();
-
-  T previous();
+  public long getBlockNumber() {
+    return blockNumber;
+  }
 }

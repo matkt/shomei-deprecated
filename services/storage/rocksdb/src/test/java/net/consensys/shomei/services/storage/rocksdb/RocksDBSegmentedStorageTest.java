@@ -15,7 +15,7 @@ package net.consensys.shomei.services.storage.rocksdb;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static net.consensys.shomei.services.storage.rocksdb.RocksDBSegmentIdentifier.SegmentNames.DEFAULT;
-import static net.consensys.shomei.services.storage.rocksdb.RocksDBSegmentIdentifier.SegmentNames.ZK_ACCOUNT_TRIE;
+import static net.consensys.shomei.services.storage.rocksdb.RocksDBSegmentIdentifier.SegmentNames.ZK_TRIE_NODE;
 import static net.consensys.shomei.services.storage.rocksdb.configuration.RocksDBFactoryConfiguration.DEFAULT_ROCKSDB_CONFIG;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -173,7 +173,7 @@ public class RocksDBSegmentedStorageTest {
   @Test
   public void assertTruncationDoesNotSegfault() throws IOException {
     // cannot truncate default segment, use a different one
-    var trieSegment = getKeyValueStorage(ZK_ACCOUNT_TRIE.getSegmentIdentifier());
+    var trieSegment = getKeyValueStorage(ZK_TRIE_NODE.getSegmentIdentifier());
 
     trieSegment.startTransaction().put(key, value).commit();
     // assert key present
@@ -188,7 +188,7 @@ public class RocksDBSegmentedStorageTest {
 
   @Test
   public void assertStreamReadsThroughSnapshot() throws IOException {
-    var trieSegment = getKeyValueStorage(ZK_ACCOUNT_TRIE.getSegmentIdentifier());
+    var trieSegment = getKeyValueStorage(ZK_TRIE_NODE.getSegmentIdentifier());
     var snapshot = trieSegment.takeSnapshot();
 
     trieSegment.startTransaction().put(key, value).commit();
@@ -213,7 +213,7 @@ public class RocksDBSegmentedStorageTest {
 
   @Test
   public void assertSelfForGetNearestToTest() throws IOException {
-    var trieSegment = getKeyValueStorage(ZK_ACCOUNT_TRIE.getSegmentIdentifier());
+    var trieSegment = getKeyValueStorage(ZK_TRIE_NODE.getSegmentIdentifier());
 
     trieSegment.startTransaction().put(key, value).commit();
 
@@ -233,7 +233,7 @@ public class RocksDBSegmentedStorageTest {
 
   @Test
   public void assertPrevForGetNearestToTest() throws IOException {
-    var trieSegment = getKeyValueStorage(ZK_ACCOUNT_TRIE.getSegmentIdentifier());
+    var trieSegment = getKeyValueStorage(ZK_TRIE_NODE.getSegmentIdentifier());
     var prevKey = "key0".getBytes(UTF_8);
     trieSegment.startTransaction().put(prevKey, value).commit();
 
@@ -254,7 +254,7 @@ public class RocksDBSegmentedStorageTest {
 
   @Test
   public void assertThisAndPrevForGetNearestToTest() throws IOException {
-    var trieSegment = getKeyValueStorage(ZK_ACCOUNT_TRIE.getSegmentIdentifier());
+    var trieSegment = getKeyValueStorage(ZK_TRIE_NODE.getSegmentIdentifier());
     var prevKey = "key0".getBytes(UTF_8);
     var prevValue = "value0".getBytes(UTF_8);
 
@@ -285,7 +285,7 @@ public class RocksDBSegmentedStorageTest {
 
   @Test
   public void assertOpenRangeForGetNearestToTest() throws IOException {
-    var trieSegment = getKeyValueStorage(ZK_ACCOUNT_TRIE.getSegmentIdentifier());
+    var trieSegment = getKeyValueStorage(ZK_TRIE_NODE.getSegmentIdentifier());
     var mockListHead = "0".getBytes(UTF_8);
     var prevKey = "key0".getBytes(UTF_8);
     var prevValue = "value0".getBytes(UTF_8);
@@ -323,7 +323,7 @@ public class RocksDBSegmentedStorageTest {
 
   @Test
   public void assertClosedRangeForGetNearestToTest() throws IOException {
-    var trieSegment = getKeyValueStorage(ZK_ACCOUNT_TRIE.getSegmentIdentifier());
+    var trieSegment = getKeyValueStorage(ZK_TRIE_NODE.getSegmentIdentifier());
     var mockListHead = "0".getBytes(UTF_8);
 
     var prevKey = "key0".getBytes(UTF_8);
