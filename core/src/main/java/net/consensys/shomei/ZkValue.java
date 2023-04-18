@@ -97,5 +97,11 @@ public class ZkValue<T> {
     } else {
       writer.accept(output, updated);
     }
+
+    if (!isCleared) {
+      output.writeNull();
+    } else {
+      output.writeInt(1);
+    }
   }
 }

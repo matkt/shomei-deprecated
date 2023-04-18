@@ -113,9 +113,9 @@ public class TrieLogLayer {
     return readFrom(newLayer, new BytesValueRLPInput(Bytes.wrap(bytes), false));
   }
 
-  public static TrieLogLayer readFrom(final TrieLogLayer newLayer, final RLPInput input) {
+  public static <T extends TrieLogLayer> T readFrom(final T newLayer, final RLPInput input) {
     input.enterList();
-    newLayer.blockHash = Hash.wrap(input.readBytes32());
+    newLayer.setBlockHash(Hash.wrap(input.readBytes32()));
 
     while (!input.isEndOfCurrentList()) {
       input.enterList();
@@ -143,6 +143,7 @@ public class TrieLogLayer {
           final UInt256 slotKey = input.readUInt256Scalar();
           final UInt256 oldValue = nullOrValue(input, RLPInput::readUInt256Scalar);
           final UInt256 newValue = nullOrValue(input, RLPInput::readUInt256Scalar);
+          input.skipNext(); // skip is cleared for storage level
           input.leaveList();
           newLayer.addStorageChange(accountKey, slotKey, oldValue, newValue);
         }
@@ -217,7 +218,7 @@ public class TrieLogLayer {
     return storage.getOrDefault(accountKey, Map.of()).entrySet().stream();
   }
 
-  private static <T> T nullOrValue(final RLPInput input, final Function<RLPInput, T> reader) {
+  public static <T> T nullOrValue(final RLPInput input, final Function<RLPInput, T> reader) {
     if (input.nextIsNull()) {
       input.skipNext();
       return null;
@@ -226,10 +227,10 @@ public class TrieLogLayer {
     }
   }
 
-  private static <T> T defaultOrValue(
+  public static <T> T defaultOrValue(
       final RLPInput input, final T defaultValue, final Function<RLPInput, T> reader) {
     final T value = nullOrValue(input, reader);
-    return nullOrValue(input, reader) == null ? defaultValue : value;
+    return value == null ? defaultValue : value;
   }
 
   Optional<UInt256> getPriorStorage(

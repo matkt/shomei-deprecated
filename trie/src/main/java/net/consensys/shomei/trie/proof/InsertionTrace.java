@@ -13,7 +13,7 @@
 
 package net.consensys.shomei.trie.proof;
 
-import net.consensys.shomei.trie.model.StateLeafValue;
+import net.consensys.shomei.trie.model.LeafOpening;
 
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.ethereum.trie.Node;
@@ -32,8 +32,8 @@ public class InsertionTrace implements Trace {
   public Bytes value;
 
   // Value of the leaf opening before being modified
-  public StateLeafValue priorLeftLeaf;
-  public StateLeafValue priorRightLeaf;
+  public LeafOpening priorLeftLeaf;
+  public LeafOpening priorRightLeaf;
 
   public InsertionTrace(final Node<Bytes> oldSubRoot) {
     this.oldSubRoot = oldSubRoot;
@@ -99,19 +99,19 @@ public class InsertionTrace implements Trace {
     return value;
   }
 
-  public StateLeafValue getPriorLeftLeaf() {
+  public LeafOpening getPriorLeftLeaf() {
     return priorLeftLeaf;
   }
 
-  public StateLeafValue getPriorRightLeaf() {
+  public LeafOpening getPriorRightLeaf() {
     return priorRightLeaf;
   }
 
-  public void setPriorLeftLeaf(final StateLeafValue priorLeftLeaf) {
+  public void setPriorLeftLeaf(final LeafOpening priorLeftLeaf) {
     this.priorLeftLeaf = priorLeftLeaf;
   }
 
-  public void setPriorRightLeaf(final StateLeafValue priorRightLeaf) {
+  public void setPriorRightLeaf(final LeafOpening priorRightLeaf) {
     this.priorRightLeaf = priorRightLeaf;
   }
 

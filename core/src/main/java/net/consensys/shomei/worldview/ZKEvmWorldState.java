@@ -58,8 +58,7 @@ public class ZKEvmWorldState {
   public ZKEvmWorldState(final WorldStateStorage zkEvmWorldStateStorage) {
     this.stateRoot = zkEvmWorldStateStorage.getWorldStateRootHash().orElse(EMPTY_TRIE_ROOT);
     this.lastTraces = new ArrayList<>();
-    this.blockNumber =
-        zkEvmWorldStateStorage.getWorldStateBlockNumber().orElse(0L); // -1 when not state yet
+    this.blockNumber = zkEvmWorldStateStorage.getWorldStateBlockNumber().orElse(0L);
     this.blockHash = zkEvmWorldStateStorage.getWorldStateBlockHash().orElse(Hash.EMPTY);
     this.accumulator = new ZkEvmWorldStateUpdateAccumulator();
     this.zkEvmWorldStateStorage = zkEvmWorldStateStorage;
@@ -127,11 +126,7 @@ public class ZKEvmWorldState {
               zkAccountTrie.readZeroAndProve(accountKey.accountHash(), accountKey.address()));
         } else if (Objects.equals(accountValue.getPrior(), accountValue.getUpdated())) {
           // read non zero
-          traces.add(
-              zkAccountTrie.readAndProve(
-                  accountKey.accountHash(),
-                  accountKey.address(),
-                  accountValue.getPrior().serializeAccount()));
+          traces.add(zkAccountTrie.readAndProve(accountKey.accountHash(), accountKey.address()));
         }
       }
       // only read if the contract already exist
@@ -172,7 +167,6 @@ public class ZKEvmWorldState {
             zkAccountTrie.putAndProve(
                 accountValue.getUpdated().getHkey(),
                 accountKey.address(),
-                accountValue.getPrior() == null ? null : accountValue.getPrior().serializeAccount(),
                 accountValue.getUpdated().serializeAccount()));
         // update slots of the account
         traces.addAll(updateSlots(accountKey, accountValue, updater));
@@ -211,8 +205,7 @@ public class ZKEvmWorldState {
                   traces.add(
                       zkStorageTrie.readAndProve(
                           storageSlotKey.slotHash(),
-                          new FullBytes(storageSlotKey.slotKey().orElseThrow()),
-                          new FullBytes(storageValue.getPrior())));
+                          new FullBytes(storageSlotKey.slotKey().orElseThrow())));
                 }
               });
     }
@@ -279,7 +272,6 @@ public class ZKEvmWorldState {
             zkStorageTrie.putAndProve(
                 storageSlotKey.slotHash(),
                 new FullBytes(storageSlotKey.slotKey().orElseThrow()),
-                storageValue.getPrior() == null ? null : new FullBytes(storageValue.getPrior()),
                 new FullBytes(storageValue.getUpdated())));
       }
     }

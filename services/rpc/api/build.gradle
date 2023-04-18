@@ -14,6 +14,11 @@ tasks.named('jar') {
 }
 
 dependencies {
+
+    implementation project(':core')
+    implementation project(':trie')
+
+    implementation 'org.hyperledger.besu.internal:rlp'
     implementation 'org.hyperledger.besu.internal:api'
     implementation 'org.hyperledger.besu.internal:util'
 
@@ -24,6 +29,7 @@ dependencies {
     implementation 'io.vertx:vertx-codegen'
     implementation 'com.google.guava:guava'
     implementation 'io.opentelemetry:opentelemetry-api'
+    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jdk8'
 
     implementation 'org.apache.tuweni:tuweni-bytes'
 }

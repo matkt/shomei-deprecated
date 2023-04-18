@@ -44,6 +44,7 @@ import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.Wei;
+import org.hyperledger.besu.ethereum.rlp.BytesValueRLPOutput;
 import org.hyperledger.besu.ethereum.trie.Node;
 import org.junit.Before;
 import org.junit.Test;
@@ -121,7 +122,6 @@ public class RollingProofTests {
         accountStateTrieOne.putAndProve(
             accountUpdated.getHkey(),
             accountUpdated.getAddress(),
-            ZK_ACCOUNT.serializeAccount(),
             accountUpdated.serializeAccount());
 
     TrieLogLayer trieLogLayer = new ShomeiTrieLogLayer();
@@ -249,10 +249,8 @@ public class RollingProofTests {
 
     // read non zero slot of the contract
     List<Trace> expectedTraces = new ArrayList<>();
-    expectedTraces.add(
-        accountStateTrieOne.readAndProve(
-            contract.getHkey(), contract.getAddress(), contract.serializeAccount()));
-    expectedTraces.add(contractStorageTrie.readAndProve(storageKeyHash, storageKey, storageValue));
+    expectedTraces.add(accountStateTrieOne.readAndProve(contract.getHkey(), contract.getAddress()));
+    expectedTraces.add(contractStorageTrie.readAndProve(storageKeyHash, storageKey));
 
     TrieLogLayer trieLogLayer = new ShomeiTrieLogLayer();
     final AccountKey accountKey2 =
@@ -309,7 +307,7 @@ public class RollingProofTests {
 
     final List<Trace> expectedTraces = new ArrayList<>();
     // read slot before selfdestruct
-    expectedTraces.add(contractStorageTrie.readAndProve(storageKeyHash, storageKey, storageValue));
+    expectedTraces.add(contractStorageTrie.readAndProve(storageKeyHash, storageKey));
     // selfdestruct contract
     expectedTraces.add(
         accountStateTrieOne.removeAndProve(contract.getHkey(), contract.getAddress()));
@@ -384,7 +382,7 @@ public class RollingProofTests {
 
     final List<Trace> expectedTraces = new ArrayList<>();
     // read slot before selfdestruct
-    expectedTraces.add(contractStorageTrie.readAndProve(storageKeyHash, storageKey, storageValue));
+    expectedTraces.add(contractStorageTrie.readAndProve(storageKeyHash, storageKey));
     // selfdestruct contract
     expectedTraces.add(
         accountStateTrieOne.removeAndProve(contract.getHkey(), contract.getAddress()));
@@ -464,7 +462,7 @@ public class RollingProofTests {
 
     final List<Trace> expectedTraces = new ArrayList<>();
     // read slot before selfdestruct
-    expectedTraces.add(contractStorageTrie.readAndProve(storageKeyHash, storageKey, storageValue));
+    expectedTraces.add(contractStorageTrie.readAndProve(storageKeyHash, storageKey));
     // selfdestruct contract
     expectedTraces.add(
         accountStateTrieOne.removeAndProve(contract.getHkey(), contract.getAddress()));
@@ -501,6 +499,11 @@ public class RollingProofTests {
         UInt256.fromBytes(storageValue.getOriginalValue()));
     zkEvmWorldState.getAccumulator().rollForward(trieLogLayer);
     zkEvmWorldState.commit(0L, null);
+
+    final BytesValueRLPOutput rlpLog = new BytesValueRLPOutput();
+    trieLogLayer.setBlockHash(Hash.ZERO);
+    trieLogLayer.writeTo(rlpLog);
+    System.out.println(rlpLog.encoded());
 
     // delete and recreate the contract in the same batch
     TrieLogLayer trieLogLayer2 = new ShomeiTrieLogLayer();

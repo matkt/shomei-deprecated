@@ -62,6 +62,10 @@ public class BytesInput {
     }
   }
 
+  public Bytes readBytes() {
+    return Bytes.wrap(inputStream.readAllBytes());
+  }
+
   public Bytes readNBytes(final int size) {
     try {
       return Bytes.wrap(inputStream.readNBytes(size));

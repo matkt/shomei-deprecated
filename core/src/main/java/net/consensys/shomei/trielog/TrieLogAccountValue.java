@@ -118,7 +118,7 @@ public class TrieLogAccountValue {
     out.writeLongScalar(nonce);
     out.writeUInt256Scalar(balance);
     out.writeBytes(storageRoot);
-    out.writeBytes(codeHash);
+    out.writeBytes(codeHash.getOriginalValue());
     out.writeBytes(mimcCodeHash);
     out.writeLongScalar(codeSize);
     out.endList();

@@ -14,11 +14,15 @@
 package net.consensys.shomei.storage;
 
 import net.consensys.shomei.trie.storage.InMemoryStorage;
+import net.consensys.shomei.trielog.ShomeiTrieLogLayer;
 
+import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Hash;
+import org.hyperledger.besu.ethereum.rlp.BytesValueRLPOutput;
 
 public class InMemoryWorldStateStorage extends InMemoryStorage
     implements WorldStateStorage, WorldStateStorage.WorldStateUpdater {
@@ -29,9 +33,11 @@ public class InMemoryWorldStateStorage extends InMemoryStorage
 
   private Optional<Hash> currentStateRootHash = Optional.empty();
 
+  private final Map<Bytes, Bytes> trieLogStorage = new ConcurrentHashMap<>();
+
   @Override
   public Optional<Bytes> getTrieLog(final Hash blockHash) {
-    throw new UnsupportedOperationException("not implemented yet");
+    return Optional.ofNullable(trieLogStorage.get(blockHash));
   }
 
   @Override
@@ -57,5 +63,12 @@ public class InMemoryWorldStateStorage extends InMemoryStorage
   @Override
   public void setBlockNumber(final long blockNumber) {
     this.currentBlockNumber = Optional.ofNullable(blockNumber);
+  }
+
+  @Override
+  public void saveTrieLog(final ShomeiTrieLogLayer trieLogLayer) {
+    final BytesValueRLPOutput rlpLog = new BytesValueRLPOutput();
+    trieLogLayer.writeTo(rlpLog);
+    trieLogStorage.put(trieLogLayer.getBlockHash(), rlpLog.encoded());
   }
 }

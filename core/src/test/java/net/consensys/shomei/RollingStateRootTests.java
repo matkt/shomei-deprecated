@@ -85,10 +85,7 @@ public class RollingStateRootTests {
         ZK_ACCOUNT.getHkey(), ZK_ACCOUNT.getAddress(), ZK_ACCOUNT.serializeAccount());
     accountUpdated.setBalance(Wei.of(100));
     accountStateTrieOne.putAndProve(
-        accountUpdated.getHkey(),
-        accountUpdated.getAddress(),
-        ZK_ACCOUNT.serializeAccount(),
-        accountUpdated.serializeAccount());
+        accountUpdated.getHkey(), accountUpdated.getAddress(), accountUpdated.serializeAccount());
     Hash topRootHash = Hash.wrap(accountStateTrieOne.getTopRootHash());
     assertThat(topRootHash)
         .isEqualTo(
@@ -125,10 +122,7 @@ public class RollingStateRootTests {
         ZK_ACCOUNT.getHkey(), ZK_ACCOUNT.getAddress(), ZK_ACCOUNT.serializeAccount());
     accountUpdated.setBalance(Wei.of(100));
     accountStateTrieOne.putAndProve(
-        accountUpdated.getHkey(),
-        accountUpdated.getAddress(),
-        ZK_ACCOUNT.serializeAccount(),
-        accountUpdated.serializeAccount());
+        accountUpdated.getHkey(), accountUpdated.getAddress(), accountUpdated.serializeAccount());
     Hash topRootHash = Hash.wrap(accountStateTrieOne.getTopRootHash());
     assertThat(topRootHash)
         .isEqualTo(
@@ -422,7 +416,7 @@ public class RollingStateRootTests {
     // update slot
     final MutableZkAccount updatedContract = new MutableZkAccount(contract);
     final FullBytes updatedStorageValue = new FullBytes(UInt256.valueOf(19));
-    contractStorageTrie.putAndProve(storageKeyHash, storageKey, storageValue, updatedStorageValue);
+    contractStorageTrie.putAndProve(storageKeyHash, storageKey, updatedStorageValue);
     updatedContract.setStorageRoot(Hash.wrap(contractStorageTrie.getTopRootHash()));
 
     TrieLogLayer trieLogLayer2 = new ShomeiTrieLogLayer();

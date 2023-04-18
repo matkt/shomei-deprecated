@@ -22,7 +22,6 @@ import net.consensys.shomei.util.bytes.FullBytes;
 import net.consensys.shomei.util.bytes.LongConverter;
 import net.consensys.zkevm.HashProvider;
 
-import java.nio.ByteOrder;
 import java.util.Objects;
 import java.util.function.Supplier;
 
@@ -109,7 +108,7 @@ public class ZkAccount {
         toCopy.storageRoot);
   }
 
-  static ZkAccount fromEncodedBytes(final Address address, final Bytes encoded) {
+  public static ZkAccount fromEncodedBytes(final Address address, final Bytes encoded) {
 
     return BytesInput.readBytes(
         encoded,
@@ -159,7 +158,7 @@ public class ZkAccount {
   public Bytes serializeAccount() {
     return Bytes.concatenate(
         LongConverter.toBytes32(nonce),
-        LongConverter.toBytes32(balance.toLong(ByteOrder.BIG_ENDIAN)),
+        balance,
         storageRoot,
         mimcCodeHash,
         keccakCodeHash,

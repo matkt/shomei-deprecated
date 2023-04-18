@@ -15,6 +15,8 @@ package net.consensys.shomei.storage;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import net.consensys.shomei.trie.model.FlatLeafValue;
+
 import java.util.Optional;
 
 import org.apache.tuweni.bytes.Bytes;
@@ -27,8 +29,10 @@ public class WorldStateStorageProxyTest {
     final InMemoryWorldStateStorage inMemoryWorldStateStorage = new InMemoryWorldStateStorage();
     final WorldStateStorageProxy worldStateStorageProxy =
         new WorldStateStorageProxy(inMemoryWorldStateStorage);
-    worldStateStorageProxy.updater().putKeyIndex(Bytes.of(3), 1L);
-    assertThat(inMemoryWorldStateStorage.getLeafIndexStorage().get(Bytes.of(3))).isEqualTo(1L);
+    final FlatLeafValue flatLeafValue = new FlatLeafValue(1L, Bytes.EMPTY);
+    worldStateStorageProxy.updater().putFlatLeaf(Bytes.of(3), flatLeafValue);
+    assertThat(inMemoryWorldStateStorage.getFlatLeafStorage().get(Bytes.of(3)))
+        .isEqualTo(flatLeafValue);
   }
 
   @Test
@@ -36,9 +40,11 @@ public class WorldStateStorageProxyTest {
     final InMemoryWorldStateStorage inMemoryWorldStateStorage = new InMemoryWorldStateStorage();
     final WorldStateStorageProxy worldStateStorageProxy =
         new WorldStateStorageProxy(Optional.of(Bytes.of(1)), inMemoryWorldStateStorage);
-    worldStateStorageProxy.updater().putKeyIndex(Bytes.of(3), 1L);
-    assertThat(inMemoryWorldStateStorage.getLeafIndexStorage()).doesNotContainKey(Bytes.of(3));
-    assertThat(inMemoryWorldStateStorage.getLeafIndexStorage().get(Bytes.of(1, 3))).isEqualTo(1L);
+    final FlatLeafValue flatLeafValue = new FlatLeafValue(1L, Bytes.EMPTY);
+    worldStateStorageProxy.updater().putFlatLeaf(Bytes.of(3), flatLeafValue);
+    assertThat(inMemoryWorldStateStorage.getFlatLeafStorage()).doesNotContainKey(Bytes.of(3));
+    assertThat(inMemoryWorldStateStorage.getFlatLeafStorage().get(Bytes.of(1, 3)))
+        .isEqualTo(flatLeafValue);
   }
 
   @Test
@@ -46,10 +52,12 @@ public class WorldStateStorageProxyTest {
     final InMemoryWorldStateStorage inMemoryWorldStateStorage = new InMemoryWorldStateStorage();
     final WorldStateStorageProxy worldStateStorageProxy =
         new WorldStateStorageProxy(inMemoryWorldStateStorage);
-    worldStateStorageProxy.updater().putKeyIndex(Bytes.of(3), 1L);
-    assertThat(inMemoryWorldStateStorage.getLeafIndexStorage().get(Bytes.of(3))).isEqualTo(1L);
-    worldStateStorageProxy.updater().removeKeyIndex(Bytes.of(3));
-    assertThat(inMemoryWorldStateStorage.getLeafIndexStorage()).doesNotContainKey(Bytes.of(3));
+    final FlatLeafValue flatLeafValue = new FlatLeafValue(1L, Bytes.EMPTY);
+    worldStateStorageProxy.updater().putFlatLeaf(Bytes.of(3), flatLeafValue);
+    assertThat(inMemoryWorldStateStorage.getFlatLeafStorage().get(Bytes.of(3)))
+        .isEqualTo(flatLeafValue);
+    worldStateStorageProxy.updater().removeFlatLeafValue(Bytes.of(3));
+    assertThat(inMemoryWorldStateStorage.getFlatLeafStorage()).doesNotContainKey(Bytes.of(3));
   }
 
   @Test
@@ -57,10 +65,12 @@ public class WorldStateStorageProxyTest {
     final InMemoryWorldStateStorage inMemoryWorldStateStorage = new InMemoryWorldStateStorage();
     final WorldStateStorageProxy worldStateStorageProxy =
         new WorldStateStorageProxy(Optional.of(Bytes.of(1)), inMemoryWorldStateStorage);
-    worldStateStorageProxy.updater().putKeyIndex(Bytes.of(3), 1L);
-    assertThat(inMemoryWorldStateStorage.getLeafIndexStorage().get(Bytes.of(1, 3))).isEqualTo(1L);
-    worldStateStorageProxy.updater().removeKeyIndex(Bytes.of(3));
-    assertThat(inMemoryWorldStateStorage.getLeafIndexStorage()).doesNotContainKey(Bytes.of(1, 3));
+    final FlatLeafValue flatLeafValue = new FlatLeafValue(1L, Bytes.EMPTY);
+    worldStateStorageProxy.updater().putFlatLeaf(Bytes.of(3), flatLeafValue);
+    assertThat(inMemoryWorldStateStorage.getFlatLeafStorage().get(Bytes.of(1, 3)))
+        .isEqualTo(flatLeafValue);
+    worldStateStorageProxy.updater().removeFlatLeafValue(Bytes.of(3));
+    assertThat(inMemoryWorldStateStorage.getFlatLeafStorage()).doesNotContainKey(Bytes.of(1, 3));
   }
 
   @Test
