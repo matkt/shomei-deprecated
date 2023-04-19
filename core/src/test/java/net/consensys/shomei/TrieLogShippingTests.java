@@ -23,7 +23,7 @@ import net.consensys.shomei.storage.WorldStateStorageProxy;
 import net.consensys.shomei.trie.ZKTrie;
 import net.consensys.shomei.trielog.ShomeiTrieLogLayer;
 import net.consensys.shomei.trielog.TrieLogLayerConverter;
-import net.consensys.shomei.util.bytes.FullBytes;
+import net.consensys.shomei.util.bytes.MimcSafeBytes;
 import net.consensys.shomei.worldview.ZkEvmWorldStateEntryPoint;
 import net.consensys.zkevm.HashProvider;
 
@@ -43,7 +43,7 @@ import org.junit.Test;
 public class TrieLogShippingTests {
 
   @Test
-  public void testTrielogShippingWithContractUpdate() throws MissingTrieLogException {
+  public void testTrielogShippingWithNewContractUpdate() throws MissingTrieLogException {
 
     ZKTrie accountStateTrieOne =
         ZKTrie.createTrie(new WorldStateStorageProxy(new InMemoryWorldStateStorage()));
@@ -51,9 +51,9 @@ public class TrieLogShippingTests {
     // add contract with storage
     final MutableZkAccount contract = new MutableZkAccount(ZK_ACCOUNT_2);
 
-    final FullBytes storageKey = new FullBytes(UInt256.valueOf(14));
+    final MimcSafeBytes storageKey = new MimcSafeBytes(UInt256.valueOf(14));
     final Hash storageKeyHash = HashProvider.mimc(storageKey);
-    final FullBytes storageValue = new FullBytes(UInt256.valueOf(12));
+    final MimcSafeBytes storageValue = new MimcSafeBytes(UInt256.valueOf(12));
 
     final ZKTrie contractStorageTrie =
         ZKTrie.createTrie(
@@ -65,9 +65,18 @@ public class TrieLogShippingTests {
     accountStateTrieOne.putAndProve(
         contract.getHkey(), contract.getAddress(), contract.getEncodedBytes());
 
-    Hash topRootHash = Hash.wrap(accountStateTrieOne.getTopRootHash());
+    Hash topRootHashBeforeUpdate = Hash.wrap(accountStateTrieOne.getTopRootHash());
 
-    // simulate trielog from Besu
+    // change storage
+    final MimcSafeBytes newStorageValue = new MimcSafeBytes(UInt256.valueOf(22));
+    contractStorageTrie.putAndProve(storageKeyHash, storageKey, newStorageValue);
+    contract.setStorageRoot(Hash.wrap(contractStorageTrie.getTopRootHash()));
+    accountStateTrieOne.putAndProve(
+        contract.getHkey(), contract.getAddress(), contract.getEncodedBytes());
+
+    Hash topRootHashAfterUpdate = Hash.wrap(accountStateTrieOne.getTopRootHash());
+
+    // simulate trielog from Besu before update
     TrieLogLayer trieLogLayer = new TrieLogLayer();
     trieLogLayer.addAccountChange(
         ZK_ACCOUNT_2.getAddress(),
@@ -85,6 +94,32 @@ public class TrieLogShippingTests {
             UInt256.fromBytes(storageKey.getOriginalValue())),
         null,
         UInt256.fromBytes(storageValue.getOriginalValue()));
+
+    // simulate trielog from Besu after update
+    TrieLogLayer trieLogLayer2 = new TrieLogLayer();
+    trieLogLayer2.addAccountChange(
+        ZK_ACCOUNT_2.getAddress(),
+        new StateTrieAccountValue(
+            contract.nonce,
+            contract.balance,
+            Hash.wrap(
+                Bytes32.random()), // change storage root to simulate evm storage root sent by Besu
+            Hash.wrap(
+                contract.keccakCodeHash.getOriginalValue())), // get update of the first trielog
+        new StateTrieAccountValue(
+            contract.nonce,
+            contract.balance,
+            Hash.wrap(
+                Bytes32.random()), // change storage root to simulate evm storage root sent by Besu
+            Hash.wrap(contract.keccakCodeHash.getOriginalValue())));
+    trieLogLayer2.setBlockHash(Hash.wrap(Bytes32.random()));
+    trieLogLayer2.addStorageChange(
+        ZK_ACCOUNT_2.getAddress(),
+        new BonsaiWorldStateUpdateAccumulator.StorageSlotKey(
+            UInt256.fromBytes(storageKey.getOriginalValue())),
+        UInt256.fromBytes(storageValue.getOriginalValue()),
+        UInt256.fromBytes(newStorageValue.getOriginalValue()));
+
     ZkTrieLogFactoryImpl zkTrieLogFactory = new ZkTrieLogFactoryImpl();
 
     // init the worldstate entrypoint with empty worldstate
@@ -98,8 +133,16 @@ public class TrieLogShippingTests {
             .decodeTrieLog(RLP.input(Bytes.wrap(zkTrieLogFactory.serialize(trieLogLayer))));
 
     // move head with the new trielog
-    evmWorldStateEntryPoint.moveHead(1, decodedLayer);
+    evmWorldStateEntryPoint.moveHead(0, decodedLayer);
+    assertThat(evmWorldStateEntryPoint.getCurrentRootHash()).isEqualTo(topRootHashBeforeUpdate);
 
-    assertThat(evmWorldStateEntryPoint.getCurrentRootHash()).isEqualTo(topRootHash);
+    // decode second trielog from Besu
+    ShomeiTrieLogLayer decodedLayer2 =
+        new TrieLogLayerConverter(storage)
+            .decodeTrieLog(RLP.input(Bytes.wrap(zkTrieLogFactory.serialize(trieLogLayer2))));
+
+    // move head with the second trielog
+    evmWorldStateEntryPoint.moveHead(1, decodedLayer2);
+    assertThat(evmWorldStateEntryPoint.getCurrentRootHash()).isEqualTo(topRootHashAfterUpdate);
   }
 }

@@ -24,7 +24,7 @@ import net.consensys.shomei.trie.ZKTrie;
 import net.consensys.shomei.trielog.AccountKey;
 import net.consensys.shomei.trielog.ShomeiTrieLogLayer;
 import net.consensys.shomei.trielog.TrieLogLayer;
-import net.consensys.shomei.util.bytes.FullBytes;
+import net.consensys.shomei.util.bytes.MimcSafeBytes;
 import net.consensys.shomei.worldview.ZKEvmWorldState;
 import net.consensys.zkevm.HashProvider;
 
@@ -147,9 +147,9 @@ public class RollingBackwardTests {
 
     // create contract with storage
     final MutableZkAccount contract = new MutableZkAccount(ZK_ACCOUNT);
-    final FullBytes storageKey = new FullBytes(UInt256.valueOf(14));
+    final MimcSafeBytes storageKey = new MimcSafeBytes(UInt256.valueOf(14));
     final Hash storageKeyHash = HashProvider.mimc(storageKey);
-    final FullBytes storageValue = new FullBytes(UInt256.valueOf(12));
+    final MimcSafeBytes storageValue = new MimcSafeBytes(UInt256.valueOf(12));
     final ZKTrie contractStorageTrie =
         ZKTrie.createTrie(new WorldStateStorageProxy(new InMemoryWorldStateStorage()));
     contractStorageTrie.putAndProve(storageKeyHash, storageKey, storageValue);
@@ -205,9 +205,9 @@ public class RollingBackwardTests {
 
     // create contract with storage
     final MutableZkAccount contract = new MutableZkAccount(ZK_ACCOUNT);
-    final FullBytes storageKey = new FullBytes(UInt256.valueOf(14));
+    final MimcSafeBytes storageKey = new MimcSafeBytes(UInt256.valueOf(14));
     final Hash storageKeyHash = HashProvider.mimc(storageKey);
-    final FullBytes storageValue = new FullBytes(UInt256.valueOf(12));
+    final MimcSafeBytes storageValue = new MimcSafeBytes(UInt256.valueOf(12));
     final ZKTrie contractStorageTrie =
         ZKTrie.createTrie(new WorldStateStorageProxy(new InMemoryWorldStateStorage()));
     contractStorageTrie.putAndProve(storageKeyHash, storageKey, storageValue);
@@ -224,7 +224,7 @@ public class RollingBackwardTests {
 
     // update slot
     final MutableZkAccount updatedContract = new MutableZkAccount(contract);
-    final FullBytes updatedStorageValue = new FullBytes(UInt256.valueOf(19));
+    final MimcSafeBytes updatedStorageValue = new MimcSafeBytes(UInt256.valueOf(19));
     contractStorageTrie.putAndProve(storageKeyHash, storageKey, updatedStorageValue);
     updatedContract.setStorageRoot(Hash.wrap(contractStorageTrie.getTopRootHash()));
 

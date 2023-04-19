@@ -13,8 +13,11 @@
 
 package net.consensys.shomei.trielog;
 
+import net.consensys.zkevm.HashProvider;
+
 import java.util.Objects;
 
+import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Hash;
 import org.jetbrains.annotations.NotNull;
@@ -22,7 +25,7 @@ import org.jetbrains.annotations.NotNull;
 public record AccountKey(Hash accountHash, Address address) implements Comparable<AccountKey> {
 
   public AccountKey(final Address address) {
-    this(Hash.hash(address), address);
+    this(HashProvider.mimc(Bytes32.leftPad(address)), address);
   }
 
   @Override

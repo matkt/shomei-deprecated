@@ -18,7 +18,8 @@ import static net.consensys.shomei.ZkAccount.EMPTY_KECCAK_CODE_HASH;
 import static net.consensys.shomei.trie.ZKTrie.EMPTY_TRIE_ROOT;
 
 import net.consensys.shomei.ZkAccount;
-import net.consensys.shomei.util.bytes.FullBytes;
+import net.consensys.shomei.trielog.AccountKey;
+import net.consensys.shomei.util.bytes.MimcSafeBytes;
 
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.bytes.MutableBytes;
@@ -28,16 +29,28 @@ import org.hyperledger.besu.datatypes.Wei;
 
 public class TestFixtureGenerator {
 
-  private static final Address ACCOUNT_1 = createDumAddress(36);
-  private static final Address ACCOUNT_2 = createDumAddress(47);
+  public static final AccountKey ACCOUNT_KEY_1 = new AccountKey(createDumAddress(36));
+  public static final AccountKey ACCOUNT_KEY_2 = new AccountKey(createDumAddress(47));
 
   public static final ZkAccount ZK_ACCOUNT =
       new ZkAccount(
-          ACCOUNT_1, EMPTY_KECCAK_CODE_HASH, EMPTY_CODE_HASH, 0L, 65, Wei.of(835), EMPTY_TRIE_ROOT);
+          ACCOUNT_KEY_1,
+          EMPTY_KECCAK_CODE_HASH,
+          EMPTY_CODE_HASH,
+          0L,
+          65,
+          Wei.of(835),
+          EMPTY_TRIE_ROOT);
 
   public static final ZkAccount ZK_ACCOUNT_2 =
       new ZkAccount(
-          ACCOUNT_2, EMPTY_KECCAK_CODE_HASH, EMPTY_CODE_HASH, 0L, 65, Wei.of(835), EMPTY_TRIE_ROOT);
+          ACCOUNT_KEY_2,
+          EMPTY_KECCAK_CODE_HASH,
+          EMPTY_CODE_HASH,
+          0L,
+          65,
+          Wei.of(835),
+          EMPTY_TRIE_ROOT);
 
   public static Address createDumAddress(int value) {
     MutableBytes mutableBytes = MutableBytes.create(Address.SIZE);
@@ -51,9 +64,9 @@ public class TestFixtureGenerator {
     return mutableBytes;
   }
 
-  public static FullBytes createDumFullBytes(int value) {
+  public static MimcSafeBytes createDumFullBytes(int value) {
     MutableBytes32 mutableBytes = MutableBytes32.create();
     mutableBytes.set(0, (byte) value);
-    return new FullBytes(mutableBytes);
+    return new MimcSafeBytes(mutableBytes);
   }
 }

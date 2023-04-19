@@ -91,16 +91,22 @@ public class TrieLogLayer {
 
   public void addStorageChange(
       final AccountKey accountKey,
-      final UInt256 slotKey,
+      final StorageSlotKey storageSlotKey,
       final UInt256 oldValue,
       final UInt256 newValue,
       final boolean isCleared) {
     checkState(!frozen, "Layer is Frozen");
     storages
         .computeIfAbsent(accountKey, a -> new TreeMap<>())
-        .put(
-            new StorageSlotKey(getSlotHash(slotKey), slotKey),
-            new ZkValue<>(oldValue, newValue, isCleared));
+        .put(storageSlotKey, new ZkValue<>(oldValue, newValue, isCleared));
+  }
+
+  public void addStorageChange(
+      final AccountKey accountKey,
+      final StorageSlotKey storageKey,
+      final UInt256 oldValue,
+      final UInt256 newValue) {
+    addStorageChange(accountKey, storageKey, oldValue, newValue, false);
   }
 
   public void addStorageChange(
@@ -108,7 +114,7 @@ public class TrieLogLayer {
       final UInt256 storageKey,
       final UInt256 oldValue,
       final UInt256 newValue) {
-    addStorageChange(accountKey, storageKey, oldValue, newValue, false);
+    addStorageChange(accountKey, new StorageSlotKey(storageKey), oldValue, newValue, false);
   }
 
   public Stream<Map.Entry<AccountKey, ZkValue<ZkAccount>>> streamAccountChanges() {

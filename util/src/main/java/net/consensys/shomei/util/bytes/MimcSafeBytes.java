@@ -16,12 +16,13 @@ package net.consensys.shomei.util.bytes;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.bytes.DelegatingBytes;
+import org.apache.tuweni.units.bigints.UInt256;
 
-public class FullBytes extends DelegatingBytes implements Bytes {
+public class MimcSafeBytes extends DelegatingBytes implements Bytes {
 
   private final Bytes32 originalValue;
 
-  public FullBytes(final Bytes32 delegate) {
+  public MimcSafeBytes(final Bytes32 delegate) {
     super(convertToSafeFieldElementsSize(delegate));
     this.originalValue = delegate;
   }
@@ -35,6 +36,10 @@ public class FullBytes extends DelegatingBytes implements Bytes {
     return originalValue;
   }
 
+  public static UInt256 toUInt256(final Bytes value) {
+    return UInt256.fromBytes(reverseConvertToSafeFieldElementSize(value));
+  }
+
   /**
    * Fhe fields elements hold on 32 bytes but do not allow to contain 32 bytes entirely. For some
    * keys, we cannot assume that it will always fit on a field element. So we need sometimes to
@@ -44,9 +49,15 @@ public class FullBytes extends DelegatingBytes implements Bytes {
    * @param value to format
    * @return formated value
    */
-  private static Bytes convertToSafeFieldElementsSize(Bytes32 value) {
+  private static Bytes convertToSafeFieldElementsSize(final Bytes32 value) {
     Bytes32 lsb = Bytes32.leftPad(value.slice(16, 16));
     Bytes32 msb = Bytes32.leftPad(value.slice(0, 16));
     return Bytes.concatenate(lsb, msb);
+  }
+
+  private static Bytes32 reverseConvertToSafeFieldElementSize(final Bytes value) {
+    Bytes lsb = value.slice(0, 16);
+    Bytes msb = value.slice(16, 16);
+    return Bytes32.wrap(Bytes.concatenate(msb, lsb));
   }
 }

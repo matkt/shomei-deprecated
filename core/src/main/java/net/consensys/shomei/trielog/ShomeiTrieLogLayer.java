@@ -13,7 +13,7 @@
 
 package net.consensys.shomei.trielog;
 
-import net.consensys.shomei.util.bytes.FullBytes;
+import net.consensys.shomei.util.bytes.MimcSafeBytes;
 import net.consensys.zkevm.HashProvider;
 
 import org.apache.tuweni.bytes.Bytes32;
@@ -37,6 +37,6 @@ public class ShomeiTrieLogLayer extends TrieLogLayer {
 
   @Override
   public Hash getSlotHash(final UInt256 slotKey) {
-    return HashProvider.mimc(new FullBytes(slotKey));
+    return HashProvider.mimc(new MimcSafeBytes(slotKey));
   }
 }

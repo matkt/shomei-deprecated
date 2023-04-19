@@ -15,7 +15,8 @@ package net.consensys.shomei;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import net.consensys.shomei.util.bytes.FullBytes;
+import net.consensys.shomei.trielog.AccountKey;
+import net.consensys.shomei.util.bytes.MimcSafeBytes;
 import net.consensys.zkevm.HashProvider;
 
 import org.apache.tuweni.bytes.Bytes32;
@@ -30,9 +31,8 @@ public class ZkAccountTest {
   public void testHashZeroAccount() {
     final ZkAccount zkAccount =
         new ZkAccount(
-            Hash.ZERO,
-            Address.ZERO,
-            new FullBytes(Hash.ZERO),
+            new AccountKey(Hash.ZERO, Address.ZERO),
+            new MimcSafeBytes(Hash.ZERO),
             Hash.ZERO,
             0L,
             0L,

@@ -13,6 +13,9 @@
 
 package net.consensys.shomei.trielog;
 
+import net.consensys.shomei.util.bytes.MimcSafeBytes;
+import net.consensys.zkevm.HashProvider;
+
 import java.util.Objects;
 import java.util.Optional;
 
@@ -24,7 +27,7 @@ public record StorageSlotKey(Hash slotHash, Optional<UInt256> slotKey)
     implements Comparable<StorageSlotKey> {
 
   public StorageSlotKey(final UInt256 slotKey) {
-    this(Hash.hash(slotKey), Optional.of(slotKey));
+    this(HashProvider.mimc(new MimcSafeBytes(slotKey)), Optional.of(slotKey));
   }
 
   public StorageSlotKey(final Hash slotHash, final UInt256 slotKey) {

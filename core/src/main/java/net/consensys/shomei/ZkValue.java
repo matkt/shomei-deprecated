@@ -22,9 +22,7 @@ public class ZkValue<T> {
 
   private T prior;
   private T updated;
-
-  @SuppressWarnings({"FieldCanBeLocal", "unused"}) // TODO manage self destruct
-  private boolean isCleared; // it was destroyed between the two states
+  private boolean isCleared; // it was destroyed between the two blocks
 
   private boolean isRollforward;
 

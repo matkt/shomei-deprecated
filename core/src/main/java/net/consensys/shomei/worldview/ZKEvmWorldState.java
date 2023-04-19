@@ -28,7 +28,7 @@ import net.consensys.shomei.trie.storage.StorageProxy;
 import net.consensys.shomei.trie.storage.StorageProxy.Updater;
 import net.consensys.shomei.trielog.AccountKey;
 import net.consensys.shomei.trielog.StorageSlotKey;
-import net.consensys.shomei.util.bytes.FullBytes;
+import net.consensys.shomei.util.bytes.MimcSafeBytes;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -210,7 +210,7 @@ public class ZKEvmWorldState {
                     traces.add(
                         zkStorageTrie.readZeroAndProve(
                             storageSlotKey.slotHash(),
-                            new FullBytes(storageSlotKey.slotKey().orElseThrow())));
+                            new MimcSafeBytes(storageSlotKey.slotKey().orElseThrow())));
                   }
                 } else if (Objects.equals(storageValue.getPrior(), storageValue.getUpdated())
                     || accountValue.isCleared()) {
@@ -218,7 +218,7 @@ public class ZKEvmWorldState {
                   traces.add(
                       zkStorageTrie.readAndProve(
                           storageSlotKey.slotHash(),
-                          new FullBytes(storageSlotKey.slotKey().orElseThrow())));
+                          new MimcSafeBytes(storageSlotKey.slotKey().orElseThrow())));
                 }
               });
     }
@@ -274,7 +274,8 @@ public class ZKEvmWorldState {
       if (storageValue.getPrior() != null) {
         traces.add(
             zkStorageTrie.removeAndProve(
-                storageSlotKey.slotHash(), new FullBytes(storageSlotKey.slotKey().orElseThrow())));
+                storageSlotKey.slotHash(),
+                new MimcSafeBytes(storageSlotKey.slotKey().orElseThrow())));
       }
     }
     // check update and insert
@@ -285,8 +286,8 @@ public class ZKEvmWorldState {
         traces.add(
             zkStorageTrie.putAndProve(
                 storageSlotKey.slotHash(),
-                new FullBytes(storageSlotKey.slotKey().orElseThrow()),
-                new FullBytes(storageValue.getUpdated())));
+                new MimcSafeBytes(storageSlotKey.slotKey().orElseThrow()),
+                new MimcSafeBytes(storageValue.getUpdated())));
       }
     }
     return traces;

@@ -15,7 +15,7 @@ package net.consensys.shomei.trielog;
 
 import net.consensys.shomei.ZkAccount;
 import net.consensys.shomei.trie.ZKTrie;
-import net.consensys.shomei.util.bytes.FullBytes;
+import net.consensys.shomei.util.bytes.MimcSafeBytes;
 
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Hash;
@@ -28,7 +28,7 @@ public class TrieLogAccountValue {
   private final long nonce;
   private final Wei balance;
   private final Hash storageRoot;
-  private final FullBytes codeHash;
+  private final MimcSafeBytes codeHash;
 
   private final Hash mimcCodeHash;
 
@@ -38,7 +38,7 @@ public class TrieLogAccountValue {
       final long nonce,
       final Wei balance,
       final Hash storageRoot,
-      final FullBytes codeHash,
+      final MimcSafeBytes codeHash,
       final Hash mimcCodeHash,
       final Long codeSize) {
     this.nonce = nonce;
@@ -90,7 +90,7 @@ public class TrieLogAccountValue {
    *
    * @return the hash of the account code (which may be {@link Hash#EMPTY}).
    */
-  public FullBytes getCodeHash() {
+  public MimcSafeBytes getCodeHash() {
     return codeHash;
   }
 
@@ -130,7 +130,7 @@ public class TrieLogAccountValue {
     final long nonce = in.readLongScalar();
     final Wei balance = Wei.of(in.readUInt256Scalar());
     Bytes32 storageRoot;
-    FullBytes keccakCodeHash;
+    MimcSafeBytes keccakCodeHash;
     Bytes32 mimcCodeHash;
     long codeSize;
     if (in.nextIsNull()) {
@@ -143,7 +143,7 @@ public class TrieLogAccountValue {
       keccakCodeHash = ZkAccount.EMPTY_KECCAK_CODE_HASH;
       in.skipNext();
     } else {
-      keccakCodeHash = new FullBytes(in.readBytes32());
+      keccakCodeHash = new MimcSafeBytes(in.readBytes32());
     }
 
     if (in.nextIsNull()) {

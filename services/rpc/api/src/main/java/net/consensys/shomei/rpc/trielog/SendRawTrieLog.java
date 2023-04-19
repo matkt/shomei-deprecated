@@ -58,7 +58,6 @@ public class SendRawTrieLog implements JsonRpcMethod {
       // updater.commit(); //TODO commit
       trieLogObserver.onTrieLogAdded(blockHash);
     } catch (Exception e) {
-      e.printStackTrace(System.out);
       return new JsonRpcErrorResponse(
           requestContext.getRequest().getId(), JsonRpcError.INVALID_PARAMS);
     }

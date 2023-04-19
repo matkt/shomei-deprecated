@@ -25,7 +25,7 @@ import net.consensys.shomei.trie.proof.Trace;
 import net.consensys.shomei.trielog.AccountKey;
 import net.consensys.shomei.trielog.ShomeiTrieLogLayer;
 import net.consensys.shomei.trielog.TrieLogLayer;
-import net.consensys.shomei.util.bytes.FullBytes;
+import net.consensys.shomei.util.bytes.MimcSafeBytes;
 import net.consensys.shomei.worldview.ZKEvmWorldState;
 import net.consensys.zkevm.HashProvider;
 
@@ -184,9 +184,9 @@ public class RollingForwardTests {
     List<Trace> expectedTraces = new ArrayList<>();
     final MutableZkAccount contract = new MutableZkAccount(ZK_ACCOUNT_2);
 
-    final FullBytes storageKey = new FullBytes(UInt256.valueOf(14));
+    final MimcSafeBytes storageKey = new MimcSafeBytes(UInt256.valueOf(14));
     final Hash storageKeyHash = HashProvider.mimc(storageKey);
-    final FullBytes storageValue = new FullBytes(UInt256.valueOf(12));
+    final MimcSafeBytes storageValue = new MimcSafeBytes(UInt256.valueOf(12));
 
     final ZKTrie contractStorageTrie =
         ZKTrie.createTrie(
@@ -236,9 +236,9 @@ public class RollingForwardTests {
 
     final MutableZkAccount contract = new MutableZkAccount(ZK_ACCOUNT_2);
 
-    final FullBytes storageKey = new FullBytes(UInt256.valueOf(14));
+    final MimcSafeBytes storageKey = new MimcSafeBytes(UInt256.valueOf(14));
     final Hash storageKeyHash = HashProvider.mimc(storageKey);
-    final FullBytes storageValue = new FullBytes(UInt256.valueOf(12));
+    final MimcSafeBytes storageValue = new MimcSafeBytes(UInt256.valueOf(12));
 
     final ZKTrie contractStorageTrie =
         ZKTrie.createTrie(
@@ -294,9 +294,9 @@ public class RollingForwardTests {
     // create contract with storage
     final MutableZkAccount contract = new MutableZkAccount(ZK_ACCOUNT_2);
 
-    final FullBytes storageKey = new FullBytes(UInt256.valueOf(14));
+    final MimcSafeBytes storageKey = new MimcSafeBytes(UInt256.valueOf(14));
     final Hash storageKeyHash = HashProvider.mimc(storageKey);
-    final FullBytes storageValue = new FullBytes(UInt256.valueOf(12));
+    final MimcSafeBytes storageValue = new MimcSafeBytes(UInt256.valueOf(12));
 
     final ZKTrie contractStorageTrie =
         ZKTrie.createTrie(
@@ -367,9 +367,9 @@ public class RollingForwardTests {
     // create contract with storage
     final MutableZkAccount contract = new MutableZkAccount(ZK_ACCOUNT_2);
 
-    final FullBytes storageKey = new FullBytes(UInt256.valueOf(14));
+    final MimcSafeBytes storageKey = new MimcSafeBytes(UInt256.valueOf(14));
     final Hash storageKeyHash = HashProvider.mimc(storageKey);
-    final FullBytes storageValue = new FullBytes(UInt256.valueOf(12));
+    final MimcSafeBytes storageValue = new MimcSafeBytes(UInt256.valueOf(12));
 
     final ZKTrie contractStorageTrie =
         ZKTrie.createTrie(
@@ -388,7 +388,7 @@ public class RollingForwardTests {
         accountStateTrieOne.removeAndProve(contract.getHkey(), contract.getAddress()));
     // recreate contract
     final MutableZkAccount contractNew = new MutableZkAccount(ZK_ACCOUNT_2);
-    final FullBytes storageValueNew = new FullBytes(UInt256.valueOf(13));
+    final MimcSafeBytes storageValueNew = new MimcSafeBytes(UInt256.valueOf(13));
     final ZKTrie contractStorageTrieNew =
         ZKTrie.createTrie(
             new WorldStateStorageProxy(
@@ -442,9 +442,9 @@ public class RollingForwardTests {
     // create contract with storage
     final MutableZkAccount contract = new MutableZkAccount(ZK_ACCOUNT_2);
 
-    final FullBytes storageKey = new FullBytes(UInt256.valueOf(14));
+    final MimcSafeBytes storageKey = new MimcSafeBytes(UInt256.valueOf(14));
     final Hash storageKeyHash = HashProvider.mimc(storageKey);
-    final FullBytes storageValue = new FullBytes(UInt256.valueOf(12));
+    final MimcSafeBytes storageValue = new MimcSafeBytes(UInt256.valueOf(12));
 
     final ZKTrie contractStorageTrie =
         ZKTrie.createTrie(
@@ -463,9 +463,9 @@ public class RollingForwardTests {
         accountStateTrieOne.removeAndProve(contract.getHkey(), contract.getAddress()));
     // recreate contract
     final MutableZkAccount contractNew = new MutableZkAccount(ZK_ACCOUNT_2);
-    final FullBytes storageKeyNew = new FullBytes(UInt256.valueOf(146));
+    final MimcSafeBytes storageKeyNew = new MimcSafeBytes(UInt256.valueOf(146));
     final Hash storageKeyHashNew = HashProvider.mimc(storageKeyNew);
-    final FullBytes storageValueNew = new FullBytes(UInt256.valueOf(13));
+    final MimcSafeBytes storageValueNew = new MimcSafeBytes(UInt256.valueOf(13));
     final ZKTrie contractStorageTrieNew =
         ZKTrie.createTrie(
             new WorldStateStorageProxy(

@@ -13,52 +13,35 @@
 
 package net.consensys.shomei;
 
+import net.consensys.shomei.trielog.AccountKey;
 import net.consensys.shomei.trielog.TrieLogAccountValue;
-import net.consensys.shomei.util.bytes.FullBytes;
+import net.consensys.shomei.util.bytes.MimcSafeBytes;
 
-import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.Wei;
 
 public class MutableZkAccount extends ZkAccount {
 
   public MutableZkAccount(
-      final Address address,
-      final FullBytes keccakCodeHash,
+      final AccountKey accountKey,
+      final MimcSafeBytes keccakCodeHash,
       final Hash mimcCodeHash,
       final long codeSize,
       final long nonce,
       final Wei balance,
       final Hash storageRoot) {
-    super(address, keccakCodeHash, mimcCodeHash, codeSize, nonce, balance, storageRoot);
+    super(accountKey, keccakCodeHash, mimcCodeHash, codeSize, nonce, balance, storageRoot);
   }
 
-  public MutableZkAccount(
-      final Hash hkey,
-      final Address address,
-      final FullBytes keccakCodeHash,
-      final Hash mimcCodeHash,
-      final long codeSize,
-      final long nonce,
-      final Wei balance,
-      final Hash storageRoot) {
-    super(hkey, address, keccakCodeHash, mimcCodeHash, codeSize, nonce, balance, storageRoot);
-  }
-
-  public MutableZkAccount(
-      final Hash hkey, final Address address, final TrieLogAccountValue accountValue) {
-    super(hkey, address, accountValue);
+  public MutableZkAccount(final AccountKey accountKey, final TrieLogAccountValue accountValue) {
+    super(accountKey, accountValue);
   }
 
   public MutableZkAccount(final ZkAccount toCopy) {
     super(toCopy);
   }
 
-  public void setAddress(final Address address) {
-    this.address = address;
-  }
-
-  public void setKeccakCodeHash(final FullBytes keccakCodeHash) {
+  public void setKeccakCodeHash(final MimcSafeBytes keccakCodeHash) {
     this.keccakCodeHash = keccakCodeHash;
   }
 

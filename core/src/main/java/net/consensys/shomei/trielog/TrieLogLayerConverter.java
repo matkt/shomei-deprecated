@@ -19,7 +19,7 @@ import static net.consensys.shomei.trielog.TrieLogLayer.nullOrValue;
 import net.consensys.shomei.ZkAccount;
 import net.consensys.shomei.storage.WorldStateStorage;
 import net.consensys.shomei.trie.model.FlattenedLeaf;
-import net.consensys.shomei.util.bytes.FullBytes;
+import net.consensys.shomei.util.bytes.MimcSafeBytes;
 import net.consensys.zkevm.HashProvider;
 
 import java.util.Optional;
@@ -77,7 +77,7 @@ public class TrieLogLayerConverter {
               worldStateStorage.getFlatLeaf(accountKey.accountHash());
           oldAccountValue =
               flatLeaf
-                  .map(value -> ZkAccount.fromEncodedBytes(address, value.leafValue()))
+                  .map(value -> ZkAccount.fromEncodedBytes(accountKey, value.leafValue()))
                   .orElseThrow();
           accountIndex = flatLeaf.map(FlattenedLeaf::leafIndex);
         } else {
@@ -87,7 +87,7 @@ public class TrieLogLayerConverter {
         final ZkAccount newAccountValue =
             nullOrValue(
                 input,
-                rlpInput -> prepareTrieLogAccount(address, newCode, oldAccountValue, rlpInput));
+                rlpInput -> prepareTrieLogAccount(accountKey, newCode, oldAccountValue, rlpInput));
         final boolean isCleared = defaultOrValue(input, 0, RLPInput::readInt) == 1;
         input.leaveList();
         trieLogLayer.addAccountChange(accountKey, oldAccountValue, newAccountValue, isCleared);
@@ -99,16 +99,17 @@ public class TrieLogLayerConverter {
         input.enterList();
         while (!input.isEndOfCurrentList()) {
           input.enterList();
-          final UInt256 slotKey = input.readUInt256Scalar();
+          final StorageSlotKey storageSlotKey = new StorageSlotKey(input.readUInt256Scalar());
           final UInt256 oldValue;
           if (!input.nextIsNull()) {
             oldValue =
                 worldStateStorage
                     .getFlatLeaf(
                         Bytes.concatenate(
-                            Bytes.wrap(Longs.toByteArray(accountIndex.orElseThrow())), slotKey))
+                            Bytes.wrap(Longs.toByteArray(accountIndex.orElseThrow())),
+                            storageSlotKey.slotHash()))
                     .map(FlattenedLeaf::leafValue)
-                    .map(UInt256::fromBytes)
+                    .map(MimcSafeBytes::toUInt256)
                     .orElseThrow();
           } else {
             oldValue = null;
@@ -117,7 +118,7 @@ public class TrieLogLayerConverter {
           final UInt256 newValue = nullOrValue(input, RLPInput::readUInt256Scalar);
           input.skipNext(); // skip is cleared for storage level
           input.leaveList();
-          trieLogLayer.addStorageChange(accountKey, slotKey, oldValue, newValue);
+          trieLogLayer.addStorageChange(accountKey, storageSlotKey, oldValue, newValue);
         }
         input.leaveList();
       }
@@ -131,7 +132,7 @@ public class TrieLogLayerConverter {
   }
 
   public ZkAccount prepareTrieLogAccount(
-      final Address address,
+      final AccountKey accountKey,
       final Optional<Bytes> newCode,
       final ZkAccount oldValue,
       final RLPInput in) {
@@ -143,7 +144,7 @@ public class TrieLogLayerConverter {
     in.skipNext(); // skip keccak codeHash
     in.leaveList();
 
-    FullBytes keccakCodeHash;
+    MimcSafeBytes keccakCodeHash;
     Bytes32 mimcCodeHash;
     long codeSize;
 
@@ -159,12 +160,12 @@ public class TrieLogLayerConverter {
       }
     } else {
       final Bytes code = newCode.get();
-      keccakCodeHash = new FullBytes(HashProvider.keccak256(code));
+      keccakCodeHash = new MimcSafeBytes(HashProvider.keccak256(code));
       mimcCodeHash = HashProvider.mimc(code);
       codeSize = code.size();
     }
 
     return new ZkAccount(
-        address, keccakCodeHash, Hash.wrap(mimcCodeHash), codeSize, nonce, balance, null);
+        accountKey, keccakCodeHash, Hash.wrap(mimcCodeHash), codeSize, nonce, balance, null);
   }
 }
