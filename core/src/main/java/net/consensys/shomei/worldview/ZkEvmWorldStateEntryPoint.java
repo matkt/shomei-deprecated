@@ -64,7 +64,6 @@ public class ZkEvmWorldStateEntryPoint implements TrieLogObserver {
 
   public void moveHead(final long newBlockNumber, final ShomeiTrieLogLayer trieLogLayer)
       throws MissingTrieLogException {
-    System.out.println(trieLogLayer.dump());
     currentWorldState.getAccumulator().rollForward(trieLogLayer);
     currentWorldState.commit(newBlockNumber, trieLogLayer.getBlockHash());
   }

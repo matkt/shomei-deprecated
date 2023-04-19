@@ -45,12 +45,12 @@ public class SendRawTrieLog implements JsonRpcMethod {
 
   @Override
   public JsonRpcResponse response(final JsonRpcRequestContext requestContext) {
-    if (requestContext.getRequest().getParamLength() != 1) {
+    if (requestContext.getRequest().getParamLength() != 2) {
       return new JsonRpcErrorResponse(
           requestContext.getRequest().getId(), JsonRpcError.INVALID_PARAMS);
     }
     final Hash blockHash = requestContext.getRequiredParameter(0, Hash.class);
-    final String rawTrieLog = requestContext.getRequiredParameter(0, String.class);
+    final String rawTrieLog = requestContext.getRequiredParameter(1, String.class);
     try {
       final WorldStateStorage.WorldStateUpdater updater =
           (WorldStateStorage.WorldStateUpdater) worldStateStorage.updater();

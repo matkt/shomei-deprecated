@@ -52,9 +52,9 @@ public class TrieLogLayerConverter {
       input.enterList();
 
       final Address address = Address.readFrom(input);
+      final AccountKey accountKey = new AccountKey(address);
       final Optional<Bytes> newCode;
       Optional<Long> accountIndex = Optional.empty();
-      AccountKey accountKey = null;
 
       if (input.nextIsNull()) {
         input.skipNext();
@@ -73,8 +73,9 @@ public class TrieLogLayerConverter {
         input.enterList();
         final ZkAccount oldAccountValue;
         if (!input.nextIsNull()) {
+          System.out.println(input.readAsRlp().raw());
           final Optional<FlattenedLeaf> flatLeaf =
-              worldStateStorage.getFlatLeaf(HashProvider.mimc(address));
+              worldStateStorage.getFlatLeaf(accountKey.accountHash());
           oldAccountValue =
               flatLeaf
                   .map(value -> ZkAccount.fromEncodedBytes(address, value.leafValue()))
@@ -90,9 +91,7 @@ public class TrieLogLayerConverter {
                 rlpInput -> prepareTrieLogAccount(address, newCode, oldAccountValue, rlpInput));
         final boolean isCleared = defaultOrValue(input, 0, RLPInput::readInt) == 1;
         input.leaveList();
-
-        accountKey =
-            trieLogLayer.addAccountChange(address, oldAccountValue, newAccountValue, isCleared);
+        trieLogLayer.addAccountChange(accountKey, oldAccountValue, newAccountValue, isCleared);
       }
 
       if (input.nextIsNull()) {
@@ -123,7 +122,6 @@ public class TrieLogLayerConverter {
         }
         input.leaveList();
       }
-
       // lenient leave list for forward compatible additions.
       input.leaveListLenient();
     }

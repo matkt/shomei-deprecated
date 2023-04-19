@@ -65,14 +65,22 @@ public class TrieLogLayer {
     this.blockHash = blockHash;
   }
 
+  public void addAccountChange(
+      final AccountKey accountKey,
+      final ZkAccount oldValue,
+      final ZkAccount newValue,
+      final boolean isCleared) {
+    checkState(!frozen, "Layer is Frozen");
+    accounts.put(accountKey, new ZkValue<>(oldValue, newValue, isCleared));
+  }
+
   public AccountKey addAccountChange(
       final Address address,
       final ZkAccount oldValue,
       final ZkAccount newValue,
       final boolean isCleared) {
-    checkState(!frozen, "Layer is Frozen");
     final AccountKey accountKey = new AccountKey(getAccountHash(address), address);
-    accounts.put(accountKey, new ZkValue<>(oldValue, newValue, isCleared));
+    addAccountChange(accountKey, oldValue, newValue, isCleared);
     return accountKey;
   }
 
