@@ -13,9 +13,8 @@
 
 package net.consensys.shomei.storage;
 
-import net.consensys.shomei.trie.model.FlatLeafValue;
+import net.consensys.shomei.trie.model.FlattenedLeaf;
 import net.consensys.shomei.trie.storage.StorageProxy;
-import net.consensys.shomei.trielog.AccountKey;
 
 import java.util.Map;
 import java.util.Optional;
@@ -40,17 +39,11 @@ public class WorldStateStorageProxy implements StorageProxy {
   }
 
   public static WorldStateStorageProxy createStorageProxy(
-      final AccountKey accountKey,
+      final long accountLeafIndex,
       final WorldStateStorage worldStateStorage,
       final StorageProxy.Updater updater) {
     return new WorldStateStorageProxy(
-        Optional.of(
-            worldStateStorage
-                .getFlatLeaf(accountKey.accountHash())
-                .map(aLong -> Bytes.wrap(Longs.toByteArray(aLong.getLeafIndex())))
-                .orElseThrow()),
-        worldStateStorage,
-        updater);
+        Optional.of(Bytes.wrap(Longs.toByteArray(accountLeafIndex))), worldStateStorage, updater);
   }
 
   @VisibleForTesting
@@ -77,23 +70,23 @@ public class WorldStateStorageProxy implements StorageProxy {
   }
 
   @Override
-  public Optional<FlatLeafValue> getFlatLeaf(final Bytes hkey) {
+  public Optional<FlattenedLeaf> getFlatLeaf(final Bytes hkey) {
     return worldStateStorage.getFlatLeaf(keySerializer.apply(hkey));
   }
 
   @Override
   public Range getNearestKeys(final Bytes hkey) {
     Range nearestKeys = worldStateStorage.getNearestKeys(keySerializer.apply(hkey));
-    final Map.Entry<Bytes, FlatLeafValue> left =
+    final Map.Entry<Bytes, FlattenedLeaf> left =
         Map.entry(
             keyDeserializer.apply(nearestKeys.getLeftNodeKey()), nearestKeys.getLeftNodeValue());
-    final Optional<Map.Entry<Bytes, FlatLeafValue>> center =
+    final Optional<Map.Entry<Bytes, FlattenedLeaf>> center =
         nearestKeys
             .getCenterNode()
             .map(
                 centerNode ->
                     Map.entry(keyDeserializer.apply(centerNode.getKey()), centerNode.getValue()));
-    final Map.Entry<Bytes, FlatLeafValue> right =
+    final Map.Entry<Bytes, FlattenedLeaf> right =
         Map.entry(
             keyDeserializer.apply(nearestKeys.getRightNodeKey()), nearestKeys.getRightNodeValue());
     return new Range(left, center, right);
@@ -121,7 +114,7 @@ public class WorldStateStorageProxy implements StorageProxy {
     }
 
     @Override
-    public void putFlatLeaf(final Bytes hkey, final FlatLeafValue value) {
+    public void putFlatLeaf(final Bytes hkey, final FlattenedLeaf value) {
       this.updater.putFlatLeaf(keySerializer.apply(hkey), value);
     }
 

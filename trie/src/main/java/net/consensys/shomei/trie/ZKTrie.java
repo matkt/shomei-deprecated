@@ -16,10 +16,11 @@ package net.consensys.shomei.trie;
 import static com.google.common.base.Preconditions.checkArgument;
 
 import net.consensys.shomei.trie.StoredSparseMerkleTrie.GetAndProve;
-import net.consensys.shomei.trie.model.FlatLeafValue;
+import net.consensys.shomei.trie.model.FlattenedLeaf;
 import net.consensys.shomei.trie.model.LeafOpening;
 import net.consensys.shomei.trie.node.EmptyLeafNode;
-import net.consensys.shomei.trie.proof.DeleteTrace;
+import net.consensys.shomei.trie.path.PathResolver;
+import net.consensys.shomei.trie.proof.DeletionTrace;
 import net.consensys.shomei.trie.proof.EmptyTrace;
 import net.consensys.shomei.trie.proof.InsertionTrace;
 import net.consensys.shomei.trie.proof.Proof;
@@ -102,12 +103,12 @@ public class ZKTrie {
   public void setHeadAndTail() {
     // head
     final Long headIndex = pathResolver.getNextFreeLeafNodeIndex();
-    updater.putFlatLeaf(LeafOpening.HEAD.getHkey(), FlatLeafValue.HEAD);
+    updater.putFlatLeaf(LeafOpening.HEAD.getHkey(), FlattenedLeaf.HEAD);
     state.put(pathResolver.getLeafPath(headIndex), LeafOpening.HEAD.getEncodesBytes());
     pathResolver.incrementNextFreeLeafNodeIndex();
     // tail
     final Long tailIndex = pathResolver.getNextFreeLeafNodeIndex();
-    updater.putFlatLeaf(LeafOpening.TAIL.getHkey(), FlatLeafValue.TAIL);
+    updater.putFlatLeaf(LeafOpening.TAIL.getHkey(), FlattenedLeaf.TAIL);
     state.put(pathResolver.getLeafPath(tailIndex), LeafOpening.TAIL.getEncodesBytes());
     pathResolver.incrementNextFreeLeafNodeIndex();
   }
@@ -128,10 +129,18 @@ public class ZKTrie {
     return state.getRootHash();
   }
 
+  public long getNextFreeNode() {
+    return pathResolver.getNextFreeLeafNodeIndex();
+  }
+
+  public Optional<Long> getLeafIndex(final Hash hkey) {
+    return worldStateStorage.getFlatLeaf(hkey).map(FlattenedLeaf::leafIndex);
+  }
+
   public Optional<Bytes> get(final Hash hkey) {
     return worldStateStorage
         .getFlatLeaf(hkey)
-        .map(FlatLeafValue::getLeafIndex)
+        .map(FlattenedLeaf::leafIndex)
         .map(pathResolver::getLeafPath)
         .flatMap(this::get);
   }
@@ -150,10 +159,10 @@ public class ZKTrie {
 
       // GET path of HKey-
       final Bytes leftLeafPath =
-          pathResolver.getLeafPath(nearestKeys.getLeftNodeValue().getLeafIndex());
+          pathResolver.getLeafPath(nearestKeys.getLeftNodeValue().leafIndex());
       // GET path of HKey+
       final Bytes rightLeafPath =
-          pathResolver.getLeafPath(nearestKeys.getRightNodeValue().getLeafIndex());
+          pathResolver.getLeafPath(nearestKeys.getRightNodeValue().leafIndex());
 
       final GetAndProve leftData = state.getAndProve(leftLeafPath);
       final GetAndProve rightData = state.getAndProve(rightLeafPath);
@@ -163,27 +172,27 @@ public class ZKTrie {
       readZeroTrace.setLeftLeaf(leftData.nodeValue().map(LeafOpening::readFrom).orElseThrow());
       readZeroTrace.setRightLeaf(rightData.nodeValue().map(LeafOpening::readFrom).orElseThrow());
       readZeroTrace.setProofLeft(
-          new Proof(nearestKeys.getLeftNodeValue().getLeafIndex(), leftData.proof()));
+          new Proof(nearestKeys.getLeftNodeValue().leafIndex(), leftData.proof()));
       readZeroTrace.setProofRight(
-          new Proof(nearestKeys.getRightNodeValue().getLeafIndex(), rightData.proof()));
+          new Proof(nearestKeys.getRightNodeValue().leafIndex(), rightData.proof()));
 
       return readZeroTrace;
     } else {
       // INIT trace
       final ReadTrace readTrace = new ReadTrace(getSubRootNode());
 
-      final FlatLeafValue currentFlatLeafValue = nearestKeys.getCenterNodeValue().orElseThrow();
+      final FlattenedLeaf currentFlatLeafValue = nearestKeys.getCenterNodeValue().orElseThrow();
 
       // GET path of hash(k)
-      final Bytes leafPath = pathResolver.getLeafPath(currentFlatLeafValue.getLeafIndex());
+      final Bytes leafPath = pathResolver.getLeafPath(currentFlatLeafValue.leafIndex());
       // READ hash(k)
       final GetAndProve data = state.getAndProve(leafPath);
 
       readTrace.setKey(key);
-      readTrace.setValue(currentFlatLeafValue.getValue());
+      readTrace.setValue(currentFlatLeafValue.leafValue());
       readTrace.setNextFreeNode(pathResolver.getNextFreeLeafNodeIndex());
       readTrace.setLeaf(data.nodeValue().map(LeafOpening::readFrom).orElseThrow());
-      readTrace.setProof(new Proof(currentFlatLeafValue.getLeafIndex(), data.proof()));
+      readTrace.setProof(new Proof(currentFlatLeafValue.leafIndex(), data.proof()));
 
       return readTrace;
     }
@@ -207,10 +216,10 @@ public class ZKTrie {
 
       // GET path of HKey-
       final Bytes leftLeafPath =
-          pathResolver.getLeafPath(nearestKeys.getLeftNodeValue().getLeafIndex());
+          pathResolver.getLeafPath(nearestKeys.getLeftNodeValue().leafIndex());
       // GET path of HKey+
       final Bytes rightLeafPath =
-          pathResolver.getLeafPath(nearestKeys.getRightNodeValue().getLeafIndex());
+          pathResolver.getLeafPath(nearestKeys.getRightNodeValue().leafIndex());
 
       // FIND next free node
       final long nextFreeNode = pathResolver.getNextFreeLeafNodeIndex();
@@ -226,11 +235,11 @@ public class ZKTrie {
 
       // PUT hash(k) with HKey- for Prev and HKey+ for next
       final Bytes leafPathToAdd = pathResolver.getLeafPath(nextFreeNode);
-      updater.putFlatLeaf(hKey, new FlatLeafValue(nextFreeNode, newValue));
+      updater.putFlatLeaf(hKey, new FlattenedLeaf(nextFreeNode, newValue));
       final LeafOpening newLeafValue =
           new LeafOpening(
-              nearestKeys.getLeftNodeValue().getLeafIndex(),
-              nearestKeys.getRightNodeValue().getLeafIndex(),
+              nearestKeys.getLeftNodeValue().leafIndex(),
+              nearestKeys.getRightNodeValue().leafIndex(),
               hKey,
               HashProvider.mimc(newValue));
 
@@ -254,10 +263,10 @@ public class ZKTrie {
       insertionTrace.setPriorLeftLeaf(priorLeftLeaf);
       insertionTrace.setPriorRightLeaf(priorRightLeaf);
       insertionTrace.setProofLeft(
-          new Proof(nearestKeys.getLeftNodeValue().getLeafIndex(), leftSiblings));
+          new Proof(nearestKeys.getLeftNodeValue().leafIndex(), leftSiblings));
       insertionTrace.setProofNew(new Proof(nextFreeNode, centerSiblings));
       insertionTrace.setProofRight(
-          new Proof(nearestKeys.getRightNodeValue().getLeafIndex(), rightSiblings));
+          new Proof(nearestKeys.getRightNodeValue().leafIndex(), rightSiblings));
       insertionTrace.setNewNextFreeNode(pathResolver.getNextFreeLeafNodeIndex());
       insertionTrace.setNewSubRoot(getSubRootNode());
 
@@ -268,9 +277,10 @@ public class ZKTrie {
       // INIT trace
       final UpdateTrace updateTrace = new UpdateTrace(getSubRootNode());
 
-      final FlatLeafValue currentFlatLeafValue = nearestKeys.getCenterNodeValue().orElseThrow();
+      final FlattenedLeaf currentFlatLeafValue = nearestKeys.getCenterNodeValue().orElseThrow();
 
-      final Bytes leafPathToUpdate = pathResolver.getLeafPath(currentFlatLeafValue.getLeafIndex());
+      final Bytes leafPathToUpdate = pathResolver.getLeafPath(currentFlatLeafValue.leafIndex());
+      updater.putFlatLeaf(hKey, new FlattenedLeaf(currentFlatLeafValue.leafIndex(), newValue));
 
       // RETRIEVE OLD VALUE
       final LeafOpening priorUpdatedLeaf =
@@ -282,10 +292,10 @@ public class ZKTrie {
           state.putAndProve(leafPathToUpdate, newUpdatedLeaf.getEncodesBytes());
 
       updateTrace.setKey(key);
-      updateTrace.setOldValue(currentFlatLeafValue.getValue());
+      updateTrace.setOldValue(currentFlatLeafValue.leafValue());
       updateTrace.setNewValue(newValue);
       updateTrace.setPriorUpdatedLeaf(priorUpdatedLeaf);
-      updateTrace.setProof(new Proof(currentFlatLeafValue.getLeafIndex(), siblings));
+      updateTrace.setProof(new Proof(currentFlatLeafValue.leafIndex(), siblings));
       updateTrace.setNewNextFreeNode(pathResolver.getNextFreeLeafNodeIndex());
       updateTrace.setNewSubRoot(getSubRootNode());
 
@@ -303,10 +313,10 @@ public class ZKTrie {
     if (nearestKeys.getCenterNode().isPresent()) {
 
       // INIT trace
-      final DeleteTrace deleteTrace = new DeleteTrace(getSubRootNode());
+      final DeletionTrace deleteTrace = new DeletionTrace(getSubRootNode());
 
-      final Long leftLeafIndex = nearestKeys.getLeftNodeValue().getLeafIndex();
-      final Long rightLeafIndex = nearestKeys.getRightNodeValue().getLeafIndex();
+      final Long leftLeafIndex = nearestKeys.getLeftNodeValue().leafIndex();
+      final Long rightLeafIndex = nearestKeys.getRightNodeValue().leafIndex();
 
       // UPDATE HKey- with HKey+ for next
       final Bytes leftLeafPath = pathResolver.getLeafPath(leftLeafIndex);
@@ -319,7 +329,7 @@ public class ZKTrie {
 
       // REMOVE hash(k)
       final Bytes leafPathToDelete =
-          pathResolver.getLeafPath(nearestKeys.getCenterNodeValue().orElseThrow().getLeafIndex());
+          pathResolver.getLeafPath(nearestKeys.getCenterNodeValue().orElseThrow().leafIndex());
       final LeafOpening priorDeletedLeaf =
           get(leafPathToDelete).map(LeafOpening::readFrom).orElseThrow();
       updater.removeFlatLeafValue(hkey);
@@ -339,12 +349,11 @@ public class ZKTrie {
       deleteTrace.setPriorLeftLeaf(priorLeftLeaf);
       deleteTrace.setPriorDeletedLeaf(priorDeletedLeaf);
       deleteTrace.setPriorRightLeaf(priorRightLeaf);
-      deleteTrace.setProofLeft(
-          new Proof(nearestKeys.getLeftNodeValue().getLeafIndex(), leftSiblings));
+      deleteTrace.setProofLeft(new Proof(nearestKeys.getLeftNodeValue().leafIndex(), leftSiblings));
       deleteTrace.setProofDeleted(
-          new Proof(nearestKeys.getCenterNodeValue().orElseThrow().getLeafIndex(), centerSiblings));
+          new Proof(nearestKeys.getCenterNodeValue().orElseThrow().leafIndex(), centerSiblings));
       deleteTrace.setProofRight(
-          new Proof(nearestKeys.getRightNodeValue().getLeafIndex(), rightSiblings));
+          new Proof(nearestKeys.getRightNodeValue().leafIndex(), rightSiblings));
       deleteTrace.setNewNextFreeNode(pathResolver.getNextFreeLeafNodeIndex());
       deleteTrace.setNewSubRoot(getSubRootNode());
 

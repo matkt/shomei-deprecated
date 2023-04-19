@@ -16,17 +16,15 @@ package net.consensys.shomei.rpc.trielog;
 import net.consensys.shomei.observer.TrieLogObserver;
 import net.consensys.shomei.rpc.ShomeiRpcMethod;
 import net.consensys.shomei.storage.WorldStateStorage;
-import net.consensys.shomei.trielog.ShomeiTrieLogLayer;
-import net.consensys.shomei.trielog.TrieLogLayer;
 
 import org.apache.tuweni.bytes.Bytes;
+import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.ethereum.api.jsonrpc.internal.JsonRpcRequestContext;
 import org.hyperledger.besu.ethereum.api.jsonrpc.internal.methods.JsonRpcMethod;
 import org.hyperledger.besu.ethereum.api.jsonrpc.internal.response.JsonRpcError;
 import org.hyperledger.besu.ethereum.api.jsonrpc.internal.response.JsonRpcErrorResponse;
 import org.hyperledger.besu.ethereum.api.jsonrpc.internal.response.JsonRpcResponse;
 import org.hyperledger.besu.ethereum.api.jsonrpc.internal.response.JsonRpcSuccessResponse;
-import org.hyperledger.besu.ethereum.rlp.RLP;
 
 public class SendRawTrieLog implements JsonRpcMethod {
 
@@ -51,16 +49,14 @@ public class SendRawTrieLog implements JsonRpcMethod {
       return new JsonRpcErrorResponse(
           requestContext.getRequest().getId(), JsonRpcError.INVALID_PARAMS);
     }
+    final Hash blockHash = requestContext.getRequiredParameter(0, Hash.class);
     final String rawTrieLog = requestContext.getRequiredParameter(0, String.class);
     try {
-      final ShomeiTrieLogLayer trieLogLayer =
-          TrieLogLayer.readFrom(
-              new ShomeiTrieLogLayer(), RLP.input(Bytes.fromHexString(rawTrieLog)));
       final WorldStateStorage.WorldStateUpdater updater =
           (WorldStateStorage.WorldStateUpdater) worldStateStorage.updater();
-      updater.saveTrieLog(trieLogLayer);
+      updater.saveTrieLog(blockHash, Bytes.fromHexString(rawTrieLog));
       // updater.commit(); //TODO commit
-      trieLogObserver.onTrieLogAdded(trieLogLayer);
+      trieLogObserver.onTrieLogAdded(blockHash);
     } catch (Exception e) {
       e.printStackTrace(System.out);
       return new JsonRpcErrorResponse(

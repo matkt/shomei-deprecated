@@ -39,7 +39,7 @@ public class ZkAccountTest {
             Wei.ZERO,
             Hash.ZERO);
 
-    assertThat(HashProvider.mimc(zkAccount.serializeAccount()))
+    assertThat(HashProvider.mimc(zkAccount.getEncodedBytes()))
         .isEqualTo(
             Bytes32.fromHexString(
                 "19be98b429f6e00b8eff84a8aa617d2982421d5cde049c3e2a9b5a30a554a307"));

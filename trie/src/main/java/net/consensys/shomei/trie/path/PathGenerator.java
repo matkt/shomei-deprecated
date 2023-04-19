@@ -11,7 +11,7 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package net.consensys.shomei.trie.util;
+package net.consensys.shomei.trie.path;
 
 import net.consensys.shomei.trie.node.LeafType;
 

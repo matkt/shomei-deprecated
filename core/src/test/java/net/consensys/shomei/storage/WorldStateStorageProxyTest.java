@@ -15,7 +15,7 @@ package net.consensys.shomei.storage;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import net.consensys.shomei.trie.model.FlatLeafValue;
+import net.consensys.shomei.trie.model.FlattenedLeaf;
 
 import java.util.Optional;
 
@@ -29,7 +29,7 @@ public class WorldStateStorageProxyTest {
     final InMemoryWorldStateStorage inMemoryWorldStateStorage = new InMemoryWorldStateStorage();
     final WorldStateStorageProxy worldStateStorageProxy =
         new WorldStateStorageProxy(inMemoryWorldStateStorage);
-    final FlatLeafValue flatLeafValue = new FlatLeafValue(1L, Bytes.EMPTY);
+    final FlattenedLeaf flatLeafValue = new FlattenedLeaf(1L, Bytes.EMPTY);
     worldStateStorageProxy.updater().putFlatLeaf(Bytes.of(3), flatLeafValue);
     assertThat(inMemoryWorldStateStorage.getFlatLeafStorage().get(Bytes.of(3)))
         .isEqualTo(flatLeafValue);
@@ -40,7 +40,7 @@ public class WorldStateStorageProxyTest {
     final InMemoryWorldStateStorage inMemoryWorldStateStorage = new InMemoryWorldStateStorage();
     final WorldStateStorageProxy worldStateStorageProxy =
         new WorldStateStorageProxy(Optional.of(Bytes.of(1)), inMemoryWorldStateStorage);
-    final FlatLeafValue flatLeafValue = new FlatLeafValue(1L, Bytes.EMPTY);
+    final FlattenedLeaf flatLeafValue = new FlattenedLeaf(1L, Bytes.EMPTY);
     worldStateStorageProxy.updater().putFlatLeaf(Bytes.of(3), flatLeafValue);
     assertThat(inMemoryWorldStateStorage.getFlatLeafStorage()).doesNotContainKey(Bytes.of(3));
     assertThat(inMemoryWorldStateStorage.getFlatLeafStorage().get(Bytes.of(1, 3)))
@@ -52,7 +52,7 @@ public class WorldStateStorageProxyTest {
     final InMemoryWorldStateStorage inMemoryWorldStateStorage = new InMemoryWorldStateStorage();
     final WorldStateStorageProxy worldStateStorageProxy =
         new WorldStateStorageProxy(inMemoryWorldStateStorage);
-    final FlatLeafValue flatLeafValue = new FlatLeafValue(1L, Bytes.EMPTY);
+    final FlattenedLeaf flatLeafValue = new FlattenedLeaf(1L, Bytes.EMPTY);
     worldStateStorageProxy.updater().putFlatLeaf(Bytes.of(3), flatLeafValue);
     assertThat(inMemoryWorldStateStorage.getFlatLeafStorage().get(Bytes.of(3)))
         .isEqualTo(flatLeafValue);
@@ -65,7 +65,7 @@ public class WorldStateStorageProxyTest {
     final InMemoryWorldStateStorage inMemoryWorldStateStorage = new InMemoryWorldStateStorage();
     final WorldStateStorageProxy worldStateStorageProxy =
         new WorldStateStorageProxy(Optional.of(Bytes.of(1)), inMemoryWorldStateStorage);
-    final FlatLeafValue flatLeafValue = new FlatLeafValue(1L, Bytes.EMPTY);
+    final FlattenedLeaf flatLeafValue = new FlattenedLeaf(1L, Bytes.EMPTY);
     worldStateStorageProxy.updater().putFlatLeaf(Bytes.of(3), flatLeafValue);
     assertThat(inMemoryWorldStateStorage.getFlatLeafStorage().get(Bytes.of(1, 3)))
         .isEqualTo(flatLeafValue);

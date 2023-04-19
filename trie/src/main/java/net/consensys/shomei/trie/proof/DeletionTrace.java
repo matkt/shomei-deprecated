@@ -18,7 +18,7 @@ import net.consensys.shomei.trie.model.LeafOpening;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.ethereum.trie.Node;
 
-public class DeleteTrace implements Trace {
+public class DeletionTrace implements Trace {
 
   private long newNextFreeNode;
   public Node<Bytes> oldSubRoot;
@@ -35,7 +35,7 @@ public class DeleteTrace implements Trace {
   public LeafOpening priorDeletedLeaf;
   public LeafOpening priorRightLeaf;
 
-  public DeleteTrace(final Node<Bytes> oldSubRoot) {
+  public DeletionTrace(final Node<Bytes> oldSubRoot) {
     this.oldSubRoot = oldSubRoot;
   }
 

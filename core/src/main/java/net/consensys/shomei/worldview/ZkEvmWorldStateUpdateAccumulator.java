@@ -17,7 +17,6 @@ import net.consensys.shomei.ZkAccount;
 import net.consensys.shomei.ZkValue;
 import net.consensys.shomei.trielog.AccountKey;
 import net.consensys.shomei.trielog.StorageSlotKey;
-import net.consensys.shomei.trielog.TrieLogAccountValue;
 import net.consensys.shomei.trielog.TrieLogLayer;
 
 import java.util.Map;
@@ -103,8 +102,8 @@ public class ZkEvmWorldStateUpdateAccumulator {
 
   private void rollAccountChange(
       final AccountKey accountKey,
-      final TrieLogAccountValue expectedValue,
-      final TrieLogAccountValue replacementValue,
+      final ZkAccount expectedValue,
+      final ZkAccount replacementValue,
       final boolean isCleared,
       final boolean isRollforward) {
     ZkValue<ZkAccount> accountValue = accountsToUpdate.get(accountKey);
@@ -112,21 +111,12 @@ public class ZkEvmWorldStateUpdateAccumulator {
       accountValue =
           accountsToUpdate.compute(
               accountKey,
-              (__, zkAccountZkValue) ->
-                  new ZkValue<>(
-                      new ZkAccount(accountKey.accountHash(), accountKey.address(), expectedValue),
-                      new ZkAccount(accountKey.accountHash(), accountKey.address(), expectedValue),
-                      isCleared));
+              (__, zkAccountZkValue) -> new ZkValue<>(expectedValue, expectedValue, isCleared));
     }
     if (accountValue == null) {
       accountValue =
           accountsToUpdate.compute(
-              accountKey,
-              (__, zkAccountZkValue) ->
-                  new ZkValue<>(
-                      null,
-                      new ZkAccount(
-                          accountKey.accountHash(), accountKey.address(), replacementValue)));
+              accountKey, (__, zkAccountZkValue) -> new ZkValue<>(null, replacementValue));
     } else {
       if (expectedValue == null) {
         if (accountValue.getUpdated() != null) {
@@ -144,8 +134,7 @@ public class ZkEvmWorldStateUpdateAccumulator {
       if (replacementValue == null) {
         accountValue.setUpdated(null);
       } else {
-        accountValue.setUpdated(
-            new ZkAccount(accountKey.accountHash(), accountKey.address(), replacementValue));
+        accountValue.setUpdated(replacementValue);
       }
     }
     accountValue.setRollforward(isRollforward);
@@ -186,7 +175,7 @@ public class ZkEvmWorldStateUpdateAccumulator {
       if (!isSlotEquals(expectedValue, existingSlotValue)) {
         throw new IllegalStateException(
             String.format(
-                "Old value of slot does not match expected value. Account=%s SlotHash=%s Expected=%s Actual=%s",
+                "Old leafValue of slot does not match expected leafValue. Account=%s SlotHash=%s Expected=%s Actual=%s",
                 accountKey.address(),
                 storageSlotKey.slotHash(),
                 expectedValue == null ? "null" : expectedValue.toShortHexString(),

@@ -14,7 +14,6 @@
 package net.consensys.shomei.storage;
 
 import net.consensys.shomei.trie.storage.StorageProxy;
-import net.consensys.shomei.trielog.ShomeiTrieLogLayer;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Optional;
@@ -44,6 +43,6 @@ public interface WorldStateStorage extends StorageProxy {
 
     void setBlockNumber(final long blockNumber);
 
-    void saveTrieLog(final ShomeiTrieLogLayer trieLogLayer);
+    void saveTrieLog(final Hash blockHash, final Bytes rawTrieLogLayer);
   }
 }

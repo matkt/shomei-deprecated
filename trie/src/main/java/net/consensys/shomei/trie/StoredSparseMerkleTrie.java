@@ -34,7 +34,7 @@ import org.hyperledger.besu.ethereum.trie.NodeUpdater;
 import org.hyperledger.besu.ethereum.trie.NullNode;
 import org.hyperledger.besu.ethereum.trie.StoredNode;
 
-/** A {@link StoredSparseMerkleTrie} that persists trie nodes to a key/value store. */
+/** A {@link StoredSparseMerkleTrie} that persists trie nodes to a key/leafValue store. */
 public class StoredSparseMerkleTrie {
 
   protected final NodeFactory<Bytes> nodeFactory;

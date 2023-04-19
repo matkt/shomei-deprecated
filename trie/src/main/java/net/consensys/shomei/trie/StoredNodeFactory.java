@@ -122,14 +122,17 @@ public class StoredNodeFactory implements NodeFactory<Bytes> {
             encodedBytes -> {
               final Node<Bytes> node =
                   decode(
-                      location, encodedBytes, () -> format("Invalid RLP value for hash %s", hash));
+                      location,
+                      encodedBytes,
+                      () -> format("Invalid RLP leafValue for hash %s", hash));
 
               return node;
             });
   }
 
   public Node<Bytes> decode(final Bytes location, final Bytes rlp) {
-    return decode(location, rlp, () -> String.format("Failed to decode value %s", rlp.toString()));
+    return decode(
+        location, rlp, () -> String.format("Failed to decode leafValue %s", rlp.toString()));
   }
 
   private Node<Bytes> decode(

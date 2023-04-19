@@ -118,7 +118,7 @@ public class WorldstateProofTest {
 
     Trace trace =
         accountStateTrie.putAndProve(
-            zkAccount.getHkey(), zkAccount.getAddress(), zkAccount.serializeAccount());
+            zkAccount.getHkey(), zkAccount.getAddress(), zkAccount.getEncodedBytes());
 
     assertThat(gson.toJson(List.of(trace)))
         .isEqualToIgnoringWhitespace(getResources("testTraceStateWithAnAccount.json"));
@@ -146,10 +146,10 @@ public class WorldstateProofTest {
         ZKTrie.createTrie(new WorldStateStorageProxy(new InMemoryWorldStateStorage()));
     Trace trace =
         accountStateTrie.putAndProve(
-            zkAccount.getHkey(), zkAccount.getAddress(), zkAccount.serializeAccount());
+            zkAccount.getHkey(), zkAccount.getAddress(), zkAccount.getEncodedBytes());
     Trace trace2 =
         accountStateTrie.putAndProve(
-            zkAccount2.getHkey(), zkAccount2.getAddress(), zkAccount2.serializeAccount());
+            zkAccount2.getHkey(), zkAccount2.getAddress(), zkAccount2.getEncodedBytes());
 
     assertThat(gson.toJson(List.of(trace, trace2)))
         .isEqualToIgnoringWhitespace(getResources("testWorldStateWithTwoAccount.json"));
@@ -177,10 +177,10 @@ public class WorldstateProofTest {
         ZKTrie.createTrie(new WorldStateStorageProxy(new InMemoryWorldStateStorage()));
     final Trace trace =
         accountStateTrie.putAndProve(
-            zkAccount.getHkey(), zkAccount.getAddress(), zkAccount.serializeAccount());
+            zkAccount.getHkey(), zkAccount.getAddress(), zkAccount.getEncodedBytes());
     final Trace trace2 =
         accountStateTrie.putAndProve(
-            zkAccount2.getHkey(), zkAccount2.getAddress(), zkAccount2.serializeAccount());
+            zkAccount2.getHkey(), zkAccount2.getAddress(), zkAccount2.getEncodedBytes());
 
     assertThat(gson.toJson(List.of(trace, trace2)))
         .isEqualToIgnoringWhitespace(getResources("testWorldStateWithAccountAndContract.json"));
@@ -211,12 +211,12 @@ public class WorldstateProofTest {
         accountStateTrie.putAndProve(
             zkAccount.getHkey(),
             zkAccount.getAddress(),
-            zkAccount.serializeAccount()); // not retest already tested trace
+            zkAccount.getEncodedBytes()); // not retest already tested trace
     final Trace trace2 =
         accountStateTrie.putAndProve(
             zkAccount2.getHkey(),
             zkAccount2.getAddress(),
-            zkAccount2.serializeAccount()); // not retest already tested trace
+            zkAccount2.getEncodedBytes()); // not retest already tested trace
 
     // Write something in the storage of B
     final ZKTrie account2Storage =
@@ -230,7 +230,7 @@ public class WorldstateProofTest {
     zkAccount2.setStorageRoot(Hash.wrap(account2Storage.getTopRootHash()));
     final Trace trace4 =
         accountStateTrie.putAndProve(
-            zkAccount2.getHkey(), zkAccount2.getAddress(), zkAccount2.serializeAccount());
+            zkAccount2.getHkey(), zkAccount2.getAddress(), zkAccount2.getEncodedBytes());
 
     assertThat(gson.toJson(List.of(trace, trace2, trace3, trace4)))
         .isEqualToIgnoringWhitespace(getResources("testWorldStateWithUpdateContractStorage.json"));
@@ -260,11 +260,11 @@ public class WorldstateProofTest {
     accountStateTrie.putAndProve(
         zkAccount.getHkey(),
         zkAccount.getAddress(),
-        zkAccount.serializeAccount()); // not retest already tested trace
+        zkAccount.getEncodedBytes()); // not retest already tested trace
     accountStateTrie.putAndProve(
         zkAccount2.getHkey(),
         zkAccount2.getAddress(),
-        zkAccount2.serializeAccount()); // not retest already tested trace
+        zkAccount2.getEncodedBytes()); // not retest already tested trace
 
     // Write something in the storage of B
     final ZKTrie account2Storage =
@@ -276,7 +276,7 @@ public class WorldstateProofTest {
     account2Storage.putAndProve(slotKeyHash, slotKey, slotValue);
     zkAccount2.setStorageRoot(Hash.wrap(account2Storage.getTopRootHash()));
     accountStateTrie.putAndProve(
-        zkAccount2.getHkey(), zkAccount2.getAddress(), zkAccount2.serializeAccount());
+        zkAccount2.getHkey(), zkAccount2.getAddress(), zkAccount2.getEncodedBytes());
 
     // Delete account 1
     Trace trace = accountStateTrie.removeAndProve(zkAccount.getHkey(), zkAccount.getAddress());
@@ -287,7 +287,7 @@ public class WorldstateProofTest {
     zkAccount2.setStorageRoot(Hash.wrap(account2Storage.getTopRootHash()));
     Trace trace3 =
         accountStateTrie.putAndProve(
-            zkAccount2.getHkey(), zkAccount2.getAddress(), zkAccount2.serializeAccount());
+            zkAccount2.getHkey(), zkAccount2.getAddress(), zkAccount2.getEncodedBytes());
 
     // Write again, somewhere else
     final FullBytes newSlotKey = createDumFullBytes(11);
@@ -298,7 +298,7 @@ public class WorldstateProofTest {
     zkAccount2.setStorageRoot(Hash.wrap(account2Storage.getTopRootHash()));
     Trace trace5 =
         accountStateTrie.putAndProve(
-            zkAccount2.getHkey(), zkAccount2.getAddress(), zkAccount2.serializeAccount());
+            zkAccount2.getHkey(), zkAccount2.getAddress(), zkAccount2.getEncodedBytes());
 
     assertThat(gson.toJson(List.of(trace, trace2, trace3, trace4, trace5)))
         .isEqualToIgnoringWhitespace(
@@ -340,17 +340,17 @@ public class WorldstateProofTest {
     accountStateTrie.putAndProve(
         zkAccount.getHkey(),
         zkAccount.getAddress(),
-        zkAccount.serializeAccount()); // not retest already tested trace
+        zkAccount.getEncodedBytes()); // not retest already tested trace
     accountStateTrie.putAndProve(
         zkAccount2.getHkey(),
         zkAccount2.getAddress(),
-        zkAccount2.serializeAccount()); // not retest already tested trace
+        zkAccount2.getEncodedBytes()); // not retest already tested trace
 
     Trace trace = accountStateTrie.removeAndProve(zkAccount.getHkey(), zkAccount.getAddress());
 
     Trace trace2 =
         accountStateTrie.putAndProve(
-            zkAccount3.getHkey(), zkAccount3.getAddress(), zkAccount3.serializeAccount());
+            zkAccount3.getHkey(), zkAccount3.getAddress(), zkAccount3.getEncodedBytes());
 
     assertThat(gson.toJson(List.of(trace, trace2)))
         .isEqualToIgnoringWhitespace(getResources("testAddAndDeleteAccounts.json"));

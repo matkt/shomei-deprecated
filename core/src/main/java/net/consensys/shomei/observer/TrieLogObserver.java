@@ -13,9 +13,9 @@
 
 package net.consensys.shomei.observer;
 
-import net.consensys.shomei.trielog.ShomeiTrieLogLayer;
+import org.hyperledger.besu.datatypes.Hash;
 
 public interface TrieLogObserver {
 
-  void onTrieLogAdded(final ShomeiTrieLogLayer trieLogLayer);
+  void onTrieLogAdded(final Hash blockHash);
 }

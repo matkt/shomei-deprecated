@@ -17,7 +17,7 @@ import net.consensys.shomei.exception.MissingTrieLogException;
 import net.consensys.shomei.observer.TrieLogObserver;
 import net.consensys.shomei.storage.WorldStateStorage;
 import net.consensys.shomei.trielog.ShomeiTrieLogLayer;
-import net.consensys.shomei.trielog.TrieLogLayer;
+import net.consensys.shomei.trielog.TrieLogLayerConverter;
 
 import java.util.Optional;
 
@@ -35,41 +35,52 @@ public class ZkEvmWorldStateEntryPoint implements TrieLogObserver {
 
   private final ZKEvmWorldState currentWorldState;
 
+  private final TrieLogLayerConverter trieLogLayerConverter;
+
   private final WorldStateStorage worldStateStorage;
 
   public ZkEvmWorldStateEntryPoint(final WorldStateStorage worldStateStorage) {
     this.worldStateStorage = worldStateStorage;
     this.currentWorldState = new ZKEvmWorldState(worldStateStorage);
+    this.trieLogLayerConverter = new TrieLogLayerConverter(worldStateStorage);
   }
 
   public void moveHead(final long newBlockNumber, final Hash blockHash)
       throws MissingTrieLogException {
     while (currentWorldState.getBlockNumber() < newBlockNumber) {
       System.out.println("process" + currentWorldState.getBlockNumber());
-      Optional<TrieLogLayer> trieLog =
+      Optional<ShomeiTrieLogLayer> trieLog =
           worldStateStorage
               .getTrieLog(blockHash)
               .map(RLP::input)
-              .map(rlpInput -> TrieLogLayer.readFrom(new ShomeiTrieLogLayer(), rlpInput));
+              .map(trieLogLayerConverter::decodeTrieLog);
       if (trieLog.isPresent()) {
-        System.out.println(trieLog.get().dump());
-        ZkEvmWorldStateUpdateAccumulator accumulator = currentWorldState.getAccumulator();
-        accumulator.rollForward(trieLog.get());
-        currentWorldState.commit(newBlockNumber, blockHash);
+        moveHead(newBlockNumber, trieLog.get());
       } else {
         throw new MissingTrieLogException(newBlockNumber);
       }
     }
   }
 
+  public void moveHead(final long newBlockNumber, final ShomeiTrieLogLayer trieLogLayer)
+      throws MissingTrieLogException {
+    System.out.println(trieLogLayer.dump());
+    currentWorldState.getAccumulator().rollForward(trieLogLayer);
+    currentWorldState.commit(newBlockNumber, trieLogLayer.getBlockHash());
+  }
+
+  public Hash getCurrentRootHash() {
+    return currentWorldState.getStateRootHash();
+  }
+
   static int block = 0;
 
   @Override
-  public void onTrieLogAdded(final ShomeiTrieLogLayer trieLogLayer) {
+  public void onTrieLogAdded(final Hash blockHash) {
     // receive trie log
-    System.out.println("receive trie log " + trieLogLayer.getBlockHash());
+    System.out.println("receive trie log " + blockHash);
     try {
-      moveHead(++block, trieLogLayer.getBlockHash());
+      moveHead(++block, blockHash);
     } catch (MissingTrieLogException e) {
       throw new RuntimeException(e);
     }

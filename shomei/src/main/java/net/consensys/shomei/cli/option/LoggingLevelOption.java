@@ -53,7 +53,7 @@ public class LoggingLevelOption {
       this.logLevel = Level.getLevel(logLevel.toUpperCase());
     } else {
       throw new CommandLine.ParameterException(
-          spec.commandLine(), "Unknown logging value: " + logLevel);
+          spec.commandLine(), "Unknown logging leafValue: " + logLevel);
     }
   }
 

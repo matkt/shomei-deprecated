@@ -16,6 +16,7 @@ package net.consensys.shomei;
 import static net.consensys.zkevm.HashProvider.keccak256;
 import static net.consensys.zkevm.HashProvider.mimc;
 
+import net.consensys.shomei.trie.ZKTrie;
 import net.consensys.shomei.trielog.TrieLogAccountValue;
 import net.consensys.shomei.util.bytes.BytesInput;
 import net.consensys.shomei.util.bytes.FullBytes;
@@ -31,6 +32,8 @@ import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.Wei;
+import org.hyperledger.besu.ethereum.rlp.RLPInput;
+import org.hyperledger.besu.ethereum.rlp.RLPOutput;
 
 public class ZkAccount {
 
@@ -38,6 +41,7 @@ public class ZkAccount {
   public static final Hash EMPTY_CODE_HASH = mimc(Bytes32.ZERO);
 
   private final Supplier<Hash> hkey;
+
   protected Address address;
   protected FullBytes keccakCodeHash;
   protected Hash mimcCodeHash;
@@ -155,7 +159,7 @@ public class ZkAccount {
     return storageRoot;
   }
 
-  public Bytes serializeAccount() {
+  public Bytes getEncodedBytes() {
     return Bytes.concatenate(
         LongConverter.toBytes32(nonce),
         balance,
@@ -163,6 +167,66 @@ public class ZkAccount {
         mimcCodeHash,
         keccakCodeHash,
         LongConverter.toBytes32(codeSize));
+  }
+
+  public void writeTo(final RLPOutput out) {
+    out.startList();
+
+    out.writeLongScalar(nonce);
+    out.writeUInt256Scalar(balance);
+    out.writeBytes(storageRoot);
+    out.writeBytes(keccakCodeHash.getOriginalValue());
+    out.writeBytes(mimcCodeHash);
+    out.writeLongScalar(codeSize);
+    out.endList();
+  }
+
+  public static ZkAccount readFrom(final Address address, final RLPInput in) {
+    in.enterList();
+
+    final long nonce = in.readLongScalar();
+    final Wei balance = Wei.of(in.readUInt256Scalar());
+    Bytes32 storageRoot;
+    FullBytes keccakCodeHash;
+    Bytes32 mimcCodeHash;
+    long codeSize;
+    if (in.nextIsNull()) {
+      storageRoot = ZKTrie.EMPTY_TRIE_ROOT;
+      in.skipNext();
+    } else {
+      storageRoot = in.readBytes32();
+    }
+    if (in.nextIsNull()) {
+      keccakCodeHash = ZkAccount.EMPTY_KECCAK_CODE_HASH;
+      in.skipNext();
+    } else {
+      keccakCodeHash = new FullBytes(in.readBytes32());
+    }
+
+    if (in.nextIsNull()) {
+      mimcCodeHash = ZkAccount.EMPTY_CODE_HASH;
+      in.skipNext();
+    } else {
+      mimcCodeHash = in.readBytes32();
+    }
+
+    if (in.nextIsNull()) {
+      codeSize = 0L;
+      in.skipNext();
+    } else {
+      codeSize = in.readLongScalar();
+    }
+
+    in.leaveList();
+
+    return new ZkAccount(
+        address,
+        keccakCodeHash,
+        Hash.wrap(mimcCodeHash),
+        codeSize,
+        nonce,
+        balance,
+        Hash.wrap(storageRoot));
   }
 
   @Override
@@ -210,7 +274,7 @@ public class ZkAccount {
   }
 
   public static void assertCloseEnoughForDiffing(
-      final ZkAccount source, final TrieLogAccountValue account, final String context) {
+      final ZkAccount source, final ZkAccount account, final String context) {
     if (source == null) {
       throw new IllegalStateException(context + ": source is null but target isn't");
     } else {

@@ -14,7 +14,6 @@
 package net.consensys.shomei.storage;
 
 import net.consensys.shomei.trie.storage.InMemoryStorage;
-import net.consensys.shomei.trielog.ShomeiTrieLogLayer;
 
 import java.util.Map;
 import java.util.Optional;
@@ -22,7 +21,6 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Hash;
-import org.hyperledger.besu.ethereum.rlp.BytesValueRLPOutput;
 
 public class InMemoryWorldStateStorage extends InMemoryStorage
     implements WorldStateStorage, WorldStateStorage.WorldStateUpdater {
@@ -66,9 +64,7 @@ public class InMemoryWorldStateStorage extends InMemoryStorage
   }
 
   @Override
-  public void saveTrieLog(final ShomeiTrieLogLayer trieLogLayer) {
-    final BytesValueRLPOutput rlpLog = new BytesValueRLPOutput();
-    trieLogLayer.writeTo(rlpLog);
-    trieLogStorage.put(trieLogLayer.getBlockHash(), rlpLog.encoded());
+  public void saveTrieLog(final Hash blockHash, final Bytes rawTrieLogLayer) {
+    trieLogStorage.put(blockHash, rawTrieLogLayer);
   }
 }

@@ -17,42 +17,24 @@ import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.ethereum.rlp.RLPInput;
 import org.hyperledger.besu.ethereum.rlp.RLPOutput;
 
-/** Represents the raw values associated with a leaf in the flat database. */
-public class FlatLeafValue {
+public record FlattenedLeaf(Long leafIndex, Bytes leafValue) {
 
-  public static final FlatLeafValue HEAD = new FlatLeafValue(0L, LeafOpening.HEAD.getHval());
+  public static final FlattenedLeaf HEAD = new FlattenedLeaf(0L, LeafOpening.HEAD.getHval());
 
-  public static final FlatLeafValue TAIL = new FlatLeafValue(1L, LeafOpening.TAIL.getHval());
-
-  private final Long leafIndex;
-
-  private final Bytes value;
-
-  public FlatLeafValue(final Long leafIndex, final Bytes value) {
-    this.leafIndex = leafIndex;
-    this.value = value;
-  }
-
-  public Long getLeafIndex() {
-    return leafIndex;
-  }
-
-  public Bytes getValue() {
-    return value;
-  }
+  public static final FlattenedLeaf TAIL = new FlattenedLeaf(1L, LeafOpening.TAIL.getHval());
 
   public void writeTo(final RLPOutput out) {
     out.startList();
     out.writeLongScalar(leafIndex);
-    out.writeBytes(value);
+    out.writeBytes(leafValue);
     out.endList();
   }
 
-  public static FlatLeafValue readFrom(final RLPInput in) {
+  public static FlattenedLeaf readFrom(final RLPInput in) {
     in.enterList();
     final long nonce = in.readLongScalar();
     final Bytes value = in.readBytes();
     in.leaveList();
-    return new FlatLeafValue(nonce, value);
+    return new FlattenedLeaf(nonce, value);
   }
 }

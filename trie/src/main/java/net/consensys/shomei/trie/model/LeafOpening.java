@@ -22,7 +22,6 @@ import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.datatypes.Hash;
 
-/** Represents the raw values associated with a leaf in the flat database. */
 public class LeafOpening {
 
   public static final LeafOpening HEAD =
