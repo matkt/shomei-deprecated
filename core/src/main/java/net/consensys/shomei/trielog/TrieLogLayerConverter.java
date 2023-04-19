@@ -73,7 +73,6 @@ public class TrieLogLayerConverter {
         input.enterList();
         final ZkAccount oldAccountValue;
         if (!input.nextIsNull()) {
-          System.out.println(input.readAsRlp().raw());
           final Optional<FlattenedLeaf> flatLeaf =
               worldStateStorage.getFlatLeaf(accountKey.accountHash());
           oldAccountValue =
