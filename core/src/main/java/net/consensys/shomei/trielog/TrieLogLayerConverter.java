@@ -27,6 +27,7 @@ import java.util.Optional;
 import com.google.common.primitives.Longs;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
+import org.apache.tuweni.bytes.MutableBytes;
 import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Hash;
@@ -161,7 +162,7 @@ public class TrieLogLayerConverter {
     } else {
       final Bytes code = newCode.get();
       keccakCodeHash = HashProvider.keccak256(code);
-      mimcCodeHash = HashProvider.mimc(code);
+      mimcCodeHash = prepareMimcCodeHash(code);
       codeSize = UInt256.valueOf(code.size());
     }
 
@@ -174,4 +175,18 @@ public class TrieLogLayerConverter {
         safeByte32(keccakCodeHash),
         codeSize);
   }
+
+  private static Hash prepareMimcCodeHash(final Bytes code){
+    final int sizeChunk = Bytes32.SIZE/2;
+    final int numChunks = (int) Math.ceil((double) code.size() / sizeChunk);
+    final MutableBytes mutableBytes = MutableBytes.create(numChunks*Bytes32.SIZE);
+    int offset = 0;
+    for (int i = 0; i < numChunks; i++) {
+      int length = Math.min(sizeChunk, code.size() - offset);
+      mutableBytes.set(i*Bytes32.SIZE+(Bytes32.SIZE-length), code.slice(offset, length));
+      offset += length;
+    }
+    return HashProvider.mimc(mutableBytes);
+  }
+
 }

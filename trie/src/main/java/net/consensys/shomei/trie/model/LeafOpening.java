@@ -13,7 +13,7 @@
 
 package net.consensys.shomei.trie.model;
 
-import net.consensys.shomei.util.bytes.BytesInput;
+import net.consensys.shomei.util.bytes.BytesBuffer;
 
 import java.util.Objects;
 
@@ -112,7 +112,7 @@ public class LeafOpening {
   }
 
   public static LeafOpening readFrom(final Bytes encodedBytes) {
-    return BytesInput.readBytes(
+    return BytesBuffer.readBytes(
         encodedBytes,
         bytesInput ->
             new LeafOpening(

@@ -19,7 +19,7 @@ import static net.consensys.zkevm.HashProvider.mimc;
 
 import net.consensys.shomei.trielog.AccountKey;
 import net.consensys.shomei.trielog.TrieLogAccountValue;
-import net.consensys.shomei.util.bytes.BytesInput;
+import net.consensys.shomei.util.bytes.BytesBuffer;
 import net.consensys.shomei.util.bytes.MimcSafeBytes;
 
 import java.util.Objects;
@@ -104,7 +104,7 @@ public class ZkAccount {
   }
 
   public static ZkAccount fromEncodedBytes(final AccountKey accountKey, final Bytes encoded) {
-    return BytesInput.readBytes(
+    return BytesBuffer.readBytes(
         encoded,
         bytesInput ->
             new ZkAccount(
