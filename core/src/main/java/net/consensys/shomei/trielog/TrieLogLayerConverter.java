@@ -176,17 +176,16 @@ public class TrieLogLayerConverter {
         codeSize);
   }
 
-  private static Hash prepareMimcCodeHash(final Bytes code){
-    final int sizeChunk = Bytes32.SIZE/2;
+  private Hash prepareMimcCodeHash(final Bytes code) {
+    final int sizeChunk = Bytes32.SIZE / 2;
     final int numChunks = (int) Math.ceil((double) code.size() / sizeChunk);
-    final MutableBytes mutableBytes = MutableBytes.create(numChunks*Bytes32.SIZE);
+    final MutableBytes mutableBytes = MutableBytes.create(numChunks * Bytes32.SIZE);
     int offset = 0;
     for (int i = 0; i < numChunks; i++) {
       int length = Math.min(sizeChunk, code.size() - offset);
-      mutableBytes.set(i*Bytes32.SIZE+(Bytes32.SIZE-length), code.slice(offset, length));
+      mutableBytes.set(i * Bytes32.SIZE + (Bytes32.SIZE - length), code.slice(offset, length));
       offset += length;
     }
     return HashProvider.mimc(mutableBytes);
   }
-
 }
