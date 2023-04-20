@@ -60,7 +60,7 @@ public class InMemoryWorldStateStorage extends InMemoryStorage
 
   @Override
   public void setBlockNumber(final long blockNumber) {
-    this.currentBlockNumber = Optional.ofNullable(blockNumber);
+    this.currentBlockNumber = Optional.of(blockNumber);
   }
 
   @Override
