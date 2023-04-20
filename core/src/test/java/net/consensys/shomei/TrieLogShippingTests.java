@@ -13,35 +13,11 @@
 
 package net.consensys.shomei;
 
-import static net.consensys.shomei.trie.ZKTrie.EMPTY_TRIE_ROOT;
-import static net.consensys.shomei.util.TestFixtureGenerator.getAccountTwo;
-import static net.consensys.shomei.util.TestFixtureGenerator.getContractStorageTrie;
-import static net.consensys.shomei.util.bytes.MimcSafeBytes.safeUInt256;
-import static org.assertj.core.api.Assertions.assertThat;
-
-import net.consensys.shomei.exception.MissingTrieLogException;
-import net.consensys.shomei.storage.InMemoryWorldStateStorage;
-import net.consensys.shomei.storage.WorldStateStorageProxy;
-import net.consensys.shomei.trie.ZKTrie;
-import net.consensys.shomei.trielog.StorageSlotKey;
-import net.consensys.shomei.trielog.TrieLogLayer;
-import net.consensys.shomei.trielog.TrieLogLayerConverter;
-import net.consensys.shomei.util.bytes.MimcSafeBytes;
-import net.consensys.shomei.worldview.ZkEvmWorldStateEntryPoint;
-
-import org.apache.tuweni.bytes.Bytes;
-import org.apache.tuweni.bytes.Bytes32;
-import org.apache.tuweni.units.bigints.UInt256;
-import org.hyperledger.besu.datatypes.Hash;
-import org.hyperledger.besu.ethereum.bonsai.trielog.ZkTrieLogFactoryImpl;
-import org.hyperledger.besu.ethereum.bonsai.worldview.BonsaiWorldStateUpdateAccumulator;
-import org.hyperledger.besu.ethereum.rlp.RLP;
-import org.hyperledger.besu.ethereum.worldstate.StateTrieAccountValue;
-import org.junit.Test;
-
+@SuppressWarnings("unused")
 public class TrieLogShippingTests {
 
-  @Test
+  // TODO activate when ZkTrieLogFactoryImpl will be available
+  /*@Test
   public void testTrielogShippingWithNewContractUpdate() throws MissingTrieLogException {
 
     ZKTrie accountStateTrieOne =
@@ -141,5 +117,5 @@ public class TrieLogShippingTests {
     // move head with the second trielog
     evmWorldStateEntryPoint.moveHead(1, decodedLayer2);
     assertThat(evmWorldStateEntryPoint.getCurrentRootHash()).isEqualTo(topRootHashAfterUpdate);
-  }
+  }*/
 }
