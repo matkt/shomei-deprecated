@@ -15,11 +15,11 @@ package net.consensys.shomei.trielog;
 
 import static net.consensys.shomei.trielog.TrieLogLayer.defaultOrValue;
 import static net.consensys.shomei.trielog.TrieLogLayer.nullOrValue;
+import static net.consensys.shomei.util.bytes.MimcSafeBytes.safeByte32;
 
 import net.consensys.shomei.ZkAccount;
 import net.consensys.shomei.storage.WorldStateStorage;
 import net.consensys.shomei.trie.model.FlattenedLeaf;
-import net.consensys.shomei.util.bytes.MimcSafeBytes;
 import net.consensys.zkevm.HashProvider;
 
 import java.util.Optional;
@@ -41,9 +41,9 @@ public class TrieLogLayerConverter {
     this.worldStateStorage = worldStateStorage;
   }
 
-  public ShomeiTrieLogLayer decodeTrieLog(final RLPInput input) {
+  public TrieLogLayer decodeTrieLog(final RLPInput input) {
 
-    ShomeiTrieLogLayer trieLogLayer = new ShomeiTrieLogLayer();
+    TrieLogLayer trieLogLayer = new TrieLogLayer();
 
     input.enterList();
     trieLogLayer.setBlockHash(Hash.wrap(input.readBytes32()));
@@ -109,7 +109,7 @@ public class TrieLogLayerConverter {
                             Bytes.wrap(Longs.toByteArray(accountIndex.orElseThrow())),
                             storageSlotKey.slotHash()))
                     .map(FlattenedLeaf::leafValue)
-                    .map(MimcSafeBytes::toUInt256)
+                    .map(UInt256::fromBytes)
                     .orElseThrow();
           } else {
             oldValue = null;
@@ -138,21 +138,21 @@ public class TrieLogLayerConverter {
       final RLPInput in) {
     in.enterList();
 
-    final long nonce = in.readLongScalar();
+    final UInt256 nonce = UInt256.valueOf(in.readLongScalar());
     final Wei balance = Wei.of(in.readUInt256Scalar());
     in.skipNext(); // skip storage root (evm storage root is useless)
     in.skipNext(); // skip keccak codeHash
     in.leaveList();
 
-    MimcSafeBytes keccakCodeHash;
+    Bytes32 keccakCodeHash;
     Bytes32 mimcCodeHash;
-    long codeSize;
+    UInt256 codeSize;
 
     if (newCode.isEmpty()) {
       if (oldValue == null) {
-        keccakCodeHash = ZkAccount.EMPTY_KECCAK_CODE_HASH;
+        keccakCodeHash = ZkAccount.EMPTY_KECCAK_CODE_HASH.getOriginalUnsafeValue();
         mimcCodeHash = ZkAccount.EMPTY_CODE_HASH;
-        codeSize = 0;
+        codeSize = UInt256.ZERO;
       } else {
         keccakCodeHash = oldValue.getCodeHash();
         mimcCodeHash = oldValue.getMimcCodeHash();
@@ -160,12 +160,18 @@ public class TrieLogLayerConverter {
       }
     } else {
       final Bytes code = newCode.get();
-      keccakCodeHash = new MimcSafeBytes(HashProvider.keccak256(code));
+      keccakCodeHash = HashProvider.keccak256(code);
       mimcCodeHash = HashProvider.mimc(code);
-      codeSize = code.size();
+      codeSize = UInt256.valueOf(code.size());
     }
 
     return new ZkAccount(
-        accountKey, keccakCodeHash, Hash.wrap(mimcCodeHash), codeSize, nonce, balance, null);
+        accountKey,
+        nonce,
+        balance,
+        null,
+        Hash.wrap(mimcCodeHash),
+        safeByte32(keccakCodeHash),
+        codeSize);
   }
 }

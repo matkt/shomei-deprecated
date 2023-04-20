@@ -31,6 +31,7 @@ import net.consensys.shomei.trie.proof.UpdateTrace;
 import net.consensys.shomei.trie.storage.InMemoryStorage;
 import net.consensys.shomei.trie.storage.StorageProxy;
 import net.consensys.shomei.trie.storage.StorageProxy.Range;
+import net.consensys.shomei.util.bytes.MimcSafeBytes;
 import net.consensys.zkevm.HashProvider;
 
 import java.util.Collections;
@@ -202,7 +203,10 @@ public class ZKTrie {
     return state.get(path);
   }
 
-  public Trace putAndProve(final Hash hKey, final Bytes key, final Bytes newValue) {
+  public Trace putAndProve(
+      final Hash hKey,
+      final MimcSafeBytes<? extends Bytes> key,
+      final MimcSafeBytes<? extends Bytes> newValue) {
     checkArgument(hKey.size() == Bytes32.SIZE);
 
     // GET the openings HKEY-,  hash(k) , HKEY+
@@ -235,7 +239,7 @@ public class ZKTrie {
 
       // PUT hash(k) with HKey- for Prev and HKey+ for next
       final Bytes leafPathToAdd = pathResolver.getLeafPath(nextFreeNode);
-      updater.putFlatLeaf(hKey, new FlattenedLeaf(nextFreeNode, newValue));
+      updater.putFlatLeaf(hKey, new FlattenedLeaf(nextFreeNode, newValue.getOriginalUnsafeValue()));
       final LeafOpening newLeafValue =
           new LeafOpening(
               nearestKeys.getLeftNodeValue().leafIndex(),
@@ -259,7 +263,7 @@ public class ZKTrie {
       pathResolver.incrementNextFreeLeafNodeIndex();
 
       insertionTrace.setKey(key);
-      insertionTrace.setValue(newValue);
+      insertionTrace.setValue(newValue.getOriginalUnsafeValue());
       insertionTrace.setPriorLeftLeaf(priorLeftLeaf);
       insertionTrace.setPriorRightLeaf(priorRightLeaf);
       insertionTrace.setProofLeft(
@@ -280,7 +284,9 @@ public class ZKTrie {
       final FlattenedLeaf currentFlatLeafValue = nearestKeys.getCenterNodeValue().orElseThrow();
 
       final Bytes leafPathToUpdate = pathResolver.getLeafPath(currentFlatLeafValue.leafIndex());
-      updater.putFlatLeaf(hKey, new FlattenedLeaf(currentFlatLeafValue.leafIndex(), newValue));
+      updater.putFlatLeaf(
+          hKey,
+          new FlattenedLeaf(currentFlatLeafValue.leafIndex(), newValue.getOriginalUnsafeValue()));
 
       // RETRIEVE OLD VALUE
       final LeafOpening priorUpdatedLeaf =
@@ -293,7 +299,7 @@ public class ZKTrie {
 
       updateTrace.setKey(key);
       updateTrace.setOldValue(currentFlatLeafValue.leafValue());
-      updateTrace.setNewValue(newValue);
+      updateTrace.setNewValue(newValue.getOriginalUnsafeValue());
       updateTrace.setPriorUpdatedLeaf(priorUpdatedLeaf);
       updateTrace.setProof(new Proof(currentFlatLeafValue.leafIndex(), siblings));
       updateTrace.setNewNextFreeNode(pathResolver.getNextFreeLeafNodeIndex());

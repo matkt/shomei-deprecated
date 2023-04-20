@@ -13,25 +13,26 @@
 
 package net.consensys.shomei.trielog;
 
+import static net.consensys.shomei.util.bytes.MimcSafeBytes.safeUInt256;
+
 import net.consensys.shomei.util.bytes.MimcSafeBytes;
 import net.consensys.zkevm.HashProvider;
 
 import java.util.Objects;
-import java.util.Optional;
 
 import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.datatypes.Hash;
 import org.jetbrains.annotations.NotNull;
 
-public record StorageSlotKey(Hash slotHash, Optional<UInt256> slotKey)
+public record StorageSlotKey(Hash slotHash, MimcSafeBytes<UInt256> slotKey)
     implements Comparable<StorageSlotKey> {
 
-  public StorageSlotKey(final UInt256 slotKey) {
-    this(HashProvider.mimc(new MimcSafeBytes(slotKey)), Optional.of(slotKey));
+  public StorageSlotKey(final Hash slotHash, final UInt256 slotKey) {
+    this(slotHash, safeUInt256(slotKey));
   }
 
-  public StorageSlotKey(final Hash slotHash, final UInt256 slotKey) {
-    this(slotHash, Optional.of(slotKey));
+  public StorageSlotKey(final UInt256 slotKey) {
+    this(HashProvider.mimc(safeUInt256(slotKey)), slotKey);
   }
 
   @Override
@@ -53,9 +54,7 @@ public record StorageSlotKey(Hash slotHash, Optional<UInt256> slotKey)
 
   @Override
   public String toString() {
-    return String.format(
-        "StorageSlotKey{slotHash=%s, slotKey=%s}",
-        slotHash, slotKey.map(UInt256::toString).orElse("null"));
+    return String.format("StorageSlotKey{slotHash=%s, slotKey=%s}", slotHash, slotKey);
   }
 
   @Override

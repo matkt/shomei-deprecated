@@ -13,31 +13,84 @@
 
 package net.consensys.shomei.util.bytes;
 
+import java.util.Arrays;
+
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.bytes.DelegatingBytes;
+import org.apache.tuweni.bytes.MutableBytes;
 import org.apache.tuweni.units.bigints.UInt256;
+import org.hyperledger.besu.datatypes.Address;
 
-public class MimcSafeBytes extends DelegatingBytes implements Bytes {
+public class MimcSafeBytes<T extends Bytes> extends DelegatingBytes implements Bytes {
 
-  private final Bytes32 originalValue;
+  private final T originalUnsafeValue;
 
-  public MimcSafeBytes(final Bytes32 delegate) {
-    super(convertToSafeFieldElementsSize(delegate));
-    this.originalValue = delegate;
+  private MimcSafeBytes(final Bytes delegate, final T originalUnsafeValue) {
+    super(delegate);
+    this.originalUnsafeValue = originalUnsafeValue;
+  }
+
+  public static MimcSafeBytes<UInt256> safeUInt256(final UInt256 delegate) {
+    return new MimcSafeBytes<>(convertToSafeFieldElementsSize(delegate), delegate);
+  }
+
+  public static MimcSafeBytes<Bytes32> safeByte32(final Bytes32 delegate) {
+    return new MimcSafeBytes<>(convertToSafeFieldElementsSize(delegate), delegate);
+  }
+
+  public static MimcSafeBytes<Address> safeAddress(final Address delegate) {
+    return new MimcSafeBytes<>(Bytes32.leftPad(delegate), delegate);
+  }
+
+  public static MimcSafeBytes<Bytes> noSafe(final Bytes delegate) {
+    return new MimcSafeBytes<>(delegate, delegate);
+  }
+
+  public static MimcSafeBytes<Bytes> concatenateSafeElements(final Bytes... values) {
+    return new MimcSafeBytes<>(Bytes.concatenate(values), concatenateUnSafe(values));
   }
 
   @Override
   public String toHexString() {
-    return originalValue.toHexString();
+    return originalUnsafeValue.toHexString();
   }
 
-  public Bytes32 getOriginalValue() {
-    return originalValue;
+  public T getOriginalUnsafeValue() {
+    return originalUnsafeValue;
   }
 
-  public static UInt256 toUInt256(final Bytes value) {
-    return UInt256.fromBytes(reverseConvertToSafeFieldElementSize(value));
+  private static Bytes concatenateUnSafe(Bytes... values) {
+    if (values.length == 0) {
+      return EMPTY;
+    }
+
+    int size;
+    try {
+      size =
+          Arrays.stream(values)
+              .mapToInt(
+                  value ->
+                      (value instanceof MimcSafeBytes<?>)
+                          ? ((MimcSafeBytes<?>) value).getOriginalUnsafeValue().size()
+                          : value.size())
+              .reduce(0, Math::addExact);
+    } catch (ArithmeticException e) {
+      throw new IllegalArgumentException(
+          "Combined length of values is too long (> Integer.MAX_VALUE)");
+    }
+
+    MutableBytes result = MutableBytes.create(size);
+    int offset = 0;
+    for (Bytes value : values) {
+      Bytes unsafeValue =
+          (value instanceof MimcSafeBytes<?>)
+              ? ((MimcSafeBytes<?>) value).getOriginalUnsafeValue()
+              : value;
+      unsafeValue.copyTo(result, offset);
+      offset += unsafeValue.size();
+    }
+    return result;
   }
 
   /**
@@ -53,11 +106,5 @@ public class MimcSafeBytes extends DelegatingBytes implements Bytes {
     Bytes32 lsb = Bytes32.leftPad(value.slice(16, 16));
     Bytes32 msb = Bytes32.leftPad(value.slice(0, 16));
     return Bytes.concatenate(lsb, msb);
-  }
-
-  private static Bytes32 reverseConvertToSafeFieldElementSize(final Bytes value) {
-    Bytes lsb = value.slice(0, 16);
-    Bytes msb = value.slice(16, 16);
-    return Bytes32.wrap(Bytes.concatenate(msb, lsb));
   }
 }

@@ -13,9 +13,11 @@
 
 package net.consensys.shomei.trie;
 
+import static net.consensys.shomei.util.bytes.MimcSafeBytes.noSafe;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import net.consensys.shomei.trie.storage.InMemoryStorage;
+import net.consensys.shomei.util.bytes.MimcSafeBytes;
 import net.consensys.zkevm.HashProvider;
 
 import org.apache.tuweni.bytes.Bytes;
@@ -50,10 +52,11 @@ public class ZKTrieTest {
     final InMemoryStorage storage = new InMemoryStorage();
     ZKTrie zkTrie = ZKTrie.createTrie(storage);
 
-    final Bytes key = createDumDiggest(58);
+    final MimcSafeBytes<Bytes> key = noSafe(createDumDiggest(58));
+    final MimcSafeBytes<Bytes> value = noSafe(createDumDiggest(42));
     final Hash hkey = HashProvider.mimc(key);
 
-    zkTrie.putAndProve(hkey, key, createDumDiggest(42));
+    zkTrie.putAndProve(hkey, key, value);
     zkTrie.commit();
     assertThat(storage.getTrieNodeStorage()).isNotEmpty();
     assertThat(zkTrie.getSubRootHash())
@@ -72,11 +75,11 @@ public class ZKTrieTest {
     final InMemoryStorage storage = new InMemoryStorage();
     ZKTrie zkTrie = ZKTrie.createTrie(storage);
 
-    final Bytes32 dumValue = createDumDiggest(41);
-    final Bytes32 newDumValue = createDumDiggest(42);
-
-    final Bytes key = createDumDiggest(58);
+    final MimcSafeBytes<Bytes> key = noSafe(createDumDiggest(58));
+    final MimcSafeBytes<Bytes> dumValue = noSafe(createDumDiggest(41));
+    final MimcSafeBytes<Bytes> newDumValue = noSafe(createDumDiggest(42));
     final Hash hkey = HashProvider.mimc(key);
+
     zkTrie.putAndProve(hkey, key, dumValue);
 
     assertThat(zkTrie.getSubRootHash())
@@ -90,7 +93,7 @@ public class ZKTrieTest {
 
     // Note : the tree should be in exactly the same state as after directly
     // inserting 42
-    zkTrie.putAndProve(hkey, hkey, newDumValue);
+    zkTrie.putAndProve(hkey, key, newDumValue);
 
     assertThat(zkTrie.getSubRootHash())
         .isEqualTo(
@@ -107,9 +110,11 @@ public class ZKTrieTest {
     final InMemoryStorage storage = new InMemoryStorage();
     ZKTrie zkTrie = ZKTrie.createTrie(storage);
 
-    final Bytes key = createDumDiggest(58);
+    final MimcSafeBytes<Bytes> key = noSafe(createDumDiggest(58));
+    final MimcSafeBytes<Bytes> value = noSafe(createDumDiggest(41));
     final Hash hkey = HashProvider.mimc(key);
-    zkTrie.putAndProve(hkey, key, createDumDiggest(41));
+
+    zkTrie.putAndProve(hkey, key, value);
 
     assertThat(zkTrie.getSubRootHash())
         .isNotEqualTo(

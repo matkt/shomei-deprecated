@@ -15,9 +15,9 @@ package net.consensys.shomei.trielog;
 
 import net.consensys.shomei.ZkAccount;
 import net.consensys.shomei.trie.ZKTrie;
-import net.consensys.shomei.util.bytes.MimcSafeBytes;
 
 import org.apache.tuweni.bytes.Bytes32;
+import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.rlp.RLPInput;
@@ -25,22 +25,22 @@ import org.hyperledger.besu.ethereum.rlp.RLPOutput;
 
 public class TrieLogAccountValue {
 
-  private final long nonce;
+  private final UInt256 nonce;
   private final Wei balance;
   private final Hash storageRoot;
-  private final MimcSafeBytes codeHash;
+  private final Hash codeHash;
 
   private final Hash mimcCodeHash;
 
-  private final Long codeSize;
+  private final UInt256 codeSize;
 
   public TrieLogAccountValue(
-      final long nonce,
+      final UInt256 nonce,
       final Wei balance,
       final Hash storageRoot,
-      final MimcSafeBytes codeHash,
+      final Hash codeHash,
       final Hash mimcCodeHash,
-      final Long codeSize) {
+      final UInt256 codeSize) {
     this.nonce = nonce;
     this.balance = balance;
     this.storageRoot = storageRoot;
@@ -63,7 +63,7 @@ public class TrieLogAccountValue {
    *
    * @return the account nonce.
    */
-  public long getNonce() {
+  public UInt256 getNonce() {
     return nonce;
   }
 
@@ -90,7 +90,7 @@ public class TrieLogAccountValue {
    *
    * @return the hash of the account code (which may be {@link Hash#EMPTY}).
    */
-  public MimcSafeBytes getCodeHash() {
+  public Hash getCodeHash() {
     return codeHash;
   }
 
@@ -108,31 +108,31 @@ public class TrieLogAccountValue {
    *
    * @return code size
    */
-  public Long getCodeSize() {
+  public UInt256 getCodeSize() {
     return codeSize;
   }
 
   public void writeTo(final RLPOutput out) {
     out.startList();
 
-    out.writeLongScalar(nonce);
+    out.writeUInt256Scalar(nonce);
     out.writeUInt256Scalar(balance);
     out.writeBytes(storageRoot);
-    out.writeBytes(codeHash.getOriginalValue());
+    out.writeBytes(codeHash);
     out.writeBytes(mimcCodeHash);
-    out.writeLongScalar(codeSize);
+    out.writeUInt256Scalar(codeSize);
     out.endList();
   }
 
   public static TrieLogAccountValue readFrom(final RLPInput in) {
     in.enterList();
 
-    final long nonce = in.readLongScalar();
+    final UInt256 nonce = UInt256.valueOf(in.readLongScalar());
     final Wei balance = Wei.of(in.readUInt256Scalar());
     Bytes32 storageRoot;
-    MimcSafeBytes keccakCodeHash;
+    Bytes32 keccakCodeHash;
     Bytes32 mimcCodeHash;
-    long codeSize;
+    UInt256 codeSize;
     if (in.nextIsNull()) {
       storageRoot = ZKTrie.EMPTY_TRIE_ROOT;
       in.skipNext();
@@ -140,10 +140,10 @@ public class TrieLogAccountValue {
       storageRoot = in.readBytes32();
     }
     if (in.nextIsNull()) {
-      keccakCodeHash = ZkAccount.EMPTY_KECCAK_CODE_HASH;
+      keccakCodeHash = ZkAccount.EMPTY_KECCAK_CODE_HASH.getOriginalUnsafeValue();
       in.skipNext();
     } else {
-      keccakCodeHash = new MimcSafeBytes(in.readBytes32());
+      keccakCodeHash = in.readBytes32();
     }
 
     if (in.nextIsNull()) {
@@ -154,15 +154,20 @@ public class TrieLogAccountValue {
     }
 
     if (in.nextIsNull()) {
-      codeSize = 0L;
+      codeSize = UInt256.ZERO;
       in.skipNext();
     } else {
-      codeSize = in.readLongScalar();
+      codeSize = UInt256.valueOf(in.readLongScalar());
     }
 
     in.leaveList();
 
     return new TrieLogAccountValue(
-        nonce, balance, Hash.wrap(storageRoot), keccakCodeHash, Hash.wrap(mimcCodeHash), codeSize);
+        nonce,
+        balance,
+        Hash.wrap(storageRoot),
+        Hash.wrap(keccakCodeHash),
+        Hash.wrap(mimcCodeHash),
+        codeSize);
   }
 }

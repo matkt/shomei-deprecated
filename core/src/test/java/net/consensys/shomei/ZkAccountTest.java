@@ -13,10 +13,10 @@
 
 package net.consensys.shomei;
 
+import static net.consensys.shomei.util.bytes.MimcSafeBytes.safeByte32;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import net.consensys.shomei.trielog.AccountKey;
-import net.consensys.shomei.util.bytes.MimcSafeBytes;
 import net.consensys.zkevm.HashProvider;
 
 import org.apache.tuweni.bytes.Bytes32;
@@ -32,12 +32,12 @@ public class ZkAccountTest {
     final ZkAccount zkAccount =
         new ZkAccount(
             new AccountKey(Hash.ZERO, Address.ZERO),
-            new MimcSafeBytes(Hash.ZERO),
-            Hash.ZERO,
-            0L,
             0L,
             Wei.ZERO,
-            Hash.ZERO);
+            Hash.ZERO,
+            Hash.ZERO,
+            safeByte32(Hash.ZERO),
+            0L);
 
     assertThat(HashProvider.mimc(zkAccount.getEncodedBytes()))
         .isEqualTo(

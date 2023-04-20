@@ -16,10 +16,11 @@ package net.consensys.shomei;
 import static net.consensys.shomei.ZkAccount.EMPTY_CODE_HASH;
 import static net.consensys.shomei.ZkAccount.EMPTY_KECCAK_CODE_HASH;
 import static net.consensys.shomei.trie.ZKTrie.EMPTY_TRIE_ROOT;
-import static net.consensys.shomei.util.TestFixtureGenerator.ZK_ACCOUNT;
 import static net.consensys.shomei.util.TestFixtureGenerator.createDumAddress;
 import static net.consensys.shomei.util.TestFixtureGenerator.createDumDigest;
 import static net.consensys.shomei.util.TestFixtureGenerator.createDumFullBytes;
+import static net.consensys.shomei.util.TestFixtureGenerator.getAccountOne;
+import static net.consensys.shomei.util.bytes.MimcSafeBytes.noSafe;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import net.consensys.shomei.storage.InMemoryWorldStateStorage;
@@ -40,6 +41,7 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonPrimitive;
 import com.google.gson.JsonSerializer;
 import org.apache.tuweni.bytes.Bytes;
+import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.Wei;
@@ -92,9 +94,9 @@ public class WorldstateProofTest {
   @Test
   public void testTraceRead() throws IOException {
 
-    final Bytes key = createDumDigest(36);
+    final MimcSafeBytes<Bytes> key = noSafe(createDumDigest(36));
+    final MimcSafeBytes<Bytes> value = noSafe(createDumDigest(32));
     final Hash hkey = HashProvider.mimc(key);
-    final Bytes value = createDumDigest(32);
 
     ZKTrie accountStateTrie =
         ZKTrie.createTrie(new WorldStateStorageProxy(new InMemoryWorldStateStorage()));
@@ -112,9 +114,12 @@ public class WorldstateProofTest {
     ZKTrie accountStateTrie =
         ZKTrie.createTrie(new WorldStateStorageProxy(new InMemoryWorldStateStorage()));
 
+    MutableZkAccount account = getAccountOne();
     Trace trace =
         accountStateTrie.putAndProve(
-            ZK_ACCOUNT.getHkey(), ZK_ACCOUNT.getAddress(), ZK_ACCOUNT.getEncodedBytes());
+            account.getHkey(), account.getAddress(), account.getEncodedBytes());
+
+    System.out.println(gson.toJson(List.of(trace)));
 
     assertThat(gson.toJson(List.of(trace)))
         .isEqualToIgnoringWhitespace(getResources("testTraceStateWithAnAccount.json"));
@@ -126,18 +131,20 @@ public class WorldstateProofTest {
     final ZkAccount zkAccount2 =
         new ZkAccount(
             new AccountKey(createDumAddress(41)),
-            EMPTY_KECCAK_CODE_HASH,
-            EMPTY_CODE_HASH,
-            0L,
             42,
             Wei.of(354),
-            EMPTY_TRIE_ROOT);
+            EMPTY_TRIE_ROOT,
+            EMPTY_CODE_HASH,
+            EMPTY_KECCAK_CODE_HASH,
+            0L);
 
     ZKTrie accountStateTrie =
         ZKTrie.createTrie(new WorldStateStorageProxy(new InMemoryWorldStateStorage()));
+
+    MutableZkAccount account = getAccountOne();
     Trace trace =
         accountStateTrie.putAndProve(
-            ZK_ACCOUNT.getHkey(), ZK_ACCOUNT.getAddress(), ZK_ACCOUNT.getEncodedBytes());
+            account.getHkey(), account.getAddress(), account.getEncodedBytes());
     Trace trace2 =
         accountStateTrie.putAndProve(
             zkAccount2.getHkey(), zkAccount2.getAddress(), zkAccount2.getEncodedBytes());
@@ -152,21 +159,25 @@ public class WorldstateProofTest {
     final ZkAccount zkAccount2 =
         new ZkAccount(
             new AccountKey(createDumAddress(47)),
-            createDumFullBytes(15),
-            Hash.wrap(createDumDigest(75)),
-            7L,
             41,
             Wei.of(15353),
-            EMPTY_TRIE_ROOT);
+            EMPTY_TRIE_ROOT,
+            Hash.wrap(createDumDigest(75)),
+            createDumFullBytes(15),
+            7L);
 
     ZKTrie accountStateTrie =
         ZKTrie.createTrie(new WorldStateStorageProxy(new InMemoryWorldStateStorage()));
+
+    MutableZkAccount account = getAccountOne();
     final Trace trace =
         accountStateTrie.putAndProve(
-            ZK_ACCOUNT.getHkey(), ZK_ACCOUNT.getAddress(), ZK_ACCOUNT.getEncodedBytes());
+            account.getHkey(), account.getAddress(), account.getEncodedBytes());
     final Trace trace2 =
         accountStateTrie.putAndProve(
             zkAccount2.getHkey(), zkAccount2.getAddress(), zkAccount2.getEncodedBytes());
+
+    System.out.println(gson.toJson(List.of(trace, trace2)));
 
     assertThat(gson.toJson(List.of(trace, trace2)))
         .isEqualToIgnoringWhitespace(getResources("testWorldStateWithAccountAndContract.json"));
@@ -186,11 +197,13 @@ public class WorldstateProofTest {
 
     final ZKTrie accountStateTrie =
         ZKTrie.createTrie(new WorldStateStorageProxy(new InMemoryWorldStateStorage()));
+
+    MutableZkAccount account = getAccountOne();
     final Trace trace =
         accountStateTrie.putAndProve(
-            ZK_ACCOUNT.getHkey(),
-            ZK_ACCOUNT.getAddress(),
-            ZK_ACCOUNT.getEncodedBytes()); // not retest already tested trace
+            account.getHkey(),
+            account.getAddress(),
+            account.getEncodedBytes()); // not retest already tested trace
     final Trace trace2 =
         accountStateTrie.putAndProve(
             zkAccount2.getHkey(),
@@ -202,15 +215,17 @@ public class WorldstateProofTest {
         ZKTrie.createTrie(
             new WorldStateStorageProxy(
                 Optional.of(zkAccount2.getAddress()), new InMemoryWorldStateStorage()));
-    final MimcSafeBytes slotKey = createDumFullBytes(14);
+    final MimcSafeBytes<Bytes32> slotKey = createDumFullBytes(14);
     final Hash slotKeyHash = HashProvider.mimc(slotKey);
-    final MimcSafeBytes slotValue = createDumFullBytes(18);
+    final MimcSafeBytes<Bytes32> slotValue = createDumFullBytes(18);
     final Trace trace3 = account2Storage.putAndProve(slotKeyHash, slotKey, slotValue);
 
     zkAccount2.setStorageRoot(Hash.wrap(account2Storage.getTopRootHash()));
     final Trace trace4 =
         accountStateTrie.putAndProve(
             zkAccount2.getHkey(), zkAccount2.getAddress(), zkAccount2.getEncodedBytes());
+
+    System.out.println(gson.toJson(List.of(trace, trace2, trace3, trace4)));
 
     assertThat(gson.toJson(List.of(trace, trace2, trace3, trace4)))
         .isEqualToIgnoringWhitespace(getResources("testWorldStateWithUpdateContractStorage.json"));
@@ -231,10 +246,12 @@ public class WorldstateProofTest {
 
     final ZKTrie accountStateTrie =
         ZKTrie.createTrie(new WorldStateStorageProxy(new InMemoryWorldStateStorage()));
+
+    MutableZkAccount account = getAccountOne();
     accountStateTrie.putAndProve(
-        ZK_ACCOUNT.getHkey(),
-        ZK_ACCOUNT.getAddress(),
-        ZK_ACCOUNT.getEncodedBytes()); // not retest already tested trace
+        account.getHkey(),
+        account.getAddress(),
+        account.getEncodedBytes()); // not retest already tested trace
     accountStateTrie.putAndProve(
         zkAccount2.getHkey(),
         zkAccount2.getAddress(),
@@ -245,16 +262,16 @@ public class WorldstateProofTest {
         ZKTrie.createTrie(
             new WorldStateStorageProxy(
                 Optional.of(zkAccount2.getAddress()), new InMemoryWorldStateStorage()));
-    final MimcSafeBytes slotKey = createDumFullBytes(14);
+    final MimcSafeBytes<Bytes32> slotKey = createDumFullBytes(14);
     final Hash slotKeyHash = HashProvider.mimc(slotKey);
-    final MimcSafeBytes slotValue = createDumFullBytes(18);
+    final MimcSafeBytes<Bytes32> slotValue = createDumFullBytes(18);
     account2Storage.putAndProve(slotKeyHash, slotKey, slotValue);
     zkAccount2.setStorageRoot(Hash.wrap(account2Storage.getTopRootHash()));
     accountStateTrie.putAndProve(
         zkAccount2.getHkey(), zkAccount2.getAddress(), zkAccount2.getEncodedBytes());
 
     // Delete account 1
-    Trace trace = accountStateTrie.removeAndProve(ZK_ACCOUNT.getHkey(), ZK_ACCOUNT.getAddress());
+    Trace trace = accountStateTrie.removeAndProve(account.getHkey(), account.getAddress());
 
     // clean storage B
     Trace trace2 = account2Storage.removeAndProve(slotKeyHash, slotKey);
@@ -265,15 +282,17 @@ public class WorldstateProofTest {
             zkAccount2.getHkey(), zkAccount2.getAddress(), zkAccount2.getEncodedBytes());
 
     // Write again, somewhere else
-    final MimcSafeBytes newSlotKey = createDumFullBytes(11);
+    final MimcSafeBytes<Bytes32> newSlotKey = createDumFullBytes(11);
     final Hash newSlotKeyHash = HashProvider.mimc(newSlotKey);
-    final MimcSafeBytes newSlotValue = createDumFullBytes(78);
+    final MimcSafeBytes<Bytes32> newSlotValue = createDumFullBytes(78);
     Trace trace4 = account2Storage.putAndProve(newSlotKeyHash, newSlotKey, newSlotValue);
 
     zkAccount2.setStorageRoot(Hash.wrap(account2Storage.getTopRootHash()));
     Trace trace5 =
         accountStateTrie.putAndProve(
             zkAccount2.getHkey(), zkAccount2.getAddress(), zkAccount2.getEncodedBytes());
+
+    System.out.println(gson.toJson(List.of(trace, trace2, trace3, trace4, trace5)));
 
     assertThat(gson.toJson(List.of(trace, trace2, trace3, trace4, trace5)))
         .isEqualToIgnoringWhitespace(
@@ -286,35 +305,37 @@ public class WorldstateProofTest {
     final ZkAccount zkAccount2 =
         new ZkAccount(
             new AccountKey(createDumAddress(47)),
-            createDumFullBytes(15),
-            Hash.wrap(createDumDigest(75)),
-            7L,
             41,
             Wei.of(15353),
-            EMPTY_TRIE_ROOT);
+            EMPTY_TRIE_ROOT,
+            Hash.wrap(createDumDigest(75)),
+            createDumFullBytes(15),
+            7L);
 
     final ZkAccount zkAccount3 =
         new ZkAccount(
             new AccountKey(createDumAddress(120)),
-            createDumFullBytes(85),
-            Hash.wrap(createDumDigest(54)),
-            19L,
             48,
             Wei.of(9835),
-            EMPTY_TRIE_ROOT);
+            EMPTY_TRIE_ROOT,
+            Hash.wrap(createDumDigest(54)),
+            createDumFullBytes(85),
+            19L);
 
     final ZKTrie accountStateTrie =
         ZKTrie.createTrie(new WorldStateStorageProxy(new InMemoryWorldStateStorage()));
+
+    MutableZkAccount account = getAccountOne();
     accountStateTrie.putAndProve(
-        ZK_ACCOUNT.getHkey(),
-        ZK_ACCOUNT.getAddress(),
-        ZK_ACCOUNT.getEncodedBytes()); // not retest already tested trace
+        account.getHkey(),
+        account.getAddress(),
+        account.getEncodedBytes()); // not retest already tested trace
     accountStateTrie.putAndProve(
         zkAccount2.getHkey(),
         zkAccount2.getAddress(),
         zkAccount2.getEncodedBytes()); // not retest already tested trace
 
-    Trace trace = accountStateTrie.removeAndProve(ZK_ACCOUNT.getHkey(), ZK_ACCOUNT.getAddress());
+    Trace trace = accountStateTrie.removeAndProve(account.getHkey(), account.getAddress());
 
     Trace trace2 =
         accountStateTrie.putAndProve(

@@ -16,7 +16,7 @@ package net.consensys.shomei.worldview;
 import net.consensys.shomei.exception.MissingTrieLogException;
 import net.consensys.shomei.observer.TrieLogObserver;
 import net.consensys.shomei.storage.WorldStateStorage;
-import net.consensys.shomei.trielog.ShomeiTrieLogLayer;
+import net.consensys.shomei.trielog.TrieLogLayer;
 import net.consensys.shomei.trielog.TrieLogLayerConverter;
 
 import java.util.Optional;
@@ -48,8 +48,7 @@ public class ZkEvmWorldStateEntryPoint implements TrieLogObserver {
   public void moveHead(final long newBlockNumber, final Hash blockHash)
       throws MissingTrieLogException {
     while (currentWorldState.getBlockNumber() < newBlockNumber) {
-      System.out.println("process" + currentWorldState.getBlockNumber());
-      Optional<ShomeiTrieLogLayer> trieLog =
+      Optional<TrieLogLayer> trieLog =
           worldStateStorage
               .getTrieLog(blockHash)
               .map(RLP::input)
@@ -62,7 +61,7 @@ public class ZkEvmWorldStateEntryPoint implements TrieLogObserver {
     }
   }
 
-  public void moveHead(final long newBlockNumber, final ShomeiTrieLogLayer trieLogLayer)
+  public void moveHead(final long newBlockNumber, final TrieLogLayer trieLogLayer)
       throws MissingTrieLogException {
     currentWorldState.getAccumulator().rollForward(trieLogLayer);
     currentWorldState.commit(newBlockNumber, trieLogLayer.getBlockHash());

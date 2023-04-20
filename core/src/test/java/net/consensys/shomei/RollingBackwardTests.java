@@ -14,19 +14,19 @@
 package net.consensys.shomei;
 
 import static net.consensys.shomei.trie.ZKTrie.EMPTY_TRIE_ROOT;
-import static net.consensys.shomei.util.TestFixtureGenerator.ZK_ACCOUNT;
-import static net.consensys.shomei.util.TestFixtureGenerator.ZK_ACCOUNT_2;
+import static net.consensys.shomei.util.TestFixtureGenerator.getAccountOne;
+import static net.consensys.shomei.util.TestFixtureGenerator.getAccountTwo;
+import static net.consensys.shomei.util.TestFixtureGenerator.getContractStorageTrie;
+import static net.consensys.shomei.util.bytes.MimcSafeBytes.safeUInt256;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import net.consensys.shomei.storage.InMemoryWorldStateStorage;
-import net.consensys.shomei.storage.WorldStateStorageProxy;
 import net.consensys.shomei.trie.ZKTrie;
 import net.consensys.shomei.trielog.AccountKey;
-import net.consensys.shomei.trielog.ShomeiTrieLogLayer;
+import net.consensys.shomei.trielog.StorageSlotKey;
 import net.consensys.shomei.trielog.TrieLogLayer;
 import net.consensys.shomei.util.bytes.MimcSafeBytes;
 import net.consensys.shomei.worldview.ZKEvmWorldState;
-import net.consensys.zkevm.HashProvider;
 
 import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.datatypes.Hash;
@@ -37,8 +37,11 @@ public class RollingBackwardTests {
 
   @Test
   public void rollingBackwardAccountCreation() {
-    TrieLogLayer trieLog = new ShomeiTrieLogLayer();
-    trieLog.addAccountChange(ZK_ACCOUNT.getAddress(), null, ZK_ACCOUNT);
+
+    MutableZkAccount account = getAccountOne();
+
+    TrieLogLayer trieLog = new TrieLogLayer();
+    trieLog.addAccountChange(account.getAddress(), null, account);
 
     ZKEvmWorldState zkEvmWorldState = new ZKEvmWorldState(new InMemoryWorldStateStorage());
     assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(EMPTY_TRIE_ROOT);
@@ -56,9 +59,13 @@ public class RollingBackwardTests {
 
   @Test
   public void rollingBackwardTwoAccountsCreation() {
-    TrieLogLayer trieLog = new ShomeiTrieLogLayer();
-    trieLog.addAccountChange(ZK_ACCOUNT.getAddress(), null, ZK_ACCOUNT);
-    trieLog.addAccountChange(ZK_ACCOUNT_2.getAddress(), null, ZK_ACCOUNT_2);
+
+    MutableZkAccount account = getAccountOne();
+    MutableZkAccount accountTwo = getAccountTwo();
+
+    TrieLogLayer trieLog = new TrieLogLayer();
+    trieLog.addAccountChange(account.getAddress(), null, account);
+    trieLog.addAccountChange(accountTwo.getAddress(), null, accountTwo);
 
     ZKEvmWorldState zkEvmWorldState = new ZKEvmWorldState(new InMemoryWorldStateStorage());
     assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(EMPTY_TRIE_ROOT);
@@ -77,13 +84,15 @@ public class RollingBackwardTests {
   @Test
   public void rollingBackwardUpdatingAccount() {
 
-    TrieLogLayer trieLogLayer = new ShomeiTrieLogLayer();
-    trieLogLayer.addAccountChange(ZK_ACCOUNT.getAddress(), null, ZK_ACCOUNT);
+    MutableZkAccount account = getAccountOne();
 
-    TrieLogLayer trieLogLayer2 = new ShomeiTrieLogLayer();
-    MutableZkAccount account1 = new MutableZkAccount(ZK_ACCOUNT);
-    account1.setBalance(Wei.of(100));
-    trieLogLayer2.addAccountChange(ZK_ACCOUNT.getAddress(), ZK_ACCOUNT, account1);
+    TrieLogLayer trieLogLayer = new TrieLogLayer();
+    trieLogLayer.addAccountChange(account.getAddress(), null, account);
+
+    TrieLogLayer trieLogLayer2 = new TrieLogLayer();
+    MutableZkAccount accountOneUpdated = new MutableZkAccount(account);
+    accountOneUpdated.setBalance(Wei.of(100));
+    trieLogLayer2.addAccountChange(account.getAddress(), account, accountOneUpdated);
 
     // roll forward account creation
     ZKEvmWorldState zkEvmWorldState = new ZKEvmWorldState(new InMemoryWorldStateStorage());
@@ -111,12 +120,14 @@ public class RollingBackwardTests {
   @Test
   public void rollingBackwardAccountDeletion() {
 
-    // roll forward
-    TrieLogLayer trieLogLayer = new ShomeiTrieLogLayer();
-    trieLogLayer.addAccountChange(ZK_ACCOUNT.getAddress(), null, ZK_ACCOUNT);
+    MutableZkAccount account = getAccountOne();
 
-    TrieLogLayer trieLogLayer2 = new ShomeiTrieLogLayer();
-    trieLogLayer2.addAccountChange(ZK_ACCOUNT.getAddress(), ZK_ACCOUNT, null);
+    // roll forward
+    TrieLogLayer trieLogLayer = new TrieLogLayer();
+    trieLogLayer.addAccountChange(account.getAddress(), null, account);
+
+    TrieLogLayer trieLogLayer2 = new TrieLogLayer();
+    trieLogLayer2.addAccountChange(account.getAddress(), account, null);
 
     // roll forward account creation
     ZKEvmWorldState zkEvmWorldState = new ZKEvmWorldState(new InMemoryWorldStateStorage());
@@ -146,35 +157,33 @@ public class RollingBackwardTests {
   public void rollingBackwardAccountStorageDeletion() {
 
     // create contract with storage
-    final MutableZkAccount contract = new MutableZkAccount(ZK_ACCOUNT);
-    final MimcSafeBytes storageKey = new MimcSafeBytes(UInt256.valueOf(14));
-    final Hash storageKeyHash = HashProvider.mimc(storageKey);
-    final MimcSafeBytes storageValue = new MimcSafeBytes(UInt256.valueOf(12));
-    final ZKTrie contractStorageTrie =
-        ZKTrie.createTrie(new WorldStateStorageProxy(new InMemoryWorldStateStorage()));
-    contractStorageTrie.putAndProve(storageKeyHash, storageKey, storageValue);
+    MutableZkAccount contract = getAccountOne();
+    StorageSlotKey storageSlotKey = new StorageSlotKey(UInt256.valueOf(14));
+    MimcSafeBytes<UInt256> slotValue = safeUInt256(UInt256.valueOf(12));
+    ZKTrie contractStorageTrie = getContractStorageTrie(contract);
+    contractStorageTrie.putAndProve(storageSlotKey.slotHash(), storageSlotKey.slotKey(), slotValue);
     contract.setStorageRoot(Hash.wrap(contractStorageTrie.getTopRootHash()));
 
-    TrieLogLayer trieLogLayer = new ShomeiTrieLogLayer();
+    TrieLogLayer trieLogLayer = new TrieLogLayer();
     AccountKey accountKey = trieLogLayer.addAccountChange(contract.getAddress(), null, contract);
     trieLogLayer.addStorageChange(
         accountKey,
-        UInt256.fromBytes(storageKey.getOriginalValue()),
+        storageSlotKey.slotKey().getOriginalUnsafeValue(),
         null,
-        UInt256.fromBytes(storageValue.getOriginalValue()));
+        slotValue.getOriginalUnsafeValue());
 
     // remove slot
     final MutableZkAccount updatedContract = new MutableZkAccount(contract);
-    contractStorageTrie.removeAndProve(storageKeyHash, storageKey);
+    contractStorageTrie.removeAndProve(storageSlotKey.slotHash(), storageSlotKey.slotKey());
     updatedContract.setStorageRoot(Hash.wrap(contractStorageTrie.getTopRootHash()));
 
-    TrieLogLayer trieLogLayer2 = new ShomeiTrieLogLayer();
+    TrieLogLayer trieLogLayer2 = new TrieLogLayer();
     AccountKey updateAccountKey =
         trieLogLayer2.addAccountChange(updatedContract.getAddress(), contract, updatedContract);
     trieLogLayer2.addStorageChange(
         updateAccountKey,
-        UInt256.fromBytes(storageKey.getOriginalValue()),
-        UInt256.fromBytes(storageValue.getOriginalValue()),
+        storageSlotKey.slotKey().getOriginalUnsafeValue(),
+        slotValue.getOriginalUnsafeValue(),
         null);
 
     // roll forward account creation
@@ -204,38 +213,37 @@ public class RollingBackwardTests {
   public void rollingBackwardAccountStorageUpdate() {
 
     // create contract with storage
-    final MutableZkAccount contract = new MutableZkAccount(ZK_ACCOUNT);
-    final MimcSafeBytes storageKey = new MimcSafeBytes(UInt256.valueOf(14));
-    final Hash storageKeyHash = HashProvider.mimc(storageKey);
-    final MimcSafeBytes storageValue = new MimcSafeBytes(UInt256.valueOf(12));
-    final ZKTrie contractStorageTrie =
-        ZKTrie.createTrie(new WorldStateStorageProxy(new InMemoryWorldStateStorage()));
-    contractStorageTrie.putAndProve(storageKeyHash, storageKey, storageValue);
+    MutableZkAccount contract = getAccountOne();
+    StorageSlotKey storageSlotKey = new StorageSlotKey(UInt256.valueOf(14));
+    MimcSafeBytes<UInt256> slotValue = safeUInt256(UInt256.valueOf(12));
+    ZKTrie contractStorageTrie = getContractStorageTrie(contract);
+    contractStorageTrie.putAndProve(storageSlotKey.slotHash(), storageSlotKey.slotKey(), slotValue);
     contract.setStorageRoot(Hash.wrap(contractStorageTrie.getTopRootHash()));
 
-    TrieLogLayer trieLogLayer = new ShomeiTrieLogLayer();
+    TrieLogLayer trieLogLayer = new TrieLogLayer();
     AccountKey contractAccountKey =
         trieLogLayer.addAccountChange(contract.getAddress(), null, contract);
     trieLogLayer.addStorageChange(
         contractAccountKey,
-        UInt256.fromBytes(storageKey.getOriginalValue()),
+        storageSlotKey.slotKey().getOriginalUnsafeValue(),
         null,
-        UInt256.fromBytes(storageValue.getOriginalValue()));
+        slotValue.getOriginalUnsafeValue());
 
     // update slot
     final MutableZkAccount updatedContract = new MutableZkAccount(contract);
-    final MimcSafeBytes updatedStorageValue = new MimcSafeBytes(UInt256.valueOf(19));
-    contractStorageTrie.putAndProve(storageKeyHash, storageKey, updatedStorageValue);
+    final MimcSafeBytes<UInt256> updatedStorageValue = safeUInt256(UInt256.valueOf(19));
+    contractStorageTrie.putAndProve(
+        storageSlotKey.slotHash(), storageSlotKey.slotKey(), updatedStorageValue);
     updatedContract.setStorageRoot(Hash.wrap(contractStorageTrie.getTopRootHash()));
 
-    TrieLogLayer trieLogLayer2 = new ShomeiTrieLogLayer();
+    TrieLogLayer trieLogLayer2 = new TrieLogLayer();
     AccountKey updatedContractAccountKey =
         trieLogLayer2.addAccountChange(updatedContract.getAddress(), contract, updatedContract);
     trieLogLayer2.addStorageChange(
         updatedContractAccountKey,
-        UInt256.fromBytes(storageKey.getOriginalValue()),
-        UInt256.fromBytes(storageValue.getOriginalValue()),
-        UInt256.fromBytes(updatedStorageValue.getOriginalValue()));
+        storageSlotKey.slotKey().getOriginalUnsafeValue(),
+        slotValue.getOriginalUnsafeValue(),
+        updatedStorageValue.getOriginalUnsafeValue());
 
     // roll forward account creation
     ZKEvmWorldState zkEvmWorldState = new ZKEvmWorldState(new InMemoryWorldStateStorage());

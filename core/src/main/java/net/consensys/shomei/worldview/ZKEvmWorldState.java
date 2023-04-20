@@ -16,6 +16,7 @@ package net.consensys.shomei.worldview;
 import static net.consensys.shomei.storage.WorldStateStorageProxy.createAccountProxy;
 import static net.consensys.shomei.storage.WorldStateStorageProxy.createStorageProxy;
 import static net.consensys.shomei.trie.ZKTrie.EMPTY_TRIE_ROOT;
+import static net.consensys.shomei.util.bytes.MimcSafeBytes.safeUInt256;
 
 import net.consensys.shomei.MutableZkAccount;
 import net.consensys.shomei.ZkAccount;
@@ -28,7 +29,6 @@ import net.consensys.shomei.trie.storage.StorageProxy;
 import net.consensys.shomei.trie.storage.StorageProxy.Updater;
 import net.consensys.shomei.trielog.AccountKey;
 import net.consensys.shomei.trielog.StorageSlotKey;
-import net.consensys.shomei.util.bytes.MimcSafeBytes;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -209,16 +209,14 @@ public class ZKEvmWorldState {
                     // read zero
                     traces.add(
                         zkStorageTrie.readZeroAndProve(
-                            storageSlotKey.slotHash(),
-                            new MimcSafeBytes(storageSlotKey.slotKey().orElseThrow())));
+                            storageSlotKey.slotHash(), storageSlotKey.slotKey()));
                   }
                 } else if (Objects.equals(storageValue.getPrior(), storageValue.getUpdated())
                     || accountValue.isCleared()) {
                   // read non zero
                   traces.add(
                       zkStorageTrie.readAndProve(
-                          storageSlotKey.slotHash(),
-                          new MimcSafeBytes(storageSlotKey.slotKey().orElseThrow())));
+                          storageSlotKey.slotHash(), storageSlotKey.slotKey()));
                 }
               });
     }
@@ -273,9 +271,7 @@ public class ZKEvmWorldState {
       }
       if (storageValue.getPrior() != null) {
         traces.add(
-            zkStorageTrie.removeAndProve(
-                storageSlotKey.slotHash(),
-                new MimcSafeBytes(storageSlotKey.slotKey().orElseThrow())));
+            zkStorageTrie.removeAndProve(storageSlotKey.slotHash(), storageSlotKey.slotKey()));
       }
     }
     // check update and insert
@@ -286,8 +282,8 @@ public class ZKEvmWorldState {
         traces.add(
             zkStorageTrie.putAndProve(
                 storageSlotKey.slotHash(),
-                new MimcSafeBytes(storageSlotKey.slotKey().orElseThrow()),
-                new MimcSafeBytes(storageValue.getUpdated())));
+                storageSlotKey.slotKey(),
+                safeUInt256(storageValue.getUpdated())));
       }
     }
     return traces;

@@ -17,6 +17,8 @@ import static com.google.common.base.Preconditions.checkState;
 
 import net.consensys.shomei.ZkAccount;
 import net.consensys.shomei.ZkValue;
+import net.consensys.shomei.util.bytes.MimcSafeBytes;
+import net.consensys.zkevm.HashProvider;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -75,17 +77,17 @@ public class TrieLogLayer {
   }
 
   public AccountKey addAccountChange(
-      final Address address,
+      final MimcSafeBytes<Address> address,
       final ZkAccount oldValue,
       final ZkAccount newValue,
       final boolean isCleared) {
-    final AccountKey accountKey = new AccountKey(getAccountHash(address), address);
+    final AccountKey accountKey = new AccountKey(HashProvider.mimc(address), address);
     addAccountChange(accountKey, oldValue, newValue, isCleared);
     return accountKey;
   }
 
   public AccountKey addAccountChange(
-      final Address address, final ZkAccount oldValue, final ZkAccount newValue) {
+      final MimcSafeBytes<Address> address, final ZkAccount oldValue, final ZkAccount newValue) {
     return addAccountChange(address, oldValue, newValue, false);
   }
 
@@ -169,14 +171,6 @@ public class TrieLogLayer {
 
   public Optional<ZkAccount> getAccount(final AccountKey accountKey) {
     return Optional.ofNullable(accounts.get(accountKey)).map(ZkValue::getUpdated);
-  }
-
-  public Hash getAccountHash(final Address address) {
-    return Hash.hash(address);
-  }
-
-  public Hash getSlotHash(final UInt256 slotKey) {
-    return Hash.hash(slotKey);
   }
 
   public String dump() {
