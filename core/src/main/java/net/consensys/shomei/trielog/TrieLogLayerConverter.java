@@ -19,6 +19,7 @@ import static net.consensys.shomei.util.bytes.MimcSafeBytes.safeByte32;
 
 import net.consensys.shomei.ZkAccount;
 import net.consensys.shomei.storage.WorldStateStorage;
+import net.consensys.shomei.trie.ZKTrie;
 import net.consensys.shomei.trie.model.FlattenedLeaf;
 import net.consensys.zkevm.HashProvider;
 
@@ -166,11 +167,18 @@ public class TrieLogLayerConverter {
       codeSize = UInt256.valueOf(code.size());
     }
 
+    final Hash storageRoot;
+    if (oldValue != null) {
+      storageRoot = oldValue.getStorageRoot();
+    } else {
+      storageRoot = ZKTrie.EMPTY_TRIE_ROOT;
+    }
+
     return new ZkAccount(
         accountKey,
         nonce,
         balance,
-        null,
+        storageRoot,
         Hash.wrap(mimcCodeHash),
         safeByte32(keccakCodeHash),
         codeSize);
