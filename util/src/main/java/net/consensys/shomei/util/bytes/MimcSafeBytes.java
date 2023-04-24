@@ -22,6 +22,11 @@ import org.apache.tuweni.bytes.MutableBytes;
 import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.datatypes.Address;
 
+/**
+ * The fields elements hold on 32 bytes but do not allow to contain 32 bytes entirely. For some
+ * keys, we cannot assume that it will always fit on a field element. So we need sometimes to modify
+ * the key to be mimc friendly.
+ */
 public class MimcSafeBytes<T extends Bytes> extends DelegatingBytes implements Bytes {
 
   private final T originalUnsafeValue;
@@ -43,7 +48,7 @@ public class MimcSafeBytes<T extends Bytes> extends DelegatingBytes implements B
     return new MimcSafeBytes<>(Bytes32.leftPad(delegate), delegate);
   }
 
-  public static MimcSafeBytes<Bytes> noSafe(final Bytes delegate) {
+  public static MimcSafeBytes<Bytes> unsafeFromBytes(final Bytes delegate) {
     return new MimcSafeBytes<>(delegate, delegate);
   }
 
@@ -93,15 +98,6 @@ public class MimcSafeBytes<T extends Bytes> extends DelegatingBytes implements B
     return result;
   }
 
-  /**
-   * Fhe fields elements hold on 32 bytes but do not allow to contain 32 bytes entirely. For some
-   * keys, we cannot assume that it will always fit on a field element. So we need sometimes to
-   * split the key Put the first half of f into the second half of msb and the second half of f into
-   * the second half of lsb The rest is zero.
-   *
-   * @param value to format
-   * @return formated value
-   */
   private static Bytes convertToSafeFieldElementsSize(final Bytes32 value) {
     Bytes32 lsb = Bytes32.leftPad(value.slice(16, 16));
     Bytes32 msb = Bytes32.leftPad(value.slice(0, 16));

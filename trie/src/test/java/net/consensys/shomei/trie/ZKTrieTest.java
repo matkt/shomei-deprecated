@@ -13,7 +13,7 @@
 
 package net.consensys.shomei.trie;
 
-import static net.consensys.shomei.util.bytes.MimcSafeBytes.noSafe;
+import static net.consensys.shomei.util.bytes.MimcSafeBytes.unsafeFromBytes;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import net.consensys.shomei.trie.storage.InMemoryStorage;
@@ -52,8 +52,8 @@ public class ZKTrieTest {
     final InMemoryStorage storage = new InMemoryStorage();
     ZKTrie zkTrie = ZKTrie.createTrie(storage);
 
-    final MimcSafeBytes<Bytes> key = noSafe(createDumDiggest(58));
-    final MimcSafeBytes<Bytes> value = noSafe(createDumDiggest(42));
+    final MimcSafeBytes<Bytes> key = unsafeFromBytes(createDumDiggest(58));
+    final MimcSafeBytes<Bytes> value = unsafeFromBytes(createDumDiggest(42));
     final Hash hkey = HashProvider.mimc(key);
 
     zkTrie.putAndProve(hkey, key, value);
@@ -75,9 +75,9 @@ public class ZKTrieTest {
     final InMemoryStorage storage = new InMemoryStorage();
     ZKTrie zkTrie = ZKTrie.createTrie(storage);
 
-    final MimcSafeBytes<Bytes> key = noSafe(createDumDiggest(58));
-    final MimcSafeBytes<Bytes> dumValue = noSafe(createDumDiggest(41));
-    final MimcSafeBytes<Bytes> newDumValue = noSafe(createDumDiggest(42));
+    final MimcSafeBytes<Bytes> key = unsafeFromBytes(createDumDiggest(58));
+    final MimcSafeBytes<Bytes> dumValue = unsafeFromBytes(createDumDiggest(41));
+    final MimcSafeBytes<Bytes> newDumValue = unsafeFromBytes(createDumDiggest(42));
     final Hash hkey = HashProvider.mimc(key);
 
     zkTrie.putAndProve(hkey, key, dumValue);
@@ -110,8 +110,8 @@ public class ZKTrieTest {
     final InMemoryStorage storage = new InMemoryStorage();
     ZKTrie zkTrie = ZKTrie.createTrie(storage);
 
-    final MimcSafeBytes<Bytes> key = noSafe(createDumDiggest(58));
-    final MimcSafeBytes<Bytes> value = noSafe(createDumDiggest(41));
+    final MimcSafeBytes<Bytes> key = unsafeFromBytes(createDumDiggest(58));
+    final MimcSafeBytes<Bytes> value = unsafeFromBytes(createDumDiggest(41));
     final Hash hkey = HashProvider.mimc(key);
 
     zkTrie.putAndProve(hkey, key, value);

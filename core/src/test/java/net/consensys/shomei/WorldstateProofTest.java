@@ -20,7 +20,7 @@ import static net.consensys.shomei.util.TestFixtureGenerator.createDumAddress;
 import static net.consensys.shomei.util.TestFixtureGenerator.createDumDigest;
 import static net.consensys.shomei.util.TestFixtureGenerator.createDumFullBytes;
 import static net.consensys.shomei.util.TestFixtureGenerator.getAccountOne;
-import static net.consensys.shomei.util.bytes.MimcSafeBytes.noSafe;
+import static net.consensys.shomei.util.bytes.MimcSafeBytes.unsafeFromBytes;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import net.consensys.shomei.storage.InMemoryWorldStateStorage;
@@ -94,8 +94,8 @@ public class WorldstateProofTest {
   @Test
   public void testTraceRead() throws IOException {
 
-    final MimcSafeBytes<Bytes> key = noSafe(createDumDigest(36));
-    final MimcSafeBytes<Bytes> value = noSafe(createDumDigest(32));
+    final MimcSafeBytes<Bytes> key = unsafeFromBytes(createDumDigest(36));
+    final MimcSafeBytes<Bytes> value = unsafeFromBytes(createDumDigest(32));
     final Hash hkey = HashProvider.mimc(key);
 
     ZKTrie accountStateTrie =
