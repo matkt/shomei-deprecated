@@ -175,7 +175,7 @@ public class ZkEvmWorldStateUpdateAccumulator {
       if (!isSlotEquals(expectedValue, existingSlotValue)) {
         throw new IllegalStateException(
             String.format(
-                "Old leafValue of slot does not match expected leafValue. Account=%s SlotHash=%s Expected=%s Actual=%s",
+                "Old value of slot does not match expected value. Account=%s SlotHash=%s Expected=%s Actual=%s",
                 accountKey.address(),
                 storageSlotKey.slotHash(),
                 expectedValue == null ? "null" : expectedValue.toShortHexString(),
