@@ -23,6 +23,7 @@ import net.consensys.shomei.trie.ZKTrie;
 import net.consensys.shomei.trie.model.FlattenedLeaf;
 import net.consensys.zkevm.HashProvider;
 
+import java.util.Objects;
 import java.util.Optional;
 
 import com.google.common.primitives.Longs;
@@ -73,26 +74,16 @@ public class TrieLogLayerConverter {
         input.skipNext();
       } else {
         input.enterList();
-        final ZkAccount oldAccountValue;
-        if (!input.nextIsNull()) {
-          final Optional<FlattenedLeaf> flatLeaf =
-              worldStateStorage.getFlatLeaf(accountKey.accountHash());
-          oldAccountValue =
-              flatLeaf
-                  .map(value -> ZkAccount.fromEncodedBytes(accountKey, value.leafValue()))
-                  .orElseThrow();
-          accountIndex = flatLeaf.map(FlattenedLeaf::leafIndex);
-        } else {
-          oldAccountValue = null;
-        }
-        input.skipNext();
+        final PriorAccount priorAccount = preparePriorTrieLogAccount(accountKey, input);
+        accountIndex = priorAccount.index;
         final ZkAccount newAccountValue =
             nullOrValue(
                 input,
-                rlpInput -> prepareTrieLogAccount(accountKey, newCode, oldAccountValue, rlpInput));
+                rlpInput ->
+                    prepareNewTrieLogAccount(accountKey, newCode, priorAccount.account, rlpInput));
         final boolean isCleared = defaultOrValue(input, 0, RLPInput::readInt) == 1;
         input.leaveList();
-        trieLogLayer.addAccountChange(accountKey, oldAccountValue, newAccountValue, isCleared);
+        trieLogLayer.addAccountChange(accountKey, priorAccount.account, newAccountValue, isCleared);
       }
 
       if (input.nextIsNull()) {
@@ -102,25 +93,24 @@ public class TrieLogLayerConverter {
         while (!input.isEndOfCurrentList()) {
           input.enterList();
           final StorageSlotKey storageSlotKey = new StorageSlotKey(input.readUInt256Scalar());
-          final UInt256 oldValue;
-          if (!input.nextIsNull()) {
-            oldValue =
-                worldStateStorage
-                    .getFlatLeaf(
-                        Bytes.concatenate(
-                            Bytes.wrap(Longs.toByteArray(accountIndex.orElseThrow())),
-                            storageSlotKey.slotHash()))
-                    .map(FlattenedLeaf::leafValue)
-                    .map(UInt256::fromBytes)
-                    .orElseThrow();
-          } else {
-            oldValue = null;
+          final UInt256 oldValueExpected = nullOrValue(input, RLPInput::readUInt256Scalar);
+          final UInt256 oldValueFound =
+              worldStateStorage
+                  .getFlatLeaf(
+                      Bytes.concatenate(
+                          Bytes.wrap(Longs.toByteArray(accountIndex.orElseThrow())),
+                          storageSlotKey.slotHash()))
+                  .map(FlattenedLeaf::leafValue)
+                  .map(UInt256::fromBytes)
+                  .orElse(null);
+          if (!Objects.equals(
+              oldValueExpected, oldValueFound)) { // check consistency between trielog and db
+            throw new IllegalStateException("invalid trie log exception");
           }
-          input.skipNext();
           final UInt256 newValue = nullOrValue(input, RLPInput::readUInt256Scalar);
           input.skipNext(); // skip is cleared for storage level
           input.leaveList();
-          trieLogLayer.addStorageChange(accountKey, storageSlotKey, oldValue, newValue);
+          trieLogLayer.addStorageChange(accountKey, storageSlotKey, oldValueFound, newValue);
         }
         input.leaveList();
       }
@@ -133,7 +123,40 @@ public class TrieLogLayerConverter {
     return trieLogLayer;
   }
 
-  public ZkAccount prepareTrieLogAccount(
+  record PriorAccount(ZkAccount account, Optional<Long> index) {}
+  ;
+
+  public PriorAccount preparePriorTrieLogAccount(final AccountKey accountKey, final RLPInput in) {
+
+    final ZkAccount oldAccountValue;
+
+    final Optional<FlattenedLeaf> flatLeaf =
+        worldStateStorage.getFlatLeaf(accountKey.accountHash());
+    if (in.nextIsNull() && flatLeaf.isEmpty()) {
+      return new PriorAccount(null, Optional.empty());
+    } else if (!in.nextIsNull() && flatLeaf.isPresent()) {
+      oldAccountValue =
+          flatLeaf
+              .map(value -> ZkAccount.fromEncodedBytes(accountKey, value.leafValue()))
+              .orElseThrow();
+
+      in.enterList();
+
+      final UInt256 nonce = UInt256.valueOf(in.readLongScalar());
+      final Wei balance = Wei.of(in.readUInt256Scalar());
+
+      in.leaveListLenient(); // skip last elements we cannot check
+
+      if (oldAccountValue.getNonce().equals(nonce) // check consistency between trielog and db
+          && oldAccountValue.getBalance().equals(balance)) {
+        return new PriorAccount(oldAccountValue, flatLeaf.map(FlattenedLeaf::leafIndex));
+      }
+    }
+
+    throw new IllegalStateException("invalid trie log exception");
+  }
+
+  public ZkAccount prepareNewTrieLogAccount(
       final AccountKey accountKey,
       final Optional<Bytes> newCode,
       final ZkAccount oldValue,

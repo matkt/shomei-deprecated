@@ -73,6 +73,41 @@ public class RollingForwardTests {
   }
 
   @Test
+  public void rollingForwardZeroReadAccount() {
+
+    MutableZkAccount account = getAccountOne();
+    MutableZkAccount missingAccount = getAccountTwo();
+
+    ZKTrie accountStateTrieOne =
+        ZKTrie.createTrie(new WorldStateStorageProxy(new InMemoryWorldStateStorage()));
+
+    final List<Trace> expectedTraces = new ArrayList<>();
+    expectedTraces.add(
+        accountStateTrieOne.readZeroAndProve(
+            missingAccount.getHkey(), missingAccount.getAddress()));
+    expectedTraces.add(
+        accountStateTrieOne.putAndProve(
+            account.getHkey(), account.getAddress(), account.getEncodedBytes()));
+
+    Hash topRootHash = Hash.wrap(accountStateTrieOne.getTopRootHash());
+    assertThat(topRootHash)
+        .isEqualTo(
+            Hash.fromHexString("11aed727a707f2f1962e399bd4787153ba0e69b7224e8eecf4d1e4e6a8e8dafd"));
+
+    TrieLogLayer trieLogLayer = new TrieLogLayer();
+    trieLogLayer.addAccountChange(account.getAddress(), null, account);
+    trieLogLayer.addAccountChange(missingAccount.getAddress(), null, null);
+
+    ZKEvmWorldState zkEvmWorldState = new ZKEvmWorldState(new InMemoryWorldStateStorage());
+    assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(EMPTY_TRIE_ROOT);
+    zkEvmWorldState.getAccumulator().rollForward(trieLogLayer);
+    zkEvmWorldState.commit(0L, null);
+
+    assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(topRootHash);
+    assertThat(gson.toJson(zkEvmWorldState.getLastTraces())).isEqualTo(gson.toJson(expectedTraces));
+  }
+
+  @Test
   public void rollingForwardOneAccount() {
 
     MutableZkAccount account = getAccountOne();

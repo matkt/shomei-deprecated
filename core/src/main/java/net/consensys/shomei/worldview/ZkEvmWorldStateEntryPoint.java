@@ -13,11 +13,15 @@
 
 package net.consensys.shomei.worldview;
 
+import net.consensys.shomei.ZkAccount;
 import net.consensys.shomei.exception.MissingTrieLogException;
 import net.consensys.shomei.observer.TrieLogObserver;
 import net.consensys.shomei.storage.WorldStateStorage;
+import net.consensys.shomei.trie.ZKTrie;
+import net.consensys.shomei.trielog.AccountKey;
 import net.consensys.shomei.trielog.TrieLogLayer;
 import net.consensys.shomei.trielog.TrieLogLayerConverter;
+import net.consensys.shomei.util.bytes.MimcSafeBytes;
 
 import java.util.Optional;
 
@@ -27,7 +31,9 @@ import com.google.gson.JsonPrimitive;
 import com.google.gson.JsonSerializer;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.units.bigints.UInt256;
+import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Hash;
+import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.rlp.RLP;
 import org.hyperledger.besu.ethereum.trie.Node;
 
@@ -43,6 +49,22 @@ public class ZkEvmWorldStateEntryPoint implements TrieLogObserver {
     this.worldStateStorage = worldStateStorage;
     this.currentWorldState = new ZKEvmWorldState(worldStateStorage);
     this.trieLogLayerConverter = new TrieLogLayerConverter(worldStateStorage);
+    TrieLogLayer trieLogLayer = new TrieLogLayer();
+    trieLogLayer.addAccountChange(
+        MimcSafeBytes.safeAddress(
+            Address.fromHexString("0xFE3B557E8Fb62b89F4916B721be55cEb828dBd73")),
+        null,
+        new ZkAccount(
+            new AccountKey(Address.fromHexString("0xFE3B557E8Fb62b89F4916B721be55cEb828dBd73")),
+            0L,
+            Wei.fromHexString("0xad78ebc5ac6200000"),
+            ZKTrie.EMPTY_TRIE_ROOT,
+            ZkAccount.EMPTY_CODE_HASH,
+            ZkAccount.EMPTY_KECCAK_CODE_HASH,
+            0L),
+        false);
+    currentWorldState.getAccumulator().rollForward(trieLogLayer);
+    currentWorldState.commit(0, Hash.EMPTY);
   }
 
   public void moveHead(final long newBlockNumber, final Hash blockHash)
@@ -61,8 +83,7 @@ public class ZkEvmWorldStateEntryPoint implements TrieLogObserver {
     }
   }
 
-  public void moveHead(final long newBlockNumber, final TrieLogLayer trieLogLayer)
-      throws MissingTrieLogException {
+  public void moveHead(final long newBlockNumber, final TrieLogLayer trieLogLayer) {
     currentWorldState.getAccumulator().rollForward(trieLogLayer);
     currentWorldState.commit(newBlockNumber, trieLogLayer.getBlockHash());
   }
@@ -71,7 +92,7 @@ public class ZkEvmWorldStateEntryPoint implements TrieLogObserver {
     return currentWorldState.getStateRootHash();
   }
 
-  static int block = 0;
+  static int block = 1;
 
   @Override
   public void onTrieLogAdded(final Hash blockHash) {

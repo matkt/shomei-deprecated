@@ -119,8 +119,6 @@ public class WorldstateProofTest {
         accountStateTrie.putAndProve(
             account.getHkey(), account.getAddress(), account.getEncodedBytes());
 
-    System.out.println(gson.toJson(List.of(trace)));
-
     assertThat(gson.toJson(List.of(trace)))
         .isEqualToIgnoringWhitespace(getResources("testTraceStateWithAnAccount.json"));
   }
@@ -177,8 +175,6 @@ public class WorldstateProofTest {
         accountStateTrie.putAndProve(
             zkAccount2.getHkey(), zkAccount2.getAddress(), zkAccount2.getEncodedBytes());
 
-    System.out.println(gson.toJson(List.of(trace, trace2)));
-
     assertThat(gson.toJson(List.of(trace, trace2)))
         .isEqualToIgnoringWhitespace(getResources("testWorldStateWithAccountAndContract.json"));
   }
@@ -224,8 +220,6 @@ public class WorldstateProofTest {
     final Trace trace4 =
         accountStateTrie.putAndProve(
             zkAccount2.getHkey(), zkAccount2.getAddress(), zkAccount2.getEncodedBytes());
-
-    System.out.println(gson.toJson(List.of(trace, trace2, trace3, trace4)));
 
     assertThat(gson.toJson(List.of(trace, trace2, trace3, trace4)))
         .isEqualToIgnoringWhitespace(getResources("testWorldStateWithUpdateContractStorage.json"));
@@ -291,8 +285,6 @@ public class WorldstateProofTest {
     Trace trace5 =
         accountStateTrie.putAndProve(
             zkAccount2.getHkey(), zkAccount2.getAddress(), zkAccount2.getEncodedBytes());
-
-    System.out.println(gson.toJson(List.of(trace, trace2, trace3, trace4, trace5)));
 
     assertThat(gson.toJson(List.of(trace, trace2, trace3, trace4, trace5)))
         .isEqualToIgnoringWhitespace(
