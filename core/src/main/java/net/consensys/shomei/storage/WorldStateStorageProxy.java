@@ -13,12 +13,15 @@
 
 package net.consensys.shomei.storage;
 
+import net.consensys.shomei.trie.model.FlattenedLeaf;
 import net.consensys.shomei.trie.storage.StorageProxy;
 
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
 
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.primitives.Longs;
 import org.apache.tuweni.bytes.Bytes;
 
 public class WorldStateStorageProxy implements StorageProxy {
@@ -30,21 +33,31 @@ public class WorldStateStorageProxy implements StorageProxy {
 
   private final Optional<StorageProxy.Updater> updater;
 
+  public static WorldStateStorageProxy createAccountProxy(
+      final WorldStateStorage worldStateStorage, final StorageProxy.Updater updater) {
+    return new WorldStateStorageProxy(Optional.empty(), worldStateStorage, updater);
+  }
+
+  public static WorldStateStorageProxy createStorageProxy(
+      final long accountLeafIndex,
+      final WorldStateStorage worldStateStorage,
+      final StorageProxy.Updater updater) {
+    return new WorldStateStorageProxy(
+        Optional.of(Bytes.wrap(Longs.toByteArray(accountLeafIndex))), worldStateStorage, updater);
+  }
+
+  @VisibleForTesting
   public WorldStateStorageProxy(final WorldStateStorage worldStateStorage) {
     this(Optional.empty(), worldStateStorage, null);
   }
 
+  @VisibleForTesting
   public WorldStateStorageProxy(
       final Optional<Bytes> keyPrefix, final WorldStateStorage worldStateStorage) {
     this(keyPrefix, worldStateStorage, null);
   }
 
-  public WorldStateStorageProxy(
-      final WorldStateStorage worldStateStorage, final StorageProxy.Updater updater) {
-    this(Optional.empty(), worldStateStorage, updater);
-  }
-
-  public WorldStateStorageProxy(
+  private WorldStateStorageProxy(
       final Optional<Bytes> keyPrefix,
       final WorldStateStorage worldStateStorage,
       final StorageProxy.Updater updater) {
@@ -57,25 +70,25 @@ public class WorldStateStorageProxy implements StorageProxy {
   }
 
   @Override
-  public Optional<Long> getLeafIndex(final Bytes hkey) {
-    return worldStateStorage.getLeafIndex(keySerializer.apply(hkey));
+  public Optional<FlattenedLeaf> getFlatLeaf(final Bytes hkey) {
+    return worldStateStorage.getFlatLeaf(keySerializer.apply(hkey));
   }
 
   @Override
   public Range getNearestKeys(final Bytes hkey) {
     Range nearestKeys = worldStateStorage.getNearestKeys(keySerializer.apply(hkey));
-    final Map.Entry<Bytes, Long> left =
+    final Map.Entry<Bytes, FlattenedLeaf> left =
         Map.entry(
-            keyDeserializer.apply(nearestKeys.getLeftNodeKey()), nearestKeys.getLeftNodeIndex());
-    final Optional<Map.Entry<Bytes, Long>> center =
+            keyDeserializer.apply(nearestKeys.getLeftNodeKey()), nearestKeys.getLeftNodeValue());
+    final Optional<Map.Entry<Bytes, FlattenedLeaf>> center =
         nearestKeys
             .getCenterNode()
             .map(
                 centerNode ->
                     Map.entry(keyDeserializer.apply(centerNode.getKey()), centerNode.getValue()));
-    final Map.Entry<Bytes, Long> right =
+    final Map.Entry<Bytes, FlattenedLeaf> right =
         Map.entry(
-            keyDeserializer.apply(nearestKeys.getRightNodeKey()), nearestKeys.getRightNodeIndex());
+            keyDeserializer.apply(nearestKeys.getRightNodeKey()), nearestKeys.getRightNodeValue());
     return new Range(left, center, right);
   }
 
@@ -86,7 +99,7 @@ public class WorldStateStorageProxy implements StorageProxy {
   }
 
   @Override
-  public StorageProxy.Updater updater() {
+  public Updater updater() {
     return new Updater(keySerializer, updater.orElseGet(worldStateStorage::updater));
   }
 
@@ -101,8 +114,8 @@ public class WorldStateStorageProxy implements StorageProxy {
     }
 
     @Override
-    public void putKeyIndex(final Bytes hkey, final Long index) {
-      this.updater.putKeyIndex(keySerializer.apply(hkey), index);
+    public void putFlatLeaf(final Bytes hkey, final FlattenedLeaf value) {
+      this.updater.putFlatLeaf(keySerializer.apply(hkey), value);
     }
 
     @Override
@@ -114,8 +127,8 @@ public class WorldStateStorageProxy implements StorageProxy {
     }
 
     @Override
-    public void removeKeyIndex(final Bytes hkey) {
-      this.updater.removeKeyIndex(keySerializer.apply(hkey));
+    public void removeFlatLeafValue(final Bytes hkey) {
+      this.updater.removeFlatLeafValue(keySerializer.apply(hkey));
     }
   }
 }

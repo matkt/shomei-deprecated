@@ -13,52 +13,39 @@
 
 package net.consensys.shomei;
 
-import net.consensys.shomei.trielog.TrieLogAccountValue;
-import net.consensys.shomei.util.bytes.FullBytes;
+import net.consensys.shomei.trielog.AccountKey;
+import net.consensys.shomei.util.bytes.MimcSafeBytes;
 
-import org.hyperledger.besu.datatypes.Address;
+import org.apache.tuweni.bytes.Bytes32;
+import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.Wei;
 
 public class MutableZkAccount extends ZkAccount {
 
   public MutableZkAccount(
-      final Address address,
-      final FullBytes keccakCodeHash,
+      final AccountKey accountKey,
+      final MimcSafeBytes<Bytes32> keccakCodeHash,
       final Hash mimcCodeHash,
       final long codeSize,
       final long nonce,
       final Wei balance,
       final Hash storageRoot) {
-    super(address, keccakCodeHash, mimcCodeHash, codeSize, nonce, balance, storageRoot);
-  }
-
-  public MutableZkAccount(
-      final Hash hkey,
-      final Address address,
-      final FullBytes keccakCodeHash,
-      final Hash mimcCodeHash,
-      final long codeSize,
-      final long nonce,
-      final Wei balance,
-      final Hash storageRoot) {
-    super(hkey, address, keccakCodeHash, mimcCodeHash, codeSize, nonce, balance, storageRoot);
-  }
-
-  public MutableZkAccount(
-      final Hash hkey, final Address address, final TrieLogAccountValue accountValue) {
-    super(hkey, address, accountValue);
+    super(
+        accountKey,
+        UInt256.valueOf(nonce),
+        balance,
+        storageRoot,
+        mimcCodeHash,
+        keccakCodeHash,
+        UInt256.valueOf(codeSize));
   }
 
   public MutableZkAccount(final ZkAccount toCopy) {
     super(toCopy);
   }
 
-  public void setAddress(final Address address) {
-    this.address = address;
-  }
-
-  public void setKeccakCodeHash(final FullBytes keccakCodeHash) {
+  public void setKeccakCodeHash(final MimcSafeBytes<Bytes32> keccakCodeHash) {
     this.keccakCodeHash = keccakCodeHash;
   }
 
@@ -66,11 +53,11 @@ public class MutableZkAccount extends ZkAccount {
     this.mimcCodeHash = mimcCodeHash;
   }
 
-  public void setCodeSize(final long codeSize) {
+  public void setCodeSize(final UInt256 codeSize) {
     this.codeSize = codeSize;
   }
 
-  public void setNonce(final long nonce) {
+  public void setNonce(final UInt256 nonce) {
     this.nonce = nonce;
   }
 

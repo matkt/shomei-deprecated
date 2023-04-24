@@ -15,8 +15,7 @@ package net.consensys.shomei.storage;
 
 import net.consensys.shomei.services.storage.rocksdb.RocksDBSegmentIdentifier.SegmentNames;
 import net.consensys.shomei.services.storage.rocksdb.RocksDBSegmentedStorage;
-import net.consensys.shomei.trie.storage.StorageProxy.Range;
-import net.consensys.shomei.trie.storage.StorageProxy.Updater;
+import net.consensys.shomei.trie.model.FlattenedLeaf;
 
 import java.util.Map;
 import java.util.Optional;
@@ -25,6 +24,7 @@ import com.google.common.primitives.Longs;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Hash;
+import org.hyperledger.besu.ethereum.rlp.RLP;
 import services.storage.BidirectionalIterator;
 import services.storage.KeyValueStorage;
 import services.storage.SnappableKeyValueStorage;
@@ -47,8 +47,12 @@ public class PersistedWorldStateStorage implements WorldStateStorage {
   }
 
   @Override
-  public Optional<Long> getLeafIndex(final Bytes hkey) {
-    return keyIndexStorage.get(hkey.toArrayUnsafe()).map(Longs::fromByteArray);
+  public Optional<FlattenedLeaf> getFlatLeaf(final Bytes hkey) {
+    return keyIndexStorage
+        .get(hkey.toArrayUnsafe())
+        .map(Bytes::wrap)
+        .map(RLP::input)
+        .map(FlattenedLeaf::readFrom);
   }
 
   @Override
@@ -64,18 +68,27 @@ public class PersistedWorldStateStorage implements WorldStateStorage {
           final KeyValueStorage.KeyValuePair middle = iterator.next();
           final KeyValueStorage.KeyValuePair right = iterator.next();
           return new Range(
-              Map.entry(Hash.wrap(Bytes32.wrap(left.key())), Longs.fromByteArray(left.value())),
+              Map.entry(
+                  Hash.wrap(Bytes32.wrap(left.key())),
+                  FlattenedLeaf.readFrom(RLP.input(Bytes.wrap(left.value())))),
               Optional.of(
                   Map.entry(
-                      Hash.wrap(Bytes32.wrap(middle.key())), Longs.fromByteArray(middle.value()))),
-              Map.entry(Hash.wrap(Bytes32.wrap(right.key())), Longs.fromByteArray(right.value())));
+                      Hash.wrap(Bytes32.wrap(middle.key())),
+                      FlattenedLeaf.readFrom(RLP.input(Bytes.wrap(middle.value()))))),
+              Map.entry(
+                  Hash.wrap(Bytes32.wrap(right.key())),
+                  FlattenedLeaf.readFrom(RLP.input(Bytes.wrap(right.value())))));
         } else {
           final KeyValueStorage.KeyValuePair left = iterator.next();
           final KeyValueStorage.KeyValuePair right = iterator.next();
           return new Range(
-              Map.entry(Hash.wrap(Bytes32.wrap(left.key())), Longs.fromByteArray(left.value())),
+              Map.entry(
+                  Hash.wrap(Bytes32.wrap(left.key())),
+                  FlattenedLeaf.readFrom(RLP.input(Bytes.wrap(left.value())))),
               Optional.empty(),
-              Map.entry(Hash.wrap(Bytes32.wrap(right.key())), Longs.fromByteArray(right.value())));
+              Map.entry(
+                  Hash.wrap(Bytes32.wrap(right.key())),
+                  FlattenedLeaf.readFrom(RLP.input(Bytes.wrap(right.value())))));
         }
       } catch (Exception ex) {
         // close error

@@ -13,7 +13,7 @@
 
 package net.consensys.shomei.trie.proof;
 
-import net.consensys.shomei.trie.model.StateLeafValue;
+import net.consensys.shomei.trie.model.LeafOpening;
 
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.ethereum.trie.Node;
@@ -23,7 +23,7 @@ public class ReadTrace implements Trace {
   private long nextFreeNode;
   public Node<Bytes> subRoot;
 
-  public StateLeafValue leaf;
+  public LeafOpening leaf;
 
   public Proof proof;
 
@@ -51,11 +51,11 @@ public class ReadTrace implements Trace {
     this.subRoot = subRoot;
   }
 
-  public StateLeafValue getLeaf() {
+  public LeafOpening getLeaf() {
     return leaf;
   }
 
-  public void setLeaf(final StateLeafValue leaf) {
+  public void setLeaf(final LeafOpening leaf) {
     this.leaf = leaf;
   }
 

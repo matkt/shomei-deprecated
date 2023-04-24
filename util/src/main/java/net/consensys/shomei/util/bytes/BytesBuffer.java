@@ -15,18 +15,17 @@ package net.consensys.shomei.util.bytes;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.function.Function;
 
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
 
-public class BytesInput {
+public class BytesBuffer {
 
   final ByteArrayInputStream inputStream;
 
-  private BytesInput(final Bytes bytes) throws IOException {
+  private BytesBuffer(final Bytes bytes) throws IOException {
     this.inputStream = new ByteArrayInputStream(bytes.toArrayUnsafe());
   }
 
@@ -46,14 +45,6 @@ public class BytesInput {
     }
   }
 
-  public Long readLong() {
-    try {
-      return ByteBuffer.wrap(inputStream.readNBytes(Bytes32.SIZE)).getLong();
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
-  }
-
   public Bytes32 readBytes32() {
     try {
       return Bytes32.wrap(inputStream.readNBytes(Bytes32.SIZE));
@@ -62,18 +53,10 @@ public class BytesInput {
     }
   }
 
-  public Bytes readNBytes(final int size) {
+  public static <T> T readBytes(Bytes bytes, Function<BytesBuffer, T> inputConsumer) {
+    BytesBuffer stream = null;
     try {
-      return Bytes.wrap(inputStream.readNBytes(size));
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
-  }
-
-  public static <T> T readBytes(Bytes bytes, Function<BytesInput, T> inputConsumer) {
-    BytesInput stream = null;
-    try {
-      stream = new BytesInput(bytes);
+      stream = new BytesBuffer(bytes);
       return inputConsumer.apply(stream);
     } catch (IOException ex) {
       throw new RuntimeException("cannot read provided bytes");

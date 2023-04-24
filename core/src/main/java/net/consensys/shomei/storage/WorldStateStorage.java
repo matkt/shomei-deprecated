@@ -42,5 +42,7 @@ public interface WorldStateStorage extends StorageProxy {
     void setBlockHash(final Hash blockHash);
 
     void setBlockNumber(final long blockNumber);
+
+    void saveTrieLog(final Hash blockHash, final Bytes rawTrieLogLayer);
   }
 }

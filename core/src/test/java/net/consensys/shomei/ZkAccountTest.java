@@ -13,9 +13,10 @@
 
 package net.consensys.shomei;
 
+import static net.consensys.shomei.util.bytes.MimcSafeBytes.safeByte32;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import net.consensys.shomei.util.bytes.FullBytes;
+import net.consensys.shomei.trielog.AccountKey;
 import net.consensys.zkevm.HashProvider;
 
 import org.apache.tuweni.bytes.Bytes32;
@@ -30,16 +31,15 @@ public class ZkAccountTest {
   public void testHashZeroAccount() {
     final ZkAccount zkAccount =
         new ZkAccount(
-            Hash.ZERO,
-            Address.ZERO,
-            new FullBytes(Hash.ZERO),
-            Hash.ZERO,
-            0L,
+            new AccountKey(Hash.ZERO, Address.ZERO),
             0L,
             Wei.ZERO,
-            Hash.ZERO);
+            Hash.ZERO,
+            Hash.ZERO,
+            safeByte32(Hash.ZERO),
+            0L);
 
-    assertThat(HashProvider.mimc(zkAccount.serializeAccount()))
+    assertThat(HashProvider.mimc(zkAccount.getEncodedBytes()))
         .isEqualTo(
             Bytes32.fromHexString(
                 "19be98b429f6e00b8eff84a8aa617d2982421d5cde049c3e2a9b5a30a554a307"));

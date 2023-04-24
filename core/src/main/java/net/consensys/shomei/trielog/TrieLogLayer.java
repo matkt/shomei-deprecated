@@ -15,28 +15,23 @@ package net.consensys.shomei.trielog;
 
 import static com.google.common.base.Preconditions.checkState;
 
+import net.consensys.shomei.ZkAccount;
 import net.consensys.shomei.ZkValue;
-import net.consensys.shomei.util.bytes.FullBytes;
+import net.consensys.shomei.util.bytes.MimcSafeBytes;
 import net.consensys.zkevm.HashProvider;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
 import java.util.TreeMap;
-import java.util.TreeSet;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
-import org.apache.tuweni.bytes.Bytes;
-import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Hash;
-import org.hyperledger.besu.ethereum.rlp.BytesValueRLPInput;
 import org.hyperledger.besu.ethereum.rlp.RLPInput;
-import org.hyperledger.besu.ethereum.rlp.RLPOutput;
 
 /**
  * This class encapsulates the changes that are done to transition one block to the next. This
@@ -48,14 +43,14 @@ import org.hyperledger.besu.ethereum.rlp.RLPOutput;
 public class TrieLogLayer {
 
   private Hash blockHash;
-  private final Map<Hash, ZkValue<Address, TrieLogAccountValue>> accounts;
-  private final Map<Hash, Map<Hash, ZkValue<UInt256, UInt256>>> storage;
+  private final Map<AccountKey, ZkValue<ZkAccount>> accounts;
+  private final Map<AccountKey, Map<StorageSlotKey, ZkValue<UInt256>>> storages;
 
   private boolean frozen = false;
 
   public TrieLogLayer() {
     this.accounts = new HashMap<>();
-    this.storage = new HashMap<>();
+    this.storages = new HashMap<>();
   }
 
   /** Locks the layer so no new changes can be added; */
@@ -73,139 +68,76 @@ public class TrieLogLayer {
   }
 
   public void addAccountChange(
-      final Address address,
-      final TrieLogAccountValue oldValue,
-      final TrieLogAccountValue newValue) {
+      final AccountKey accountKey,
+      final ZkAccount oldValue,
+      final ZkAccount newValue,
+      final boolean isCleared) {
     checkState(!frozen, "Layer is Frozen");
-    accounts.put(
-        HashProvider.mimc(Bytes32.leftPad(address)), new ZkValue<>(address, oldValue, newValue));
+    accounts.put(accountKey, new ZkValue<>(oldValue, newValue, isCleared));
+  }
+
+  public AccountKey addAccountChange(
+      final MimcSafeBytes<Address> address,
+      final ZkAccount oldValue,
+      final ZkAccount newValue,
+      final boolean isCleared) {
+    final AccountKey accountKey = new AccountKey(HashProvider.mimc(address), address);
+    addAccountChange(accountKey, oldValue, newValue, isCleared);
+    return accountKey;
+  }
+
+  public AccountKey addAccountChange(
+      final MimcSafeBytes<Address> address, final ZkAccount oldValue, final ZkAccount newValue) {
+    return addAccountChange(address, oldValue, newValue, false);
   }
 
   public void addStorageChange(
-      final Address address,
+      final AccountKey accountKey,
+      final StorageSlotKey storageSlotKey,
+      final UInt256 oldValue,
+      final UInt256 newValue,
+      final boolean isCleared) {
+    checkState(!frozen, "Layer is Frozen");
+    storages
+        .computeIfAbsent(accountKey, a -> new TreeMap<>())
+        .put(storageSlotKey, new ZkValue<>(oldValue, newValue, isCleared));
+  }
+
+  public void addStorageChange(
+      final AccountKey accountKey,
+      final StorageSlotKey storageKey,
+      final UInt256 oldValue,
+      final UInt256 newValue) {
+    addStorageChange(accountKey, storageKey, oldValue, newValue, false);
+  }
+
+  public void addStorageChange(
+      final AccountKey accountKey,
       final UInt256 storageKey,
       final UInt256 oldValue,
       final UInt256 newValue) {
-    checkState(!frozen, "Layer is Frozen");
-    storage
-        .computeIfAbsent(HashProvider.mimc(Bytes32.leftPad(address)), a -> new TreeMap<>())
-        .put(
-            HashProvider.mimc(new FullBytes(storageKey)),
-            new ZkValue<>(storageKey, oldValue, newValue));
+    addStorageChange(accountKey, new StorageSlotKey(storageKey), oldValue, newValue, false);
   }
 
-  public static TrieLogLayer fromBytes(final byte[] bytes) {
-    return readFrom(new BytesValueRLPInput(Bytes.wrap(bytes), false));
-  }
-
-  public static TrieLogLayer readFrom(final RLPInput input) {
-    final TrieLogLayer newLayer = new TrieLogLayer();
-
-    input.enterList();
-    newLayer.blockHash = Hash.wrap(input.readBytes32());
-
-    while (!input.isEndOfCurrentList()) {
-      input.enterList();
-      final Hash hkey = Hash.wrap(input.readBytes32());
-
-      if (input.nextIsNull()) {
-        input.skipNext();
-      } else {
-        input.enterList();
-        final Address address = Address.readFrom(input);
-        final TrieLogAccountValue oldValue = nullOrValue(input, TrieLogAccountValue::readFrom);
-        final TrieLogAccountValue newValue = nullOrValue(input, TrieLogAccountValue::readFrom);
-        input.leaveList();
-        newLayer.accounts.put(hkey, new ZkValue<>(address, oldValue, newValue));
-      }
-
-      if (input.nextIsNull()) {
-        input.skipNext();
-      } else {
-        final Map<Hash, ZkValue<UInt256, UInt256>> storageChanges = new TreeMap<>();
-        input.enterList();
-        while (!input.isEndOfCurrentList()) {
-          input.enterList();
-          final Hash slotHash = Hash.wrap(input.readBytes32());
-          final UInt256 slotKey = input.readUInt256Scalar();
-          final UInt256 oldValue = nullOrValue(input, RLPInput::readUInt256Scalar);
-          final UInt256 newValue = nullOrValue(input, RLPInput::readUInt256Scalar);
-          storageChanges.put(slotHash, new ZkValue<>(slotKey, oldValue, newValue));
-          input.leaveList();
-        }
-        input.leaveList();
-        newLayer.storage.put(hkey, storageChanges);
-      }
-
-      // TODO add trie nodes
-
-      // lenient leave list for forward compatible additions.
-      input.leaveListLenient();
-    }
-    input.leaveListLenient();
-    newLayer.freeze();
-
-    return newLayer;
-  }
-
-  public void writeTo(final RLPOutput output) {
-    freeze();
-
-    final Set<Hash> hkeyes = new TreeSet<>();
-    hkeyes.addAll(accounts.keySet());
-    hkeyes.addAll(storage.keySet());
-
-    output.startList(); // container
-    output.writeBytes(blockHash);
-
-    for (final Hash hkey : hkeyes) {
-      output.startList(); // this change
-      output.writeBytes(hkey);
-
-      final ZkValue<Address, TrieLogAccountValue> accountChange = accounts.get(hkey);
-      if (accountChange == null || accountChange.isUnchanged()) {
-        output.writeNull();
-      } else {
-        accountChange.writeRlp(output, (o, sta) -> sta.writeTo(o));
-      }
-
-      final Map<Hash, ZkValue<UInt256, UInt256>> storageChanges = storage.get(hkey);
-      if (storageChanges == null) {
-        output.writeNull();
-      } else {
-        output.startList();
-        for (final Map.Entry<Hash, ZkValue<UInt256, UInt256>> storageChangeEntry :
-            storageChanges.entrySet()) {
-          output.startList();
-          output.writeBytes(storageChangeEntry.getKey());
-          storageChangeEntry.getValue().writeInnerRlp(output, RLPOutput::writeUInt256Scalar);
-          output.endList();
-        }
-        output.endList();
-      }
-
-      output.endList(); // this change
-    }
-    output.endList(); // container
-  }
-
-  public Stream<Map.Entry<Hash, ZkValue<Address, TrieLogAccountValue>>> streamAccountChanges() {
+  public Stream<Map.Entry<AccountKey, ZkValue<ZkAccount>>> streamAccountChanges() {
     return accounts.entrySet().stream();
   }
 
-  public Stream<Map.Entry<Hash, Map<Hash, ZkValue<UInt256, UInt256>>>> streamStorageChanges() {
-    return storage.entrySet().stream();
+  public Stream<Map.Entry<AccountKey, Map<StorageSlotKey, ZkValue<UInt256>>>>
+      streamStorageChanges() {
+    return storages.entrySet().stream();
   }
 
-  public boolean hasStorageChanges(final Hash hkey) {
-    return storage.containsKey(hkey);
+  public boolean hasStorageChanges(final AccountKey accountKey) {
+    return storages.containsKey(accountKey);
   }
 
-  public Stream<Map.Entry<Hash, ZkValue<UInt256, UInt256>>> streamStorageChanges(final Hash hkey) {
-    return storage.getOrDefault(hkey, Map.of()).entrySet().stream();
+  public Stream<Map.Entry<StorageSlotKey, ZkValue<UInt256>>> streamStorageChanges(
+      final AccountKey accountKey) {
+    return storages.getOrDefault(accountKey, Map.of()).entrySet().stream();
   }
 
-  private static <T> T nullOrValue(final RLPInput input, final Function<RLPInput, T> reader) {
+  public static <T> T nullOrValue(final RLPInput input, final Function<RLPInput, T> reader) {
     if (input.nextIsNull()) {
       input.skipNext();
       return null;
@@ -214,28 +146,38 @@ public class TrieLogLayer {
     }
   }
 
-  Optional<UInt256> getPriorStorage(final Hash hkey, final Hash key) {
-    return Optional.ofNullable(storage.get(hkey)).map(i -> i.get(key)).map(ZkValue::getPrior);
+  public static <T> T defaultOrValue(
+      final RLPInput input, final T defaultValue, final Function<RLPInput, T> reader) {
+    final T value = nullOrValue(input, reader);
+    return value == null ? defaultValue : value;
   }
 
-  Optional<UInt256> getStorage(final Hash hkey, final Hash key) {
-    return Optional.ofNullable(storage.get(hkey)).map(i -> i.get(key)).map(ZkValue::getUpdated);
+  Optional<UInt256> getPriorStorage(
+      final AccountKey accountKey, final StorageSlotKey storageSlotKey) {
+    return Optional.ofNullable(storages.get(accountKey))
+        .map(i -> i.get(storageSlotKey))
+        .map(ZkValue::getPrior);
   }
 
-  public Optional<TrieLogAccountValue> getPriorAccount(final Hash hkey) {
-    return Optional.ofNullable(accounts.get(hkey)).map(ZkValue::getPrior);
+  Optional<UInt256> getStorage(final AccountKey accountKey, final StorageSlotKey storageSlotKey) {
+    return Optional.ofNullable(storages.get(accountKey))
+        .map(i -> i.get(storageSlotKey))
+        .map(ZkValue::getUpdated);
   }
 
-  public Optional<TrieLogAccountValue> getAccount(final Hash hkey) {
-    return Optional.ofNullable(accounts.get(hkey)).map(ZkValue::getUpdated);
+  public Optional<ZkAccount> getPriorAccount(final AccountKey accountKey) {
+    return Optional.ofNullable(accounts.get(accountKey)).map(ZkValue::getPrior);
+  }
+
+  public Optional<ZkAccount> getAccount(final AccountKey accountKey) {
+    return Optional.ofNullable(accounts.get(accountKey)).map(ZkValue::getUpdated);
   }
 
   public String dump() {
     final StringBuilder sb = new StringBuilder();
     sb.append("TrieLogLayer{" + "blockHash=").append(blockHash).append(frozen).append('}');
     sb.append("accounts\n");
-    for (final Map.Entry<Hash, ZkValue<Address, TrieLogAccountValue>> account :
-        accounts.entrySet()) {
+    for (final Map.Entry<AccountKey, ZkValue<ZkAccount>> account : accounts.entrySet()) {
       sb.append(" : ").append(account.getKey()).append("\n");
       if (Objects.equals(account.getValue().getPrior(), account.getValue().getUpdated())) {
         sb.append("   = ").append(account.getValue().getUpdated()).append("\n");
@@ -245,9 +187,10 @@ public class TrieLogLayer {
       }
     }
     sb.append("Storage").append("\n");
-    for (final Map.Entry<Hash, Map<Hash, ZkValue<UInt256, UInt256>>> storage : storage.entrySet()) {
+    for (final Map.Entry<AccountKey, Map<StorageSlotKey, ZkValue<UInt256>>> storage :
+        storages.entrySet()) {
       sb.append(" : ").append(storage.getKey()).append("\n");
-      for (final Map.Entry<Hash, ZkValue<UInt256, UInt256>> slot : storage.getValue().entrySet()) {
+      for (final Map.Entry<StorageSlotKey, ZkValue<UInt256>> slot : storage.getValue().entrySet()) {
         final UInt256 originalValue = slot.getValue().getPrior();
         final UInt256 updatedValue = slot.getValue().getUpdated();
         sb.append("   : ").append(slot.getKey()).append("\n");

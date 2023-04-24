@@ -13,6 +13,8 @@
 
 package net.consensys.shomei.trie.storage;
 
+import net.consensys.shomei.trie.model.FlattenedLeaf;
+
 import java.util.Map;
 import java.util.Optional;
 
@@ -20,7 +22,7 @@ import org.apache.tuweni.bytes.Bytes;
 
 public interface StorageProxy {
 
-  Optional<Long> getLeafIndex(final Bytes hkey);
+  Optional<FlattenedLeaf> getFlatLeaf(final Bytes hkey);
 
   Range getNearestKeys(final Bytes hkey);
 
@@ -30,32 +32,34 @@ public interface StorageProxy {
 
   interface Updater {
 
-    void putKeyIndex(final Bytes key, final Long index);
+    void putFlatLeaf(final Bytes key, final FlattenedLeaf value);
 
     void putTrieNode(final Bytes location, final Bytes nodeHash, final Bytes value);
 
-    void removeKeyIndex(final Bytes key);
+    void removeFlatLeafValue(final Bytes key);
   }
 
   class Range {
-    private final Map.Entry<Bytes, Long> leftNode;
-    private final Optional<Map.Entry<Bytes, Long>> centerNode;
-    private final Map.Entry<Bytes, Long> rightNode;
+    private final Map.Entry<Bytes, FlattenedLeaf> leftNode;
+    private final Optional<Map.Entry<Bytes, FlattenedLeaf>> centerNode;
+    private final Map.Entry<Bytes, FlattenedLeaf> rightNode;
 
     public Range(
-        final Map.Entry<Bytes, Long> leftNode,
-        final Optional<Map.Entry<Bytes, Long>> centerNode,
-        final Map.Entry<Bytes, Long> rightNode) {
+        final Map.Entry<Bytes, FlattenedLeaf> leftNode,
+        final Optional<Map.Entry<Bytes, FlattenedLeaf>> centerNode,
+        final Map.Entry<Bytes, FlattenedLeaf> rightNode) {
       this.leftNode = leftNode;
       this.centerNode = centerNode;
       this.rightNode = rightNode;
     }
 
-    public Range(final Map.Entry<Bytes, Long> leftNode, final Map.Entry<Bytes, Long> rightNode) {
+    public Range(
+        final Map.Entry<Bytes, FlattenedLeaf> leftNode,
+        final Map.Entry<Bytes, FlattenedLeaf> rightNode) {
       this(leftNode, Optional.empty(), rightNode);
     }
 
-    public Optional<Map.Entry<Bytes, Long>> getCenterNode() {
+    public Optional<Map.Entry<Bytes, FlattenedLeaf>> getCenterNode() {
       return centerNode;
     }
 
@@ -71,15 +75,15 @@ public interface StorageProxy {
       return rightNode.getKey();
     }
 
-    public Long getLeftNodeIndex() {
+    public FlattenedLeaf getLeftNodeValue() {
       return leftNode.getValue();
     }
 
-    public Optional<Long> getCenterNodeIndex() {
+    public Optional<FlattenedLeaf> getCenterNodeValue() {
       return centerNode.map(Map.Entry::getValue);
     }
 
-    public Long getRightNodeIndex() {
+    public FlattenedLeaf getRightNodeValue() {
       return rightNode.getValue();
     }
   }

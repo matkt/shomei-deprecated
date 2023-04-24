@@ -13,6 +13,8 @@
 
 package net.consensys.shomei.trie.storage;
 
+import net.consensys.shomei.trie.model.FlattenedLeaf;
+
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.Map;
@@ -25,11 +27,12 @@ import org.apache.tuweni.bytes.Bytes32;
 
 public class InMemoryStorage implements StorageProxy, StorageProxy.Updater {
 
-  private final TreeMap<Bytes, Long> leafIndexStorage = new TreeMap<>(Comparator.naturalOrder());
+  private final TreeMap<Bytes, FlattenedLeaf> flatLeafStorage =
+      new TreeMap<>(Comparator.naturalOrder());
   private final Map<Bytes, Bytes> trieNodeStorage = new ConcurrentHashMap<>();
 
-  public TreeMap<Bytes, Long> getLeafIndexStorage() {
-    return leafIndexStorage;
+  public TreeMap<Bytes, FlattenedLeaf> getFlatLeafStorage() {
+    return flatLeafStorage;
   }
 
   public Map<Bytes, Bytes> getTrieNodeStorage() {
@@ -37,16 +40,17 @@ public class InMemoryStorage implements StorageProxy, StorageProxy.Updater {
   }
 
   @Override
-  public Optional<Long> getLeafIndex(final Bytes hkey) {
-    return Optional.ofNullable(leafIndexStorage.get(hkey));
+  public Optional<FlattenedLeaf> getFlatLeaf(final Bytes hkey) {
+    return Optional.ofNullable(flatLeafStorage.get(hkey));
   }
 
   @Override
   public Range getNearestKeys(final Bytes hkey) {
-    final Iterator<Map.Entry<Bytes, Long>> iterator = leafIndexStorage.entrySet().iterator();
-    Map.Entry<Bytes, Long> next = Map.entry(Bytes32.ZERO, 0L);
-    Map.Entry<Bytes, Long> left = next;
-    Optional<Map.Entry<Bytes, Long>> maybeMiddle = Optional.empty();
+    final Iterator<Map.Entry<Bytes, FlattenedLeaf>> iterator =
+        flatLeafStorage.entrySet().iterator();
+    Map.Entry<Bytes, FlattenedLeaf> next = Map.entry(Bytes32.ZERO, FlattenedLeaf.HEAD);
+    Map.Entry<Bytes, FlattenedLeaf> left = next;
+    Optional<Map.Entry<Bytes, FlattenedLeaf>> maybeMiddle = Optional.empty();
     int compKeyResult;
     while (iterator.hasNext() && (compKeyResult = next.getKey().compareTo(hkey)) <= 0) {
       if (compKeyResult == 0) {
@@ -73,17 +77,17 @@ public class InMemoryStorage implements StorageProxy, StorageProxy.Updater {
   }
 
   @Override
-  public Updater updater() {
+  public InMemoryStorage updater() {
     return this;
   }
 
   @Override
-  public void putKeyIndex(final Bytes key, final Long index) {
-    leafIndexStorage.put(key, index);
+  public void putFlatLeaf(final Bytes key, final FlattenedLeaf value) {
+    flatLeafStorage.put(key, value);
   }
 
   @Override
-  public void removeKeyIndex(final Bytes key) {
-    leafIndexStorage.remove(key);
+  public void removeFlatLeafValue(final Bytes key) {
+    flatLeafStorage.remove(key);
   }
 }

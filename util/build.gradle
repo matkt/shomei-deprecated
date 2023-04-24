@@ -15,6 +15,7 @@ tasks.named('jar') {
 dependencies {
     implementation 'org.apache.tuweni:tuweni-bytes'
     implementation 'org.apache.tuweni:tuweni-units'
+    implementation 'org.hyperledger.besu:besu-datatypes'
 
     implementation 'org.apache.logging.log4j:log4j-core'
 }

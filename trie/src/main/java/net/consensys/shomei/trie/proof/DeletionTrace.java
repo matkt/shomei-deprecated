@@ -13,12 +13,12 @@
 
 package net.consensys.shomei.trie.proof;
 
-import net.consensys.shomei.trie.model.StateLeafValue;
+import net.consensys.shomei.trie.model.LeafOpening;
 
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.ethereum.trie.Node;
 
-public class DeleteTrace implements Trace {
+public class DeletionTrace implements Trace {
 
   private long newNextFreeNode;
   public Node<Bytes> oldSubRoot;
@@ -31,11 +31,11 @@ public class DeleteTrace implements Trace {
   public Bytes key;
 
   // Value of the leaf opening before being modified
-  public StateLeafValue priorLeftLeaf;
-  public StateLeafValue priorDeletedLeaf;
-  public StateLeafValue priorRightLeaf;
+  public LeafOpening priorLeftLeaf;
+  public LeafOpening priorDeletedLeaf;
+  public LeafOpening priorRightLeaf;
 
-  public DeleteTrace(final Node<Bytes> oldSubRoot) {
+  public DeletionTrace(final Node<Bytes> oldSubRoot) {
     this.oldSubRoot = oldSubRoot;
   }
 
@@ -91,27 +91,27 @@ public class DeleteTrace implements Trace {
     this.key = key;
   }
 
-  public StateLeafValue getPriorLeftLeaf() {
+  public LeafOpening getPriorLeftLeaf() {
     return priorLeftLeaf;
   }
 
-  public void setPriorLeftLeaf(final StateLeafValue priorLeftLeaf) {
+  public void setPriorLeftLeaf(final LeafOpening priorLeftLeaf) {
     this.priorLeftLeaf = priorLeftLeaf;
   }
 
-  public StateLeafValue getPriorDeletedLeaf() {
+  public LeafOpening getPriorDeletedLeaf() {
     return priorDeletedLeaf;
   }
 
-  public void setPriorDeletedLeaf(final StateLeafValue priorDeletedLeaf) {
+  public void setPriorDeletedLeaf(final LeafOpening priorDeletedLeaf) {
     this.priorDeletedLeaf = priorDeletedLeaf;
   }
 
-  public StateLeafValue getPriorRightLeaf() {
+  public LeafOpening getPriorRightLeaf() {
     return priorRightLeaf;
   }
 
-  public void setPriorRightLeaf(final StateLeafValue priorRightLeaf) {
+  public void setPriorRightLeaf(final LeafOpening priorRightLeaf) {
     this.priorRightLeaf = priorRightLeaf;
   }
 }

@@ -15,7 +15,9 @@ package net.consensys.shomei.storage;
 
 import net.consensys.shomei.trie.storage.InMemoryStorage;
 
+import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Hash;
@@ -29,9 +31,11 @@ public class InMemoryWorldStateStorage extends InMemoryStorage
 
   private Optional<Hash> currentStateRootHash = Optional.empty();
 
+  private final Map<Bytes, Bytes> trieLogStorage = new ConcurrentHashMap<>();
+
   @Override
   public Optional<Bytes> getTrieLog(final Hash blockHash) {
-    throw new UnsupportedOperationException("not implemented yet");
+    return Optional.ofNullable(trieLogStorage.get(blockHash));
   }
 
   @Override
@@ -57,5 +61,10 @@ public class InMemoryWorldStateStorage extends InMemoryStorage
   @Override
   public void setBlockNumber(final long blockNumber) {
     this.currentBlockNumber = Optional.of(blockNumber);
+  }
+
+  @Override
+  public void saveTrieLog(final Hash blockHash, final Bytes rawTrieLogLayer) {
+    trieLogStorage.put(blockHash, rawTrieLogLayer);
   }
 }

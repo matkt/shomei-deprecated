@@ -11,28 +11,18 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package net.consensys.shomei;
+package net.consensys.shomei.rpc;
 
-import net.consensys.shomei.worldview.ZKEvmWorldState;
+public enum ShomeiRpcMethod {
+  STATE_SEND_RAW_TRIE_LOG("state_sendRawTrieLog");
 
-import java.util.Optional;
+  private final String methodName;
 
-import org.hyperledger.besu.datatypes.Hash;
-
-public class ZkWorldStateProvider {
-
-  private final ZKEvmWorldState persistedState;
-
-  public ZkWorldStateProvider(final ZKEvmWorldState persistedState) {
-    this.persistedState = persistedState;
+  public String getMethodName() {
+    return methodName;
   }
 
-  public Optional<ZKEvmWorldState> loadState(final Hash blockHash) {
-    if (persistedState.getBlockHash().equals(blockHash)) {
-      return Optional.of(persistedState);
-    } else {
-      // rolling
-      return Optional.empty();
-    }
+  ShomeiRpcMethod(final String methodName) {
+    this.methodName = methodName;
   }
 }

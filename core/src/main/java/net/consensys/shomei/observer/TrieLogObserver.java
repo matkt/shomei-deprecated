@@ -11,14 +11,11 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package net.consensys.shomei.util.bytes;
+package net.consensys.shomei.observer;
 
-import org.apache.tuweni.bytes.Bytes32;
-import org.apache.tuweni.units.bigints.UInt256;
+import org.hyperledger.besu.datatypes.Hash;
 
-public class LongConverter {
+public interface TrieLogObserver {
 
-  public static Bytes32 toBytes32(final long value) {
-    return Bytes32.leftPad(UInt256.valueOf(value));
-  }
+  void onTrieLogAdded(final Hash blockHash);
 }

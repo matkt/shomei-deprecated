@@ -14,6 +14,8 @@
 package net.consensys.shomei;
 
 import net.consensys.shomei.rpc.JsonRpcService;
+import net.consensys.shomei.storage.InMemoryWorldStateStorage;
+import net.consensys.shomei.worldview.ZkEvmWorldStateEntryPoint;
 
 import io.vertx.core.Vertx;
 import org.slf4j.Logger;
@@ -28,7 +30,12 @@ public class Runner {
 
   public Runner() {
     this.vertx = Vertx.vertx();
-    this.jsonRpcService = new JsonRpcService();
+
+    final InMemoryWorldStateStorage inMemoryWorldStateStorage = new InMemoryWorldStateStorage();
+    final ZkEvmWorldStateEntryPoint zkEvmWorldStateEntryPoint =
+        new ZkEvmWorldStateEntryPoint(inMemoryWorldStateStorage);
+
+    this.jsonRpcService = new JsonRpcService(zkEvmWorldStateEntryPoint, inMemoryWorldStateStorage);
   }
 
   public void start() {

@@ -15,6 +15,10 @@ package net.consensys.shomei.rpc;
 
 import static com.google.common.collect.Streams.stream;
 
+import net.consensys.shomei.observer.TrieLogObserver;
+import net.consensys.shomei.rpc.trielog.SendRawTrieLog;
+import net.consensys.shomei.storage.WorldStateStorage;
+
 import java.net.InetSocketAddress;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -72,10 +76,13 @@ public class JsonRpcService extends AbstractVerticle {
   private final HealthService livenessService;
   private final HealthService readinessService;
 
-  public JsonRpcService() {
+  public JsonRpcService(
+      final TrieLogObserver trieLogObserver, final WorldStateStorage worldStateStorage) {
     this.config = JsonRpcConfiguration.createDefault();
+    config.setPort(8888);
     this.rpcMethods = new HashMap<>();
-    this.rpcMethods.putAll(mapOf(new AdminChangeLogLevel()));
+    this.rpcMethods.putAll(
+        mapOf(new AdminChangeLogLevel(), new SendRawTrieLog(trieLogObserver, worldStateStorage)));
     this.maxActiveConnections = config.getMaxActiveConnections();
     this.livenessService = new HealthService(new LivenessCheck());
     this.readinessService = new HealthService(new LivenessCheck()); // TODO CHANGE
