@@ -13,55 +13,48 @@
 
 package net.consensys.shomei;
 
-import static net.consensys.shomei.util.bytes.FieldElementsUtil.convertToSafeFieldElementsSize;
+import static net.consensys.shomei.util.bytes.MimcSafeBytes.safeByte32;
 import static net.consensys.zkevm.HashProvider.keccak256;
 import static net.consensys.zkevm.HashProvider.mimc;
 
-import net.consensys.shomei.trie.ZKTrie;
+import net.consensys.shomei.trielog.AccountKey;
 import net.consensys.shomei.trielog.TrieLogAccountValue;
-import net.consensys.shomei.util.bytes.BytesInput;
-import net.consensys.shomei.util.bytes.LongConverter;
-import net.consensys.zkevm.HashProvider;
+import net.consensys.shomei.util.bytes.BytesBuffer;
+import net.consensys.shomei.util.bytes.MimcSafeBytes;
 
-import java.nio.ByteOrder;
 import java.util.Objects;
-import java.util.function.Supplier;
 
-import com.google.common.base.Suppliers;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
+import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.Wei;
 
 public class ZkAccount {
 
-  public static final Hash EMPTY_TRIE_ROOT =
-      Hash.wrap(ZKTrie.createInMemoryTrie().getTopRootHash());
-
-  public static final Hash EMPTY_KECCAK_CODE_HASH = keccak256(Bytes.EMPTY);
+  public static final MimcSafeBytes<Bytes32> EMPTY_KECCAK_CODE_HASH =
+      safeByte32(keccak256(Bytes.EMPTY));
   public static final Hash EMPTY_CODE_HASH = mimc(Bytes32.ZERO);
 
-  private final Supplier<Hash> hkey;
-  protected Address address;
-  protected Hash keccakCodeHash;
+  protected AccountKey accountKey;
+  protected MimcSafeBytes<Bytes32> keccakCodeHash;
   protected Hash mimcCodeHash;
 
-  protected long codeSize;
-  protected long nonce;
+  protected UInt256 codeSize;
+  protected UInt256 nonce;
   protected Wei balance;
   protected Hash storageRoot;
 
   public ZkAccount(
-      final Address address,
-      final Hash keccakCodeHash,
-      final Hash mimcCodeHash,
-      final long codeSize,
-      final long nonce,
+      final AccountKey accountKey,
+      final UInt256 nonce,
       final Wei balance,
-      final Hash storageRoot) {
-    this.hkey = Suppliers.memoize(() -> HashProvider.mimc(Bytes32.leftPad(address)));
-    this.address = address;
+      final Hash storageRoot,
+      final Hash mimcCodeHash,
+      final MimcSafeBytes<Bytes32> keccakCodeHash,
+      final UInt256 codeSize) {
+    this.accountKey = accountKey;
     this.nonce = nonce;
     this.balance = balance;
     this.storageRoot = storageRoot;
@@ -71,72 +64,68 @@ public class ZkAccount {
   }
 
   public ZkAccount(
-      final Hash hkey,
-      final Address address,
-      final Hash keccakCodeHash,
-      final Hash mimcCodeHash,
-      final long codeSize,
+      final AccountKey accountKey,
       final long nonce,
       final Wei balance,
-      final Hash storageRoot) {
-    this.hkey = Suppliers.memoize(() -> hkey);
-    this.address = address;
-    this.keccakCodeHash = keccakCodeHash;
-    this.mimcCodeHash = mimcCodeHash;
-    this.codeSize = codeSize;
-    this.nonce = nonce;
-    this.balance = balance;
-    this.storageRoot = storageRoot;
+      final Hash storageRoot,
+      final Hash mimcCodeHash,
+      final MimcSafeBytes<Bytes32> keccakCodeHash,
+      final long codeSize) {
+    this(
+        accountKey,
+        UInt256.valueOf(nonce),
+        balance,
+        storageRoot,
+        mimcCodeHash,
+        keccakCodeHash,
+        UInt256.valueOf(codeSize));
   }
 
-  public ZkAccount(final Hash hkey, final Address address, final TrieLogAccountValue accountValue) {
+  public ZkAccount(final AccountKey accountKey, final TrieLogAccountValue accountValue) {
     this(
-        hkey,
-        address,
-        accountValue.getCodeHash(),
-        accountValue.getMimcCodeHash(),
-        accountValue.getCodeSize(),
+        accountKey,
         accountValue.getNonce(),
         accountValue.getBalance(),
-        accountValue.getStorageRoot());
+        accountValue.getStorageRoot(),
+        accountValue.getMimcCodeHash(),
+        safeByte32(accountValue.getCodeHash()),
+        accountValue.getCodeSize());
   }
 
   public ZkAccount(final ZkAccount toCopy) {
     this(
-        toCopy.hkey.get(),
-        toCopy.address,
-        toCopy.keccakCodeHash,
-        toCopy.mimcCodeHash,
-        toCopy.codeSize,
+        toCopy.accountKey,
         toCopy.nonce,
         toCopy.balance,
-        toCopy.storageRoot);
+        toCopy.storageRoot,
+        toCopy.mimcCodeHash,
+        toCopy.keccakCodeHash,
+        toCopy.codeSize);
   }
 
-  static ZkAccount fromEncodedBytes(final Address address, final Bytes encoded) {
-
-    return BytesInput.readBytes(
+  public static ZkAccount fromEncodedBytes(final AccountKey accountKey, final Bytes encoded) {
+    return BytesBuffer.readBytes(
         encoded,
         bytesInput ->
             new ZkAccount(
-                address,
+                accountKey,
+                UInt256.fromBytes(bytesInput.readBytes32()),
+                Wei.wrap(UInt256.fromBytes(bytesInput.readBytes32())),
                 Hash.wrap(bytesInput.readBytes32()),
                 Hash.wrap(bytesInput.readBytes32()),
-                bytesInput.readLong(),
-                bytesInput.readLong(),
-                Wei.of(bytesInput.readLong()),
-                Hash.wrap(bytesInput.readBytes32())));
+                safeByte32(bytesInput.readBytes32()),
+                UInt256.fromBytes(bytesInput.readBytes32())));
   }
 
   public Hash getHkey() {
-    return hkey.get();
+    return accountKey.accountHash();
   }
 
-  public Address getAddress() {
-    return address;
+  public MimcSafeBytes<Address> getAddress() {
+    return accountKey.address();
   }
 
-  public long getNonce() {
+  public UInt256 getNonce() {
     return nonce;
   }
 
@@ -145,14 +134,14 @@ public class ZkAccount {
   }
 
   public Hash getCodeHash() {
-    return keccakCodeHash;
+    return Hash.wrap(keccakCodeHash.getOriginalUnsafeValue());
   }
 
   public Hash getMimcCodeHash() {
     return mimcCodeHash;
   }
 
-  public long getCodeSize() {
+  public UInt256 getCodeSize() {
     return codeSize;
   }
 
@@ -160,21 +149,40 @@ public class ZkAccount {
     return storageRoot;
   }
 
-  public Bytes serializeAccount() {
-    return Bytes.concatenate(
-        LongConverter.toBytes32(nonce),
-        LongConverter.toBytes32(balance.toLong(ByteOrder.BIG_ENDIAN)),
-        storageRoot,
-        mimcCodeHash,
-        convertToSafeFieldElementsSize(keccakCodeHash),
-        LongConverter.toBytes32(codeSize));
+  public MimcSafeBytes<Bytes> getEncodedBytes() {
+    return MimcSafeBytes.concatenateSafeElements(
+        nonce, balance, storageRoot, mimcCodeHash, keccakCodeHash, codeSize);
+  }
+
+  @Override
+  public boolean equals(final Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    ZkAccount zkAccount = (ZkAccount) o;
+    return Objects.equals(accountKey, zkAccount.accountKey)
+        && Objects.equals(keccakCodeHash, zkAccount.keccakCodeHash)
+        && Objects.equals(mimcCodeHash, zkAccount.mimcCodeHash)
+        && Objects.equals(codeSize, zkAccount.codeSize)
+        && Objects.equals(nonce, zkAccount.nonce)
+        && Objects.equals(balance, zkAccount.balance)
+        && Objects.equals(storageRoot, zkAccount.storageRoot);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(
+        accountKey, keccakCodeHash, mimcCodeHash, codeSize, nonce, balance, storageRoot);
   }
 
   @Override
   public String toString() {
     return "ZkAccount{"
-        + ", hkey="
-        + hkey
+        + "accountKey="
+        + accountKey
         + ", keccakCodeHash="
         + keccakCodeHash
         + ", mimcCodeHash="
@@ -191,11 +199,11 @@ public class ZkAccount {
   }
 
   public static void assertCloseEnoughForDiffing(
-      final ZkAccount source, final TrieLogAccountValue account, final String context) {
+      final ZkAccount source, final ZkAccount account, final String context) {
     if (source == null) {
       throw new IllegalStateException(context + ": source is null but target isn't");
     } else {
-      if (source.nonce != account.getNonce()) {
+      if (!Objects.equals(source.getNonce(), account.getNonce())) {
         throw new IllegalStateException(context + ": nonces differ");
       }
       if (!Objects.equals(source.balance, account.getBalance())) {

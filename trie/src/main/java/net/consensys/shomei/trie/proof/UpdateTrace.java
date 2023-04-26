@@ -13,13 +13,16 @@
 
 package net.consensys.shomei.trie.proof;
 
+import net.consensys.shomei.trie.model.LeafOpening;
+
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.ethereum.trie.Node;
 
 public class UpdateTrace implements Trace {
 
-  public Node<Bytes> oldRoot;
-  public Node<Bytes> newRoot;
+  private long newNextFreeNode;
+  public Node<Bytes> oldSubRoot;
+  public Node<Bytes> newSubRoot;
 
   public Proof proof;
 
@@ -28,22 +31,30 @@ public class UpdateTrace implements Trace {
   public Bytes newValue;
 
   // Value of the leaf opening before being modified
-  public Bytes priorUpdatedLeaf;
+  public LeafOpening priorUpdatedLeaf;
 
-  public UpdateTrace(final Node<Bytes> oldRoot) {
-    this.oldRoot = oldRoot;
+  public UpdateTrace(final Node<Bytes> oldSubRoot) {
+    this.oldSubRoot = oldSubRoot;
   }
 
-  public Node<Bytes> getOldRoot() {
-    return oldRoot;
+  public long getNewNextFreeNode() {
+    return newNextFreeNode;
   }
 
-  public Node<Bytes> getNewRoot() {
-    return newRoot;
+  public void setNewNextFreeNode(final long newNextFreeNode) {
+    this.newNextFreeNode = newNextFreeNode;
   }
 
-  public void setNewRoot(final Node<Bytes> newRoot) {
-    this.newRoot = newRoot;
+  public Node<Bytes> getOldSubRoot() {
+    return oldSubRoot;
+  }
+
+  public Node<Bytes> getNewSubRoot() {
+    return newSubRoot;
+  }
+
+  public void setNewSubRoot(final Node<Bytes> newSubRoot) {
+    this.newSubRoot = newSubRoot;
   }
 
   public Proof getProof() {
@@ -78,11 +89,11 @@ public class UpdateTrace implements Trace {
     this.newValue = newValue;
   }
 
-  public Bytes getPriorUpdatedLeaf() {
+  public LeafOpening getPriorUpdatedLeaf() {
     return priorUpdatedLeaf;
   }
 
-  public void setPriorUpdatedLeaf(final Bytes priorUpdatedLeaf) {
+  public void setPriorUpdatedLeaf(final LeafOpening priorUpdatedLeaf) {
     this.priorUpdatedLeaf = priorUpdatedLeaf;
   }
 }

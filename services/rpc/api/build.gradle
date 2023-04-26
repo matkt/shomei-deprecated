@@ -1,0 +1,40 @@
+
+apply plugin: 'java-library'
+
+tasks.named('jar') {
+    archiveBaseName = 'rpc-api'
+    manifest {
+        attributes(
+                'Specification-Title': archiveBaseName,
+                'Specification-Version': project.version,
+                'Implementation-Title': archiveBaseName,
+                'Implementation-Version': calculateVersion()
+        )
+    }
+}
+
+dependencies {
+
+    implementation project(':core')
+    implementation project(':trie')
+
+    implementation 'org.hyperledger.besu.internal:rlp'
+    implementation 'org.hyperledger.besu.internal:api'
+    implementation 'org.hyperledger.besu.internal:util'
+    implementation 'org.hyperledger.besu:besu-datatypes'
+
+    implementation 'io.vertx:vertx-auth-jwt'
+    implementation 'io.vertx:vertx-core'
+    implementation 'io.vertx:vertx-unit'
+    implementation 'io.vertx:vertx-web'
+    implementation 'io.vertx:vertx-codegen'
+    implementation 'com.google.guava:guava'
+    implementation 'io.opentelemetry:opentelemetry-api'
+    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jdk8'
+
+    implementation 'org.apache.tuweni:tuweni-bytes'
+}
+
+test {
+    useJUnitPlatform()
+}

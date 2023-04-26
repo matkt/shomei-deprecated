@@ -30,9 +30,9 @@ public class RocksDBSegmentIdentifier implements SegmentIdentifier {
 
   public enum SegmentNames {
     DEFAULT("default"), // default rocksdb segment
-    ZK_ACCOUNT_TRIE("ZK_ACCOUNT_TRIE"),
-    ZK_ACCOUNT_STORAGE_TRIE("ZK_ACCOUNT_STORAGE_TRIE"),
-    ZK_FLAT_ACCOUNTS("ZK_FLAT_ACCOUNTS"),
+    ZK_TRIE_NODE("ZK_TRIE_NODE"),
+
+    ZK_LEAF_INDEX("ZK_LEAF_INDEX"),
     ZK_TRIE_LOG("ZK_TRIE_LOG");
 
     private final byte[] segmentId;
@@ -41,7 +41,7 @@ public class RocksDBSegmentIdentifier implements SegmentIdentifier {
       this.segmentId = segmentName.getBytes(UTF_8);
     }
 
-    RocksDBSegmentIdentifier getSegmentIdentifier() {
+    public RocksDBSegmentIdentifier getSegmentIdentifier() {
       return new RocksDBSegmentIdentifier(this);
     }
 

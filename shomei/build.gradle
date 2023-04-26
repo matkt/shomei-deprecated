@@ -16,7 +16,9 @@ tasks.named('jar') {
 dependencies {
 
     implementation project(':util')
-    implementation project(':rpc')
+    implementation project(':core')
+    implementation project(':trie')
+    implementation project(':services:rpc:api')
 
     implementation 'io.vertx:vertx-core'
     implementation 'io.vertx:vertx-unit'

@@ -13,24 +13,31 @@
 
 package net.consensys.shomei.worldview;
 
+import static net.consensys.shomei.storage.WorldStateStorageProxy.createAccountProxy;
+import static net.consensys.shomei.storage.WorldStateStorageProxy.createStorageProxy;
+import static net.consensys.shomei.trie.ZKTrie.EMPTY_TRIE_ROOT;
+import static net.consensys.shomei.util.bytes.MimcSafeBytes.safeUInt256;
+
+import net.consensys.shomei.MutableZkAccount;
 import net.consensys.shomei.ZkAccount;
 import net.consensys.shomei.ZkValue;
+import net.consensys.shomei.storage.WorldStateStorage;
+import net.consensys.shomei.storage.WorldStateStorageProxy;
 import net.consensys.shomei.trie.ZKTrie;
-import net.consensys.shomei.trie.storage.LeafIndexManager;
+import net.consensys.shomei.trie.proof.Trace;
+import net.consensys.shomei.trie.storage.StorageProxy;
+import net.consensys.shomei.trie.storage.StorageProxy.Updater;
+import net.consensys.shomei.trielog.AccountKey;
+import net.consensys.shomei.trielog.StorageSlotKey;
 
-import java.util.Comparator;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
-import java.util.Optional;
-import java.util.TreeMap;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.Objects;
 
 import com.google.common.annotations.VisibleForTesting;
-import org.apache.tuweni.bytes.Bytes;
-import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
-import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Hash;
-import org.hyperledger.besu.ethereum.core.BlockHeader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,86 +46,255 @@ public class ZKEvmWorldState {
   private static final Logger LOG = LoggerFactory.getLogger(ZKEvmWorldState.class);
 
   private final ZkEvmWorldStateUpdateAccumulator accumulator;
-  private Hash rootHash;
+
+  private State state;
+
+  private long blockNumber;
   private Hash blockHash;
 
-  // TODO change with rocksdb
+  private final WorldStateStorage zkEvmWorldStateStorage;
 
-  final TreeMap<Bytes, Long> flatDB = new TreeMap<>(Comparator.naturalOrder());
-  private final Map<Bytes, Bytes> storage = new ConcurrentHashMap<>();
-
-  public ZKEvmWorldState(final Hash rootHash, final Hash blockHash) {
-    this.rootHash = rootHash; // read from database
-    this.blockHash = blockHash; // read from database
+  public ZKEvmWorldState(final WorldStateStorage zkEvmWorldStateStorage) {
+    this.state =
+        new State(
+            zkEvmWorldStateStorage.getWorldStateRootHash().orElse(EMPTY_TRIE_ROOT),
+            new ArrayList<>());
+    this.blockNumber = zkEvmWorldStateStorage.getWorldStateBlockNumber().orElse(0L);
+    this.blockHash = zkEvmWorldStateStorage.getWorldStateBlockHash().orElse(Hash.EMPTY);
     this.accumulator = new ZkEvmWorldStateUpdateAccumulator();
+    this.zkEvmWorldStateStorage = zkEvmWorldStateStorage;
   }
 
-  public void commit(final BlockHeader blockHeader) {
-    final Optional<BlockHeader> maybeBlockHeader = Optional.ofNullable(blockHeader);
-    LOG.atDebug().setMessage("Commit world state for block {}").addArgument(maybeBlockHeader).log();
-    rootHash = calculateRootHash();
-    blockHash = maybeBlockHeader.map(BlockHeader::getHash).orElse(null);
-    accumulator.reset();
+  public void commit(final long blockNumber, final Hash blockHash) {
+    LOG.atDebug()
+        .setMessage("Commit world state for block number {} and block hash {}")
+        .addArgument(blockNumber)
+        .addArgument(blockHash)
+        .log();
+    final WorldStateStorage.WorldStateUpdater updater =
+        (WorldStateStorage.WorldStateUpdater) zkEvmWorldStateStorage.updater();
+    this.state = generateNewState(updater);
+    this.blockNumber = blockNumber;
+    this.blockHash = blockHash;
+
+    updater.setBlockHash(blockHash);
+    updater.setBlockNumber(blockNumber);
+
     // persist
-
-    // TODO: sup brah
+    // updater.commit();
+    accumulator.reset();
   }
 
-  private Hash calculateRootHash() {
-    final ZKTrie zkAccountTrie = loadAccountTrie();
-    accumulator
-        .getAccountsToUpdate()
-        .forEach(
-            (hkey, accountValue) -> {
-              final Map<Hash, ZkValue<UInt256, UInt256>> storageToUpdate =
-                  accumulator.getStorageToUpdate().get(hkey);
-              if (storageToUpdate != null) {
-                // load the account storage trie
-                final ZKTrie zkStorageTrie = loadStorageTrie(accountValue);
-                final Hash targetStorageRootHash =
-                    Optional.ofNullable(accountValue.getUpdated())
-                        .map(ZkAccount::getStorageRoot)
-                        .orElse(ZkAccount.EMPTY_TRIE_ROOT);
-                storageToUpdate.forEach(
-                    (slotKeyHash, storageValue) -> {
-                      if (!storageValue.isRollforward() // rollbackward
-                          && (storageValue.getUpdated() == null
-                              || storageValue.getPrior() == null)) {
-                        zkStorageTrie.decrementNextFreeNode();
-                      }
-                      if (storageValue.getUpdated() == null) {
-                        zkStorageTrie.removeAndProve(slotKeyHash);
-                      } else {
-                        zkStorageTrie.putAndProve(slotKeyHash, storageValue.getUpdated());
-                      }
-                    });
-                if (!zkStorageTrie.getTopRootHash().equals(targetStorageRootHash)) {
-                  throw new RuntimeException("invalid trie log");
-                }
-                zkStorageTrie.commit();
-              }
-              if (!accountValue.isRollforward() // rollbackward
-                  && (accountValue.getUpdated() == null || accountValue.getPrior() == null)) {
-                zkAccountTrie.decrementNextFreeNode();
-              }
-              if (accountValue.getUpdated() == null) {
-                zkAccountTrie.removeAndProve(accountValue.getPrior().getHkey());
-              } else {
-                zkAccountTrie.putAndProve(
-                    accountValue.getUpdated().getHkey(),
-                    accountValue.getUpdated().serializeAccount());
-              }
-            });
+  record State(Hash stateRoot, List<Trace> traces) {}
+
+  private State generateNewState(final Updater updater) {
+    final ZKTrie zkAccountTrie =
+        loadAccountTrie(createAccountProxy(zkEvmWorldStateStorage, updater));
+    final List<Trace> traces = updateAccounts(zkAccountTrie, updater);
     zkAccountTrie.commit();
-    return Hash.wrap(zkAccountTrie.getTopRootHash());
+    return new State(Hash.wrap(zkAccountTrie.getTopRootHash()), traces);
   }
 
-  public Hash getRootHash() {
-    return rootHash;
+  private List<Trace> updateAccounts(final ZKTrie zkAccountTrie, final Updater updater) {
+    final List<Trace> traces = new ArrayList<>();
+    accumulator.getAccountsToUpdate().entrySet().stream()
+        .sorted(Map.Entry.comparingByKey())
+        .forEach(
+            (entry) -> {
+              final AccountKey accountKey = entry.getKey();
+              final ZkValue<ZkAccount> accountValue = entry.getValue();
+              traces.addAll(updateAccount(accountKey, accountValue, zkAccountTrie, updater));
+            });
+    return traces;
+  }
+
+  private List<Trace> updateAccount(
+      final AccountKey accountKey,
+      final ZkValue<ZkAccount> accountValue,
+      final ZKTrie zkAccountTrie,
+      final Updater updater) {
+    final List<Trace> traces = new ArrayList<>();
+
+    // check read and read zero for rollfoward
+    if (accountValue.isRollforward()) {
+      if (accountValue.isZeroRead()) {
+        // read zero
+        traces.add(zkAccountTrie.readZeroAndProve(accountKey.accountHash(), accountKey.address()));
+      } else if (accountValue.isNonZeroRead()) {
+        // read non zero
+        traces.add(zkAccountTrie.readAndProve(accountKey.accountHash(), accountKey.address()));
+      }
+      // only read if the contract already exist
+      if (accountValue.getPrior() != null) {
+        final long accountLeafIndex =
+            zkAccountTrie
+                .getLeafIndex(accountKey.accountHash())
+                .orElse(zkAccountTrie.getNextFreeNode());
+        traces.addAll(readSlots(accountKey, accountLeafIndex, accountValue, updater));
+      }
+    }
+
+    // check if remove needed
+    if (accountValue.isCleared()) {
+      if (!accountValue.isRollforward()) {
+        zkAccountTrie.decrementNextFreeNode();
+      }
+      if (accountValue.getPrior() != null) {
+        traces.add(zkAccountTrie.removeAndProve(accountKey.accountHash(), accountKey.address()));
+        // TODO remove all slots from storage : if we not do that the rollback will not work
+        // get index leaf from DB and delete all keys starting by HKEY+index in trie branch
+      }
+    }
+
+    // check selfdestruct
+    if (!accountValue.isRollforward()
+        && accountValue.isRecreated()) { // decrement again in case of selfdestruct
+      zkAccountTrie.decrementNextFreeNode();
+      zkAccountTrie.removeAndProve(accountKey.accountHash(), accountKey.address());
+      // TODO remove all slots from storage : if we not do that the rollback will not work
+      // get index leaf from DB and delete all keys starting by HKEY+index in trie branch
+    }
+
+    // check update and insert
+    if (accountValue.isCleared() || !accountValue.isUnchanged()) {
+      // update account or create
+      if (accountValue.getUpdated() != null) {
+
+        final long accountLeafIndex =
+            zkAccountTrie
+                .getLeafIndex(accountKey.accountHash())
+                .orElse(zkAccountTrie.getNextFreeNode());
+        // update slots of the account
+        traces.addAll(updateSlots(accountKey, accountLeafIndex, accountValue, updater));
+
+        traces.add(
+            zkAccountTrie.putAndProve(
+                accountValue.getUpdated().getHkey(),
+                accountKey.address(),
+                accountValue.getUpdated().getEncodedBytes()));
+      }
+    }
+    return traces;
+  }
+
+  private List<Trace> readSlots(
+      final AccountKey accountKey,
+      final long accountLeafIndex,
+      final ZkValue<ZkAccount> accountValue,
+      final Updater updater) {
+    final List<Trace> traces = new ArrayList<>();
+    final Map<StorageSlotKey, ZkValue<UInt256>> storageToRead =
+        accumulator.getStorageToUpdate().get(accountKey);
+    if (storageToRead != null) {
+      // load the account storage trie
+      final WorldStateStorageProxy storageAdapter =
+          createStorageProxy(accountLeafIndex, zkEvmWorldStateStorage, updater);
+      final ZKTrie zkStorageTrie = loadStorageTrie(accountValue, false, storageAdapter);
+      storageToRead.entrySet().stream()
+          .sorted(Map.Entry.comparingByKey())
+          .forEach(
+              (storageEntry) -> {
+                final StorageSlotKey storageSlotKey = storageEntry.getKey();
+                final ZkValue<UInt256> storageValue = storageEntry.getValue();
+
+                if (storageValue.getPrior() == null) {
+                  if (storageValue.getUpdated() == null) {
+                    // read zero
+                    traces.add(
+                        zkStorageTrie.readZeroAndProve(
+                            storageSlotKey.slotHash(), storageSlotKey.slotKey()));
+                  }
+                } else if (Objects.equals(storageValue.getPrior(), storageValue.getUpdated())
+                    || accountValue.isCleared()) {
+                  // read non zero
+                  traces.add(
+                      zkStorageTrie.readAndProve(
+                          storageSlotKey.slotHash(), storageSlotKey.slotKey()));
+                }
+              });
+    }
+    return traces;
+  }
+
+  private List<Trace> updateSlots(
+      final AccountKey accountKey,
+      final long accountLeafIndex,
+      final ZkValue<ZkAccount> accountValue,
+      final Updater updater) {
+    final List<Trace> traces = new ArrayList<>();
+    final Map<StorageSlotKey, ZkValue<UInt256>> storageToUpdate =
+        accumulator.getStorageToUpdate().get(accountKey);
+    if (storageToUpdate != null) {
+      // load the account storage trie
+      final WorldStateStorageProxy storageAdapter =
+          createStorageProxy(accountLeafIndex, zkEvmWorldStateStorage, updater);
+      final ZKTrie zkStorageTrie =
+          loadStorageTrie(accountValue, accountValue.isCleared(), storageAdapter);
+      storageToUpdate.entrySet().stream()
+          .sorted(Map.Entry.comparingByKey())
+          .forEach(
+              (storageEntry) -> {
+                final StorageSlotKey storageSlotKey = storageEntry.getKey();
+                final ZkValue<UInt256> storageValue = storageEntry.getValue();
+                traces.addAll(
+                    updateSlot(accountValue, storageSlotKey, storageValue, zkStorageTrie));
+              });
+      // update storage root of the account
+      final MutableZkAccount mutableZkAccount = new MutableZkAccount(accountValue.getUpdated());
+      mutableZkAccount.setStorageRoot(Hash.wrap(zkStorageTrie.getTopRootHash()));
+      accountValue.setUpdated(mutableZkAccount);
+
+      zkStorageTrie.commit();
+    }
+    return traces;
+  }
+
+  private List<Trace> updateSlot(
+      final ZkValue<ZkAccount> accountValue,
+      final StorageSlotKey storageSlotKey,
+      final ZkValue<UInt256> storageValue,
+      final ZKTrie zkStorageTrie) {
+    final List<Trace> traces = new ArrayList<>();
+
+    // check remove needed (not needed in case of selfdestruct contract)
+    if (storageValue.isCleared() && !accountValue.isRecreated()) {
+      if (!storageValue.isRollforward()) {
+        zkStorageTrie.decrementNextFreeNode();
+      }
+      if (storageValue.getPrior() != null) {
+        traces.add(
+            zkStorageTrie.removeAndProve(storageSlotKey.slotHash(), storageSlotKey.slotKey()));
+      }
+    }
+
+    // check update and insert
+    if (accountValue.isCleared() || !storageValue.isUnchanged()) {
+      // update account or create
+      if (storageValue.getUpdated() != null) {
+        traces.add(
+            zkStorageTrie.putAndProve(
+                storageSlotKey.slotHash(),
+                storageSlotKey.slotKey(),
+                safeUInt256(storageValue.getUpdated())));
+      }
+    }
+    return traces;
+  }
+
+  public Hash getStateRootHash() {
+    return state.stateRoot;
+  }
+
+  public long getBlockNumber() {
+    return blockNumber;
   }
 
   public Hash getBlockHash() {
     return blockHash;
+  }
+
+  public List<Trace> getLastTraces() {
+    return state.traces;
   }
 
   @VisibleForTesting
@@ -126,47 +302,27 @@ public class ZKEvmWorldState {
     return accumulator;
   }
 
-  private ZKTrie loadAccountTrie() {
-    final LeafIndexManager leafIndexManager = new LeafIndexManager(flatDB);
-    if (rootHash.equals(ZkAccount.EMPTY_TRIE_ROOT)) {
-      return ZKTrie.createTrie(
-          leafIndexManager,
-          (location, hash) -> Optional.ofNullable(storage.get(hash)),
-          (location, hash, value) -> storage.put(hash, value));
+  private ZKTrie loadAccountTrie(final StorageProxy storageProxy) {
+    if (state.stateRoot.equals(EMPTY_TRIE_ROOT)) {
+      return ZKTrie.createTrie(storageProxy);
     } else {
-      return ZKTrie.loadTrie(
-          rootHash,
-          leafIndexManager,
-          (location, hash) -> Optional.ofNullable(storage.get(hash)),
-          (location, hash, value) -> storage.put(hash, value));
+      return ZKTrie.loadTrie(state.stateRoot, new WorldStateStorageProxy(zkEvmWorldStateStorage));
     }
   }
 
-  private ZKTrie loadStorageTrie(final ZkValue<Address, ZkAccount> zkAccount) {
-    final LeafIndexManager leafIndexManager =
-        new LeafIndexManager(flatDB) {
-          @Override
-          public Bytes wrapKey(final Hash key) {
-            return Bytes.concatenate(zkAccount.getKey(), key);
-          }
-
-          @Override
-          public Hash unwrapKey(final Bytes key) {
-            return Hash.wrap(Bytes32.wrap(key.slice(zkAccount.getKey().size())));
-          }
-        };
-    if (zkAccount.getPrior() == null
-        || zkAccount.getPrior().getStorageRoot().equals(ZkAccount.EMPTY_TRIE_ROOT)) {
-      return ZKTrie.createTrie(
-          leafIndexManager,
-          (location, hash) -> Optional.ofNullable(storage.get(hash)),
-          (location, hash, value) -> storage.put(hash, value));
+  private ZKTrie loadStorageTrie(
+      final ZkValue<ZkAccount> zkAccount,
+      final boolean forceNewTrie,
+      final StorageProxy storageProxy) {
+    if (zkAccount.getPrior() == null // new contract
+        || zkAccount
+            .getPrior()
+            .getStorageRoot()
+            .equals(EMPTY_TRIE_ROOT) // first write in the storage
+        || forceNewTrie) { // recreate contract
+      return ZKTrie.createTrie(storageProxy);
     } else {
-      return ZKTrie.loadTrie(
-          zkAccount.getPrior().getStorageRoot(),
-          leafIndexManager,
-          (location, hash) -> Optional.ofNullable(storage.get(hash)),
-          (location, hash, value) -> storage.put(hash, value));
+      return ZKTrie.loadTrie(zkAccount.getPrior().getStorageRoot(), storageProxy);
     }
   }
 }

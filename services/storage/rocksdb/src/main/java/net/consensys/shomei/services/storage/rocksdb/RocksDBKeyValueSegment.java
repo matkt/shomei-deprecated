@@ -21,6 +21,7 @@ import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 import org.rocksdb.ReadOptions;
+import services.storage.BidirectionalIterator;
 import services.storage.KeyValueStorage;
 import services.storage.KeyValueStorageTransaction;
 import services.storage.SnappableKeyValueStorage;
@@ -56,6 +57,12 @@ public class RocksDBKeyValueSegment implements SnappableKeyValueStorage {
   }
 
   @Override
+  public Optional<BidirectionalIterator<KeyValuePair>> getNearestTo(final byte[] key)
+      throws StorageException {
+    return segment.getNearestTo(readOptions, key);
+  }
+
+  @Override
   public Set<byte[]> getAllKeysThat(final Predicate<byte[]> returnCondition) {
     return stream()
         .filter(pair -> returnCondition.test(pair.key()))
@@ -65,12 +72,12 @@ public class RocksDBKeyValueSegment implements SnappableKeyValueStorage {
 
   @Override
   public Stream<KeyValuePair> stream() {
-    return segment.stream();
+    return segment.stream(readOptions);
   }
 
   @Override
   public Stream<byte[]> streamKeys() {
-    return segment.streamKeys();
+    return segment.streamKeys(readOptions);
   }
 
   @Override
