@@ -103,6 +103,11 @@ public class PersistedWorldStateStorage implements WorldStateStorage {
   }
 
   @Override
+  public Optional<Bytes> getTrace(final long blockNumber) {
+    return Optional.empty();
+  }
+
+  @Override
   public Optional<Bytes> getTrieNode(final Bytes location, final Bytes nodeHash) {
     return trieNodeStorage.get(nodeHash.toArrayUnsafe()).map(Bytes::wrap); // TODO use location
   }

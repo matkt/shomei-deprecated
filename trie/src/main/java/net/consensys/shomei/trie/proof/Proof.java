@@ -16,7 +16,10 @@ package net.consensys.shomei.trie.proof;
 import java.util.List;
 
 import org.apache.tuweni.bytes.Bytes;
+import org.hyperledger.besu.ethereum.rlp.RLPInput;
+import org.hyperledger.besu.ethereum.rlp.RLPOutput;
 import org.hyperledger.besu.ethereum.trie.Node;
+import org.hyperledger.besu.ethereum.trie.StoredNode;
 
 public class Proof {
 
@@ -38,5 +41,21 @@ public class Proof {
 
   public void load() {
     siblings.parallelStream().forEach(Node::getHash);
+  }
+
+  public static Proof readFrom(final RLPInput in) {
+    in.enterList();
+    final long leafIndex = in.readLongScalar();
+    final List<Node<Bytes>> siblings =
+        in.readList(rlpInput -> new StoredNode<>(null, null, rlpInput.readBytes32()));
+    in.leaveList();
+    return new Proof(leafIndex, siblings);
+  }
+
+  public void writeTo(final RLPOutput out) {
+    out.startList();
+    out.writeLongScalar(leafIndex);
+    out.writeList(siblings, (node, rlpOutput) -> rlpOutput.writeBytes(node.getHash()));
+    out.endList();
   }
 }

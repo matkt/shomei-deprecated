@@ -13,6 +13,7 @@
 
 package net.consensys.shomei.trie;
 
+import static net.consensys.shomei.trie.DigestGenerator.createDumDigest;
 import static net.consensys.shomei.util.bytes.MimcSafeBytes.unsafeFromBytes;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -21,8 +22,6 @@ import net.consensys.shomei.util.bytes.MimcSafeBytes;
 import net.consensys.zkevm.HashProvider;
 
 import org.apache.tuweni.bytes.Bytes;
-import org.apache.tuweni.bytes.Bytes32;
-import org.apache.tuweni.bytes.MutableBytes32;
 import org.hyperledger.besu.datatypes.Hash;
 import org.junit.Test;
 
@@ -52,8 +51,8 @@ public class ZKTrieTest {
     final InMemoryStorage storage = new InMemoryStorage();
     ZKTrie zkTrie = ZKTrie.createTrie(storage);
 
-    final MimcSafeBytes<Bytes> key = unsafeFromBytes(createDumDiggest(58));
-    final MimcSafeBytes<Bytes> value = unsafeFromBytes(createDumDiggest(42));
+    final MimcSafeBytes<Bytes> key = unsafeFromBytes(createDumDigest(58));
+    final MimcSafeBytes<Bytes> value = unsafeFromBytes(createDumDigest(42));
     final Hash hkey = HashProvider.mimc(key);
 
     zkTrie.putAndProve(hkey, key, value);
@@ -75,9 +74,9 @@ public class ZKTrieTest {
     final InMemoryStorage storage = new InMemoryStorage();
     ZKTrie zkTrie = ZKTrie.createTrie(storage);
 
-    final MimcSafeBytes<Bytes> key = unsafeFromBytes(createDumDiggest(58));
-    final MimcSafeBytes<Bytes> dumValue = unsafeFromBytes(createDumDiggest(41));
-    final MimcSafeBytes<Bytes> newDumValue = unsafeFromBytes(createDumDiggest(42));
+    final MimcSafeBytes<Bytes> key = unsafeFromBytes(createDumDigest(58));
+    final MimcSafeBytes<Bytes> dumValue = unsafeFromBytes(createDumDigest(41));
+    final MimcSafeBytes<Bytes> newDumValue = unsafeFromBytes(createDumDigest(42));
     final Hash hkey = HashProvider.mimc(key);
 
     zkTrie.putAndProve(hkey, key, dumValue);
@@ -110,8 +109,8 @@ public class ZKTrieTest {
     final InMemoryStorage storage = new InMemoryStorage();
     ZKTrie zkTrie = ZKTrie.createTrie(storage);
 
-    final MimcSafeBytes<Bytes> key = unsafeFromBytes(createDumDiggest(58));
-    final MimcSafeBytes<Bytes> value = unsafeFromBytes(createDumDiggest(41));
+    final MimcSafeBytes<Bytes> key = unsafeFromBytes(createDumDigest(58));
+    final MimcSafeBytes<Bytes> value = unsafeFromBytes(createDumDigest(41));
     final Hash hkey = HashProvider.mimc(key);
 
     zkTrie.putAndProve(hkey, key, value);
@@ -135,11 +134,5 @@ public class ZKTrieTest {
         .isEqualTo(
             Bytes.fromHexString(
                 "2844b523cac49f6c5205b7b44065a741fd5c4ba8481c0ebee1d06ecf33f5ef40"));
-  }
-
-  public static Bytes32 createDumDiggest(int value) {
-    MutableBytes32 mutableBytes = MutableBytes32.create();
-    mutableBytes.set(Bytes32.SIZE - 1, (byte) value);
-    return mutableBytes;
   }
 }

@@ -16,7 +16,11 @@ package net.consensys.shomei.trie.proof;
 import net.consensys.shomei.trie.model.LeafOpening;
 
 import org.apache.tuweni.bytes.Bytes;
+import org.hyperledger.besu.datatypes.Hash;
+import org.hyperledger.besu.ethereum.rlp.RLPInput;
+import org.hyperledger.besu.ethereum.rlp.RLPOutput;
 import org.hyperledger.besu.ethereum.trie.Node;
+import org.hyperledger.besu.ethereum.trie.StoredNode;
 
 public class ReadTrace implements Trace {
 
@@ -30,6 +34,21 @@ public class ReadTrace implements Trace {
   public Bytes key;
 
   public Bytes value;
+
+  public ReadTrace(
+      final long nextFreeNode,
+      final Node<Bytes> subRoot,
+      final LeafOpening leaf,
+      final Proof proof,
+      final Bytes key,
+      final Bytes value) {
+    this.nextFreeNode = nextFreeNode;
+    this.subRoot = subRoot;
+    this.leaf = leaf;
+    this.proof = proof;
+    this.key = key;
+    this.value = value;
+  }
 
   public ReadTrace(final Node<Bytes> subRoot) {
     this.subRoot = subRoot;
@@ -81,5 +100,34 @@ public class ReadTrace implements Trace {
 
   public void setValue(final Bytes value) {
     this.value = value;
+  }
+
+  @Override
+  public int getTransactionType() {
+    return READ_TRACE_CODE;
+  }
+
+  public static ReadTrace readFrom(final RLPInput in) {
+    in.enterList();
+    final long newNextFreeNode = in.readLongScalar();
+    final Node<Bytes> subRoot = new StoredNode<>(null, null, Hash.wrap(in.readBytes32()));
+    final LeafOpening leaf = LeafOpening.readFrom(in.readBytes());
+    final Proof proof = Proof.readFrom(in);
+    final Bytes key = in.readBytes();
+    final Bytes value = in.readBytes();
+    in.leaveList();
+    return new ReadTrace(newNextFreeNode, subRoot, leaf, proof, key, value);
+  }
+
+  @Override
+  public void writeTo(final RLPOutput out) {
+    out.startList();
+    out.writeLongScalar(nextFreeNode);
+    out.writeBytes(subRoot.getHash());
+    out.writeBytes(leaf.getEncodesBytes());
+    proof.writeTo(out);
+    out.writeBytes(key);
+    out.writeBytes(value);
+    out.endList();
   }
 }

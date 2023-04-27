@@ -13,4 +13,16 @@
 
 package net.consensys.shomei.trie.proof;
 
-public class EmptyTrace implements Trace {}
+import org.hyperledger.besu.ethereum.rlp.RLPOutput;
+
+public class EmptyTrace implements Trace {
+  @Override
+  public int getTransactionType() {
+    return -1;
+  }
+
+  @Override
+  public void writeTo(final RLPOutput out) {
+    throw new RuntimeException("cannot serialize empty trace");
+  }
+}

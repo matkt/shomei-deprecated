@@ -13,18 +13,15 @@
 
 package net.consensys.shomei.rpc;
 
-public enum ShomeiRpcMethod {
-  STATE_SEND_RAW_TRIE_LOG("state_sendRawTrieLog"),
+import org.hyperledger.besu.util.platform.PlatformDetector;
 
-  ROLLUP_GET_ZKEVM_STATE_MERKLE_PROOF_V0("rollup_getZkEVMStateMerkleProofV0");
+public class ShomeiVersion {
 
-  private final String methodName;
+  public static final String CLIENT_IDENTITY = "shomei";
+  public static final String IMPL_VERSION =
+      ShomeiVersion.class.getPackage().getImplementationVersion();
+  public static final String OS = PlatformDetector.getOS();
+  public static final String VM = PlatformDetector.getVM();
 
-  public String getMethodName() {
-    return methodName;
-  }
-
-  ShomeiRpcMethod(final String methodName) {
-    this.methodName = methodName;
-  }
+  public static final String VERSION = CLIENT_IDENTITY + "/" + IMPL_VERSION + "/" + OS + "/" + VM;
 }

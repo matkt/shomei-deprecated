@@ -15,6 +15,7 @@ package net.consensys.shomei.storage;
 
 import net.consensys.shomei.trie.storage.InMemoryStorage;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
@@ -33,9 +34,16 @@ public class InMemoryWorldStateStorage extends InMemoryStorage
 
   private final Map<Bytes, Bytes> trieLogStorage = new ConcurrentHashMap<>();
 
+  private final Map<Long, Bytes> traces = new HashMap<>();
+
   @Override
   public Optional<Bytes> getTrieLog(final Hash blockHash) {
     return Optional.ofNullable(trieLogStorage.get(blockHash));
+  }
+
+  @Override
+  public Optional<Bytes> getTrace(final long blockNumber) {
+    return Optional.ofNullable(traces.get(blockNumber));
   }
 
   @Override
@@ -66,5 +74,10 @@ public class InMemoryWorldStateStorage extends InMemoryStorage
   @Override
   public void saveTrieLog(final Hash blockHash, final Bytes rawTrieLogLayer) {
     trieLogStorage.put(blockHash, rawTrieLogLayer);
+  }
+
+  @Override
+  public void saveTrace(final long blockNumber, final Bytes rawTrace) {
+    traces.put(blockNumber, rawTrace);
   }
 }

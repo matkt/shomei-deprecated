@@ -70,6 +70,7 @@ public class ZkEvmWorldStateUpdateAccumulator {
                                 storageSlotKey,
                                 value.getPrior(),
                                 value.getUpdated(),
+                                value.isCleared(),
                                 true)));
   }
 
@@ -97,6 +98,7 @@ public class ZkEvmWorldStateUpdateAccumulator {
                                 storageSlotKey,
                                 value.getUpdated(),
                                 value.getPrior(),
+                                value.isCleared(),
                                 false)));
   }
 
@@ -145,6 +147,7 @@ public class ZkEvmWorldStateUpdateAccumulator {
       final StorageSlotKey storageSlotKey,
       final UInt256 expectedValue,
       final UInt256 replacementValue,
+      final boolean isCleared,
       final boolean isRollforward) {
     final Map<StorageSlotKey, ZkValue<UInt256>> storageMap = storageToUpdate.get(accountKey);
     ZkValue<UInt256> slotValue = storageMap == null ? null : storageMap.get(storageSlotKey);
@@ -152,7 +155,8 @@ public class ZkEvmWorldStateUpdateAccumulator {
       slotValue =
           new ZkValue<>(
               expectedValue.isZero() ? null : expectedValue,
-              expectedValue.isZero() ? null : expectedValue);
+              expectedValue.isZero() ? null : expectedValue,
+              isCleared);
       storageToUpdate
           .computeIfAbsent(accountKey, slotHash -> new ConcurrentHashMap<>())
           .put(storageSlotKey, slotValue);

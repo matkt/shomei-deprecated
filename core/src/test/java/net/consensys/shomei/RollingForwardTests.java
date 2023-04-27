@@ -83,8 +83,7 @@ public class RollingForwardTests {
 
     final List<Trace> expectedTraces = new ArrayList<>();
     expectedTraces.add(
-        accountStateTrieOne.readZeroAndProve(
-            missingAccount.getHkey(), missingAccount.getAddress()));
+        accountStateTrieOne.readAndProve(missingAccount.getHkey(), missingAccount.getAddress()));
     expectedTraces.add(
         accountStateTrieOne.putAndProve(
             account.getHkey(), account.getAddress(), account.getEncodedBytes()));
@@ -449,12 +448,14 @@ public class RollingForwardTests {
         trieLogLayer2.addAccountChange(contract.getAddress(), contract, updatedContract, true);
     trieLogLayer2.addStorageChange(
         accountKey,
-        storageSlotKey.slotKey().getOriginalUnsafeValue(),
+        storageSlotKey,
         slotValue.getOriginalUnsafeValue(),
-        newSlotValue.getOriginalUnsafeValue());
+        newSlotValue.getOriginalUnsafeValue(),
+        true);
     zkEvmWorldState.getAccumulator().rollForward(trieLogLayer2);
     zkEvmWorldState.commit(0L, null);
 
+    System.out.println(gson.toJson(expectedTraces));
     assertThat(gson.toJson(zkEvmWorldState.getLastTraces())).isEqualTo(gson.toJson(expectedTraces));
     assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(topRootHash);
   }
@@ -520,18 +521,13 @@ public class RollingForwardTests {
     accountKey =
         trieLogLayer2.addAccountChange(contract.getAddress(), contract, updatedContract, true);
     trieLogLayer2.addStorageChange(
-        accountKey,
-        storageSlotKey.slotKey().getOriginalUnsafeValue(),
-        slotValue.getOriginalUnsafeValue(),
-        null);
+        accountKey, storageSlotKey, slotValue.getOriginalUnsafeValue(), null, true);
     trieLogLayer2.addStorageChange(
-        accountKey,
-        newStorageSlotKey.slotKey().getOriginalUnsafeValue(),
-        null,
-        newSlotValue.getOriginalUnsafeValue());
+        accountKey, newStorageSlotKey, null, newSlotValue.getOriginalUnsafeValue());
     zkEvmWorldState.getAccumulator().rollForward(trieLogLayer2);
     zkEvmWorldState.commit(0L, null);
 
+    System.out.println(gson.toJson(expectedTraces));
     assertThat(gson.toJson(zkEvmWorldState.getLastTraces())).isEqualTo(gson.toJson(expectedTraces));
     assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(topRootHash);
   }

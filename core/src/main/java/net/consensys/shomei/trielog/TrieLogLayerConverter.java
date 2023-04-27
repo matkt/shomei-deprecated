@@ -92,28 +92,37 @@ public class TrieLogLayerConverter {
         input.enterList();
         while (!input.isEndOfCurrentList()) {
           input.enterList();
-          final StorageSlotKey storageSlotKey = new StorageSlotKey(input.readUInt256Scalar());
+          input.skipNext(); // skip slot hash
+          final StorageSlotKey storageSlotKey =
+              nullOrValue(input, rlpInput -> new StorageSlotKey(input.readUInt256Scalar()));
           final UInt256 oldValueExpected = nullOrValue(input, RLPInput::readUInt256Scalar);
-          final UInt256 oldValueFound =
-              maybeAccountIndex
-                  .flatMap(
-                      index ->
-                          worldStateStorage
-                              .getFlatLeaf(
-                                  Bytes.concatenate(
-                                      Bytes.wrap(Longs.toByteArray(index)),
-                                      storageSlotKey.slotHash()))
-                              .map(FlattenedLeaf::leafValue)
-                              .map(UInt256::fromBytes))
-                  .orElse(null);
-          if (!Objects.equals(
-              oldValueExpected, oldValueFound)) { // check consistency between trielog and db
-            throw new IllegalStateException("invalid trie log exception");
+          if (storageSlotKey != null) {
+            final UInt256 oldValueFound =
+                maybeAccountIndex
+                    .flatMap(
+                        index ->
+                            worldStateStorage
+                                .getFlatLeaf(
+                                    Bytes.concatenate(
+                                        Bytes.wrap(Longs.toByteArray(index)),
+                                        storageSlotKey.slotHash()))
+                                .map(FlattenedLeaf::leafValue)
+                                .map(UInt256::fromBytes))
+                    .orElse(null);
+            if (!Objects.equals(
+                oldValueExpected, oldValueFound)) { // check consistency between trielog and db
+              throw new IllegalStateException("invalid trie log exception");
+            }
+            final UInt256 newValue = nullOrValue(input, RLPInput::readUInt256Scalar);
+            final boolean isCleared = input.readInt() == 1; // skip is cleared for storage level
+            input.leaveList();
+            trieLogLayer.addStorageChange(
+                accountKey, storageSlotKey, oldValueExpected, newValue, isCleared);
+          } else {
+            input.skipNext();
+            input.skipNext();
+            input.leaveList();
           }
-          final UInt256 newValue = nullOrValue(input, RLPInput::readUInt256Scalar);
-          input.skipNext(); // skip is cleared for storage level
-          input.leaveList();
-          trieLogLayer.addStorageChange(accountKey, storageSlotKey, oldValueFound, newValue);
         }
         input.leaveList();
       }

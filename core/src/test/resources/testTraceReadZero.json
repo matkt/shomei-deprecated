@@ -13,7 +13,7 @@
     "prevLeaf":0,
     "nextLeaf":1
   },
-  "proofLeft":{
+  "leftProof":{
     "leafIndex":0,
     "siblings":[
       "0x103cca8163b021373b6f24e3098a091b40ada3564f9b5d40a4f8185c61e49c60",
@@ -58,7 +58,7 @@
       "0x303b0a04f392124e9264916d8b752241e24f97fa2fa1276d5a7ad197fed3c9c5"
     ]
   },
-  "proofRight":{
+  "rightProof":{
     "leafIndex":1,
     "siblings":[
       "0x276935e06bee60ac996e056c4917ae55afb4d43efd636447f52baf8d174db1f9",

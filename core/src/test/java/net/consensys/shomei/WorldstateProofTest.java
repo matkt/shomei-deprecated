@@ -85,7 +85,7 @@ public class WorldstateProofTest {
     ZKTrie accountStateTrie =
         ZKTrie.createTrie(new WorldStateStorageProxy(new InMemoryWorldStateStorage()));
 
-    Trace trace = accountStateTrie.readZeroAndProve(hkey, key);
+    Trace trace = accountStateTrie.readAndProve(hkey, key);
 
     assertThat(gson.toJson(trace))
         .isEqualToIgnoringWhitespace(getResources("testTraceReadZero.json"));

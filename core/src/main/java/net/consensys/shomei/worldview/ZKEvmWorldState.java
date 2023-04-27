@@ -79,7 +79,7 @@ public class ZKEvmWorldState {
 
     updater.setBlockHash(blockHash);
     updater.setBlockNumber(blockNumber);
-
+    // updater.saveTrace(blockNumber, Trace.serialize(state.traces));
     // persist
     // updater.commit();
     accumulator.reset();
@@ -117,11 +117,8 @@ public class ZKEvmWorldState {
 
     // check read and read zero for rollfoward
     if (accountValue.isRollforward()) {
-      if (accountValue.isZeroRead()) {
-        // read zero
-        traces.add(zkAccountTrie.readZeroAndProve(accountKey.accountHash(), accountKey.address()));
-      } else if (accountValue.isNonZeroRead()) {
-        // read non zero
+      if (accountValue.isZeroRead() || accountValue.isNonZeroRead()) {
+        // read zero or non zero
         traces.add(zkAccountTrie.readAndProve(accountKey.accountHash(), accountKey.address()));
       }
       // only read if the contract already exist
@@ -197,16 +194,8 @@ public class ZKEvmWorldState {
                 final StorageSlotKey storageSlotKey = storageEntry.getKey();
                 final ZkValue<UInt256> storageValue = storageEntry.getValue();
 
-                if (storageValue.getPrior() == null) {
-                  if (storageValue.getUpdated() == null) {
-                    // read zero
-                    traces.add(
-                        zkStorageTrie.readZeroAndProve(
-                            storageSlotKey.slotHash(), storageSlotKey.slotKey()));
-                  }
-                } else if (Objects.equals(storageValue.getPrior(), storageValue.getUpdated())
-                    || accountValue.isCleared()) {
-                  // read non zero
+                if (Objects.equals(storageValue.getPrior(), storageValue.getUpdated())
+                    || storageValue.isCleared()) {
                   traces.add(
                       zkStorageTrie.readAndProve(
                           storageSlotKey.slotHash(), storageSlotKey.slotKey()));
