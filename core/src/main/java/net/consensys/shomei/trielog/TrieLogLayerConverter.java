@@ -80,7 +80,7 @@ public class TrieLogLayerConverter {
             nullOrValue(
                 input,
                 rlpInput ->
-                    prepareNewTrieLogAccount(accountKey, newCode, priorAccount.account, rlpInput));
+                    prepareNewTrieLogAccount(accountKey, newCode, priorAccount, rlpInput));
         final boolean isCleared = defaultOrValue(input, 0, RLPInput::readInt) == 1;
         input.leaveList();
         trieLogLayer.addAccountChange(accountKey, priorAccount.account, newAccountValue, isCleared);
@@ -93,36 +93,36 @@ public class TrieLogLayerConverter {
         while (!input.isEndOfCurrentList()) {
           input.enterList();
           input.skipNext(); // skip slot hash
-          final StorageSlotKey storageSlotKey =
-              nullOrValue(input, rlpInput -> new StorageSlotKey(input.readUInt256Scalar()));
           final UInt256 oldValueExpected = nullOrValue(input, RLPInput::readUInt256Scalar);
-          if (storageSlotKey != null) {
+          final UInt256 newValue = nullOrValue(input, RLPInput::readUInt256Scalar);
+          final boolean isCleared = defaultOrValue(input, 0, RLPInput::readInt) == 1;
+
+          if (!input.isEndOfCurrentList() ) {
+            final StorageSlotKey storageSlotKey =
+                    new StorageSlotKey(defaultOrValue(input, UInt256.ZERO, RLPInput::readUInt256Scalar));
             final UInt256 oldValueFound =
-                maybeAccountIndex
-                    .flatMap(
-                        index ->
-                            worldStateStorage
-                                .getFlatLeaf(
-                                    Bytes.concatenate(
-                                        Bytes.wrap(Longs.toByteArray(index)),
-                                        storageSlotKey.slotHash()))
-                                .map(FlattenedLeaf::leafValue)
-                                .map(UInt256::fromBytes))
-                    .orElse(null);
+                    maybeAccountIndex
+                            .flatMap(
+                                    index ->
+                                            worldStateStorage
+                                                    .getFlatLeaf(
+                                                            Bytes.concatenate(
+                                                                    Bytes.wrap(Longs.toByteArray(index)),
+                                                                    storageSlotKey.slotHash()))
+                                                    .map(FlattenedLeaf::leafValue)
+                                                    .map(UInt256::fromBytes))
+                            .orElse(null);
+            System.out.println("storage -> "+address+" "+maybeAccountIndex+" "+storageSlotKey.slotHash()+" "+oldValueExpected+" "+oldValueFound+" "+newValue);
             if (!Objects.equals(
-                oldValueExpected, oldValueFound)) { // check consistency between trielog and db
+                    oldValueExpected, oldValueFound)) { // check consistency between trielog and db
               throw new IllegalStateException("invalid trie log exception");
             }
-            final UInt256 newValue = nullOrValue(input, RLPInput::readUInt256Scalar);
-            final boolean isCleared = input.readInt() == 1; // skip is cleared for storage level
-            input.leaveList();
             trieLogLayer.addStorageChange(
                 accountKey, storageSlotKey, oldValueExpected, newValue, isCleared);
           } else {
-            input.skipNext();
-            input.skipNext();
-            input.leaveList();
+            System.out.println("storage change skipped -> "+address+" "+oldValueExpected+" "+newValue+" "+trieLogLayer.getBlockHash());
           }
+          input.leaveList();
         }
         input.leaveList();
       }
@@ -135,9 +135,7 @@ public class TrieLogLayerConverter {
     return trieLogLayer;
   }
 
-  record PriorAccount(ZkAccount account, Optional<Long> index) {}
-  ;
-
+  record PriorAccount(ZkAccount account, Hash evmStorageRoot, Optional<Long> index) {}
   public PriorAccount preparePriorTrieLogAccount(final AccountKey accountKey, final RLPInput in) {
 
     final ZkAccount oldAccountValue;
@@ -147,7 +145,7 @@ public class TrieLogLayerConverter {
 
     if (in.nextIsNull() && flatLeaf.isEmpty()) {
       in.skipNext();
-      return new PriorAccount(null, Optional.empty());
+      return new PriorAccount(null, Hash.EMPTY_TRIE_HASH, Optional.empty());
     } else if (!in.nextIsNull() && flatLeaf.isPresent()) {
       oldAccountValue =
           flatLeaf
@@ -158,13 +156,20 @@ public class TrieLogLayerConverter {
 
       final UInt256 nonce = UInt256.valueOf(in.readLongScalar());
       final Wei balance = Wei.of(in.readUInt256Scalar());
-      in.skipNext(); // skip storage root (evm storage root is useless)
+      final Hash evmStorageRoot;
+      if (in.nextIsNull()) {
+        evmStorageRoot = Hash.EMPTY_TRIE_HASH;
+        in.skipNext();
+      } else {
+        evmStorageRoot = Hash.wrap(in.readBytes32());
+      }
       in.skipNext(); // skip keccak codeHash
       in.leaveList();
 
+      System.out.println("account -> "+accountKey.address()+" "+oldAccountValue.getBalance()+" "+balance);
       if (oldAccountValue.getNonce().equals(nonce) // check consistency between trielog and db
           && oldAccountValue.getBalance().equals(balance)) {
-        return new PriorAccount(oldAccountValue, flatLeaf.map(FlattenedLeaf::leafIndex));
+        return new PriorAccount(oldAccountValue, evmStorageRoot, flatLeaf.map(FlattenedLeaf::leafIndex));
       }
     }
 
@@ -174,13 +179,25 @@ public class TrieLogLayerConverter {
   public ZkAccount prepareNewTrieLogAccount(
       final AccountKey accountKey,
       final Optional<Bytes> newCode,
-      final ZkAccount oldValue,
+      final PriorAccount priorAccount,
       final RLPInput in) {
     in.enterList();
 
     final UInt256 nonce = UInt256.valueOf(in.readLongScalar());
     final Wei balance = Wei.of(in.readUInt256Scalar());
-    in.skipNext(); // skip storage root (evm storage root is useless)
+    Hash storageRoot;
+    if (in.nextIsNull()) {
+      storageRoot = Hash.EMPTY_TRIE_HASH;
+      in.skipNext();
+    } else {
+      final Hash newEvmStorageRoot = Hash.wrap(in.readBytes32());
+      System.out.println(priorAccount.evmStorageRoot+" "+newEvmStorageRoot);
+      if (!priorAccount.evmStorageRoot.equals(newEvmStorageRoot)) {
+        storageRoot = null;
+      } else {
+        storageRoot = priorAccount.evmStorageRoot;
+      }
+    }
     in.skipNext(); // skip keccak codeHash
     in.leaveList();
 
@@ -189,14 +206,14 @@ public class TrieLogLayerConverter {
     UInt256 codeSize;
 
     if (newCode.isEmpty()) {
-      if (oldValue == null) {
+      if (priorAccount.account == null) {
         keccakCodeHash = ZkAccount.EMPTY_KECCAK_CODE_HASH.getOriginalUnsafeValue();
         mimcCodeHash = ZkAccount.EMPTY_CODE_HASH;
         codeSize = UInt256.ZERO;
       } else {
-        keccakCodeHash = oldValue.getCodeHash();
-        mimcCodeHash = oldValue.getMimcCodeHash();
-        codeSize = oldValue.getCodeSize();
+        keccakCodeHash = priorAccount.account.getCodeHash();
+        mimcCodeHash = priorAccount.account.getMimcCodeHash();
+        codeSize = priorAccount.account.getCodeSize();
       }
     } else {
       final Bytes code = newCode.get();
@@ -205,12 +222,7 @@ public class TrieLogLayerConverter {
       codeSize = UInt256.valueOf(code.size());
     }
 
-    final Hash storageRoot;
-    if (oldValue != null) {
-      storageRoot = oldValue.getStorageRoot();
-    } else {
-      storageRoot = ZKTrie.EMPTY_TRIE_ROOT;
-    }
+
 
     return new ZkAccount(
         accountKey,

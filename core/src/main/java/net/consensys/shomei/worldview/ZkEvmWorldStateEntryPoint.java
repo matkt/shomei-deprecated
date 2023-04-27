@@ -61,7 +61,7 @@ public class ZkEvmWorldStateEntryPoint implements TrieLogObserver {
 
   public void importBlock(final long newBlockNumber, final Hash blockHash)
       throws MissingTrieLogException {
-    if (currentWorldState.getBlockNumber() < newBlockNumber) {
+    if (currentWorldState.getBlockNumber() <= newBlockNumber) {
       Optional<TrieLogLayer> trieLog =
           worldStateStorage
               .getTrieLog(blockHash)
@@ -124,7 +124,12 @@ public class ZkEvmWorldStateEntryPoint implements TrieLogObserver {
               .addArgument(blockHash)
               .log();
         }
-      } catch (MissingTrieLogException e) {
+      } catch (Exception e) {
+        LOG.atError()
+                .setMessage("Failed to import block {} ({})")
+                .addArgument(blockNumber)
+                .addArgument(blockHash)
+                .log();
         throw new RuntimeException(e);
       }
       // TODO use Jackson
