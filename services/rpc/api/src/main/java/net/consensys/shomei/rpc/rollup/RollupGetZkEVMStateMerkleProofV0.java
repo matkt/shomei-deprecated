@@ -54,7 +54,6 @@ public class RollupGetZkEVMStateMerkleProofV0 implements JsonRpcMethod {
     final long startBlockNumber = requestContext.getRequiredParameter(0, Long.class);
     final long endBlockNumber = requestContext.getRequiredParameter(1, Long.class);
     final String zkStateManagerVersion = requestContext.getRequiredParameter(2, String.class);
-    System.out.println(zkStateManagerVersion + " " + IMPL_VERSION);
     if (!IMPL_VERSION.equals(zkStateManagerVersion)) {
       return new JsonRpcErrorResponse(
           requestContext.getRequest().getId(),
