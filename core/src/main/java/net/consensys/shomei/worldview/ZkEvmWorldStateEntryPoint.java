@@ -22,9 +22,9 @@ import net.consensys.shomei.trielog.TrieLogLayerConverter;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Queue;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 import com.google.gson.Gson;
@@ -49,7 +49,7 @@ public class ZkEvmWorldStateEntryPoint implements TrieLogObserver {
 
   private final WorldStateStorage worldStateStorage;
 
-  private final Queue<Hash> blockQueue = new ConcurrentLinkedQueue<>();
+  private final Queue<TrieLogIdentifier> blockQueue = new PriorityBlockingQueue<>();
   private final ExecutorService executor = Executors.newSingleThreadExecutor();
   private volatile boolean isProcessing = false;
 
@@ -59,23 +59,22 @@ public class ZkEvmWorldStateEntryPoint implements TrieLogObserver {
     this.trieLogLayerConverter = new TrieLogLayerConverter(worldStateStorage);
   }
 
-  public void importBlock(final long newBlockNumber, final Hash blockHash)
-      throws MissingTrieLogException {
-    if (currentWorldState.getBlockNumber() <= newBlockNumber) {
+  public void importBlock(final TrieLogIdentifier trieLogId) throws MissingTrieLogException {
+    if (currentWorldState.getBlockNumber() <= trieLogId.blockNumber()) {
       Optional<TrieLogLayer> trieLog =
           worldStateStorage
-              .getTrieLog(blockHash)
+              .getTrieLog(trieLogId.blockHash())
               .map(RLP::input)
               .map(trieLogLayerConverter::decodeTrieLog);
       if (trieLog.isPresent()) {
-        applyTrieLog(newBlockNumber, trieLog.get());
+        applyTrieLog(trieLogId.blockNumber(), trieLog.get());
       } else {
-        throw new MissingTrieLogException(newBlockNumber);
+        throw new MissingTrieLogException(trieLogId.blockNumber());
       }
     } else {
       throw new RuntimeException(
           "block parent is missing : trying to import "
-              + newBlockNumber
+              + trieLogId.blockNumber()
               + " but the head is "
               + currentWorldState.getBlockNumber()
               + " ");
@@ -91,13 +90,11 @@ public class ZkEvmWorldStateEntryPoint implements TrieLogObserver {
     return currentWorldState.getStateRootHash();
   }
 
-  static int blockNumber = 0;
-
   @Override
-  public synchronized void onTrieLogAdded(final Hash blockHash) {
+  public synchronized void onTrieLogAdded(final TrieLogIdentifier trieLogId) {
     // receive trie log
-    LOG.atDebug().setMessage("receive trie log {} ").addArgument(blockHash).log();
-    blockQueue.offer(blockHash);
+    LOG.atDebug().setMessage("receive trie log {} ").addArgument(trieLogId).log();
+    blockQueue.offer(trieLogId);
     if (!isProcessing) {
       isProcessing = true;
       executor.execute(this::processQueue);
@@ -107,36 +104,38 @@ public class ZkEvmWorldStateEntryPoint implements TrieLogObserver {
   public void processQueue() {
     while (!blockQueue.isEmpty()) {
       long start = System.nanoTime();
-      final Hash blockHash = blockQueue.poll();
+      final TrieLogIdentifier trieLogId = blockQueue.poll();
       try {
-        importBlock(blockNumber, blockHash);
-        if (currentWorldState.getBlockHash().equals(Objects.requireNonNull(blockHash))) {
+        importBlock(trieLogId);
+        if (currentWorldState
+            .getBlockHash()
+            .equals(Objects.requireNonNull(trieLogId.blockHash()))) {
           LOG.atInfo()
               .setMessage("Imported block {} ({})")
-              .addArgument(blockNumber)
-              .addArgument(blockHash)
+              .addArgument(trieLogId.blockNumber())
+              .addArgument(trieLogId.blockHash())
               .log();
-          blockNumber++;
         } else {
           LOG.atError()
               .setMessage("Failed to import block {} ({})")
-              .addArgument(blockNumber)
-              .addArgument(blockHash)
+              .addArgument(trieLogId.blockNumber())
+              .addArgument(trieLogId.blockHash())
               .log();
         }
       } catch (Exception e) {
         LOG.atError()
-                .setMessage("Failed to import block {} ({})")
-                .addArgument(blockNumber)
-                .addArgument(blockHash)
-                .log();
+            .setMessage("Failed to import block {} ({})")
+            .addArgument(trieLogId.blockNumber())
+            .addArgument(trieLogId.blockHash())
+            .log();
         throw new RuntimeException(e);
       }
       // TODO use Jackson
       gson.toJson(currentWorldState.getLastTraces());
       LOG.atInfo()
-          .setMessage("Generated trace for block {} in {} ms")
-          .addArgument(blockHash)
+          .setMessage("Generated trace for block {}:{} in {} ms")
+          .addArgument(trieLogId.blockNumber())
+          .addArgument(trieLogId.blockHash())
           .addArgument(TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start))
           .log();
     }
