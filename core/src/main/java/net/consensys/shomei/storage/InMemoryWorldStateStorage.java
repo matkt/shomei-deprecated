@@ -32,13 +32,13 @@ public class InMemoryWorldStateStorage extends InMemoryStorage
 
   private Optional<Hash> currentStateRootHash = Optional.empty();
 
-  private final Map<Bytes, Bytes> trieLogStorage = new ConcurrentHashMap<>();
+  private final Map<Long, Bytes> trieLogStorage = new ConcurrentHashMap<>();
 
   private final Map<Long, Bytes> traces = new HashMap<>();
 
   @Override
-  public Optional<Bytes> getTrieLog(final Hash blockHash) {
-    return Optional.ofNullable(trieLogStorage.get(blockHash));
+  public Optional<Bytes> getTrieLog(final long blockNumber) {
+    return Optional.ofNullable(trieLogStorage.get(blockNumber));
   }
 
   @Override
@@ -72,8 +72,8 @@ public class InMemoryWorldStateStorage extends InMemoryStorage
   }
 
   @Override
-  public void saveTrieLog(final Hash blockHash, final Bytes rawTrieLogLayer) {
-    trieLogStorage.put(blockHash, rawTrieLogLayer);
+  public void saveTrieLog(final long blockNumber, final Bytes rawTrieLogLayer) {
+    trieLogStorage.put(blockNumber, rawTrieLogLayer);
   }
 
   @Override

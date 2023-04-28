@@ -2,7 +2,7 @@
 apply plugin: 'java-library'
 
 tasks.named('jar') {
-    archiveBaseName = 'rpc'
+    archiveBaseName = 'shomei-rpc'
     manifest {
         attributes(
                 'Specification-Title': archiveBaseName,

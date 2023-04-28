@@ -59,7 +59,7 @@ public class ZKEvmWorldState {
         new State(
             zkEvmWorldStateStorage.getWorldStateRootHash().orElse(EMPTY_TRIE_ROOT),
             new ArrayList<>());
-    this.blockNumber = zkEvmWorldStateStorage.getWorldStateBlockNumber().orElse(0L);
+    this.blockNumber = zkEvmWorldStateStorage.getWorldStateBlockNumber().orElse(-1L);
     this.blockHash = zkEvmWorldStateStorage.getWorldStateBlockHash().orElse(Hash.EMPTY);
     this.accumulator = new ZkEvmWorldStateUpdateAccumulator();
     this.zkEvmWorldStateStorage = zkEvmWorldStateStorage;
@@ -71,6 +71,7 @@ public class ZKEvmWorldState {
         .addArgument(blockNumber)
         .addArgument(blockHash)
         .log();
+    long start = System.currentTimeMillis();
     final WorldStateStorage.WorldStateUpdater updater =
         (WorldStateStorage.WorldStateUpdater) zkEvmWorldStateStorage.updater();
     this.state = generateNewState(updater);
@@ -79,7 +80,21 @@ public class ZKEvmWorldState {
 
     updater.setBlockHash(blockHash);
     updater.setBlockNumber(blockNumber);
-    // updater.saveTrace(blockNumber, Trace.serialize(state.traces));
+    updater.saveTrace(blockNumber, Trace.serialize(state.traces));
+    if (!state.traces.isEmpty()) {
+      LOG.atInfo()
+          .setMessage("Generated trace for block {}:{} in {} ms")
+          .addArgument(blockNumber)
+          .addArgument(blockHash)
+          .addArgument(System.currentTimeMillis() - start)
+          .log();
+    } else {
+      LOG.atInfo()
+          .setMessage("Ignore empty trace for block {}:{}")
+          .addArgument(blockNumber)
+          .addArgument(blockHash)
+          .log();
+    }
     // persist
     // updater.commit();
     accumulator.reset();
@@ -124,9 +139,7 @@ public class ZKEvmWorldState {
       // only read if the contract already exist
       if (accountValue.getPrior() != null) {
         final long accountLeafIndex =
-            zkAccountTrie
-                .getLeafIndex(accountKey.accountHash())
-                .orElse(zkAccountTrie.getNextFreeNode());
+            zkAccountTrie.getLeafIndex(accountKey.accountHash()).orElseThrow();
         traces.addAll(readSlots(accountKey, accountLeafIndex, accountValue, updater));
       }
     }
@@ -193,7 +206,6 @@ public class ZKEvmWorldState {
               (storageEntry) -> {
                 final StorageSlotKey storageSlotKey = storageEntry.getKey();
                 final ZkValue<UInt256> storageValue = storageEntry.getValue();
-
                 if (Objects.equals(storageValue.getPrior(), storageValue.getUpdated())
                     || storageValue.isCleared()) {
                   traces.add(
@@ -244,7 +256,6 @@ public class ZKEvmWorldState {
       final ZkValue<UInt256> storageValue,
       final ZKTrie zkStorageTrie) {
     final List<Trace> traces = new ArrayList<>();
-
     // check remove needed (not needed in case of selfdestruct contract)
     if (storageValue.isCleared() && !accountValue.isRecreated()) {
       if (!storageValue.isRollforward()) {

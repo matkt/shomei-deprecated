@@ -13,6 +13,7 @@
 
 package net.consensys.shomei;
 
+import net.consensys.shomei.cli.option.JsonRpcOption;
 import net.consensys.shomei.rpc.JsonRpcService;
 import net.consensys.shomei.storage.InMemoryWorldStateStorage;
 import net.consensys.shomei.worldview.ZkEvmWorldStateEntryPoint;
@@ -28,14 +29,19 @@ public class Runner {
   private final Vertx vertx;
   private final JsonRpcService jsonRpcService;
 
-  public Runner() {
+  public Runner(final JsonRpcOption jsonRpcOption) {
     this.vertx = Vertx.vertx();
 
     final InMemoryWorldStateStorage inMemoryWorldStateStorage = new InMemoryWorldStateStorage();
     final ZkEvmWorldStateEntryPoint zkEvmWorldStateEntryPoint =
         new ZkEvmWorldStateEntryPoint(inMemoryWorldStateStorage);
 
-    this.jsonRpcService = new JsonRpcService(zkEvmWorldStateEntryPoint, inMemoryWorldStateStorage);
+    this.jsonRpcService =
+        new JsonRpcService(
+            jsonRpcOption.getRpcHttpHost(),
+            jsonRpcOption.getRpcHttpPort(),
+            zkEvmWorldStateEntryPoint,
+            inMemoryWorldStateStorage);
   }
 
   public void start() {

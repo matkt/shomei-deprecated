@@ -1,7 +1,7 @@
 apply plugin: 'java-library'
 
 tasks.named('jar') {
-    archiveBaseName = 'trie'
+    archiveBaseName = 'shomei-trie'
     manifest {
         attributes(
                 'Specification-Title': archiveBaseName,
@@ -27,7 +27,12 @@ dependencies {
     implementation 'org.apache.tuweni:tuweni-bytes'
     implementation 'org.apache.tuweni:tuweni-units'
 
+
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+
     testImplementation 'junit:junit'
     testImplementation 'org.assertj:assertj-core'
     testImplementation 'org.junit.jupiter:junit-jupiter'
+
+
 }

@@ -35,7 +35,7 @@ public interface WorldStateStorage extends StorageProxy {
 
   Optional<Hash> getWorldStateRootHash();
 
-  Optional<Bytes> getTrieLog(final Hash blockHash);
+  Optional<Bytes> getTrieLog(final long blockNumber);
 
   Optional<Bytes> getTrace(final long blockNumber);
 
@@ -45,8 +45,8 @@ public interface WorldStateStorage extends StorageProxy {
 
     void setBlockNumber(final long blockNumber);
 
-    void saveTrieLog(final Hash blockHash, final Bytes rawTrieLogLayer);
+    void saveTrieLog(final long blockNumber, final Bytes rawTrieLogLayer);
 
-    void saveTrace(long blockNumber, Bytes rawTrace);
+    void saveTrace(final long blockNumber, final Bytes rawTrace);
   }
 }

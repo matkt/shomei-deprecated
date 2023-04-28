@@ -27,10 +27,7 @@ public class Shomei {
     Thread.setDefaultUncaughtExceptionHandler(exceptionHandler());
     Thread.currentThread().setUncaughtExceptionHandler(exceptionHandler());
 
-    final Runner runner = new Runner();
-    addShutdownHook(runner);
-
-    final StateManagerCommand stateManagerCommand = new StateManagerCommand(runner::start);
+    final StateManagerCommand stateManagerCommand = new StateManagerCommand();
     stateManagerCommand.parse(new CommandLine.RunLast(), args);
   }
 
@@ -40,19 +37,5 @@ public class Shomei {
         LOG.error(String.format("Uncaught exception in thread \"%s\"", thread.getName()), error);
       }
     };
-  }
-
-  private static void addShutdownHook(final Runner runner) {
-    Runtime.getRuntime()
-        .addShutdownHook(
-            new Thread(
-                () -> {
-                  try {
-                    runner.stop();
-                  } catch (final Exception e) {
-                    LOG.error("Failed to stop Shomei");
-                  }
-                },
-                "Command-Shutdown-Hook"));
   }
 }

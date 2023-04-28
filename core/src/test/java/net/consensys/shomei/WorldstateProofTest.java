@@ -26,6 +26,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import net.consensys.shomei.storage.InMemoryWorldStateStorage;
 import net.consensys.shomei.storage.WorldStateStorageProxy;
 import net.consensys.shomei.trie.ZKTrie;
+import net.consensys.shomei.trie.json.JsonTraceParser;
 import net.consensys.shomei.trie.proof.Trace;
 import net.consensys.shomei.trielog.AccountKey;
 import net.consensys.shomei.util.bytes.MimcSafeBytes;
@@ -36,44 +37,21 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Optional;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.JsonPrimitive;
-import com.google.gson.JsonSerializer;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
-import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.Wei;
-import org.hyperledger.besu.ethereum.trie.Node;
 import org.junit.Before;
 import org.junit.Test;
 
 public class WorldstateProofTest {
 
-  private Gson gson;
+  private static final ObjectMapper JSON_OBJECT_MAPPER = new ObjectMapper();
 
   @Before
   public void setup() {
-    gson =
-        new GsonBuilder()
-            .registerTypeAdapter(
-                Node.class,
-                (JsonSerializer<Node<Bytes>>)
-                    (src, typeOfSrc, context) -> new JsonPrimitive(src.getHash().toHexString()))
-            .registerTypeAdapter(
-                UInt256.class,
-                (JsonSerializer<UInt256>)
-                    (src, typeOfSrc, context) -> new JsonPrimitive(src.toHexString()))
-            .registerTypeAdapter(
-                Hash.class,
-                (JsonSerializer<Hash>)
-                    (src, typeOfSrc, context) -> new JsonPrimitive(src.toHexString()))
-            .registerTypeAdapter(
-                Bytes.class,
-                (JsonSerializer<Bytes>)
-                    (src, typeOfSrc, context) -> new JsonPrimitive(src.toHexString()))
-            .create();
+    JSON_OBJECT_MAPPER.registerModules(JsonTraceParser.modules);
   }
 
   @Test
@@ -87,7 +65,7 @@ public class WorldstateProofTest {
 
     Trace trace = accountStateTrie.readAndProve(hkey, key);
 
-    assertThat(gson.toJson(trace))
+    assertThat(JSON_OBJECT_MAPPER.writeValueAsString(trace))
         .isEqualToIgnoringWhitespace(getResources("testTraceReadZero.json"));
   }
 
@@ -105,7 +83,8 @@ public class WorldstateProofTest {
 
     Trace trace = accountStateTrie.readAndProve(hkey, key);
 
-    assertThat(gson.toJson(trace)).isEqualToIgnoringWhitespace(getResources("testTraceRead.json"));
+    assertThat(JSON_OBJECT_MAPPER.writeValueAsString(trace))
+        .isEqualToIgnoringWhitespace(getResources("testTraceRead.json"));
   }
 
   @Test
@@ -119,7 +98,7 @@ public class WorldstateProofTest {
         accountStateTrie.putAndProve(
             account.getHkey(), account.getAddress(), account.getEncodedBytes());
 
-    assertThat(gson.toJson(List.of(trace)))
+    assertThat(JSON_OBJECT_MAPPER.writeValueAsString(List.of(trace)))
         .isEqualToIgnoringWhitespace(getResources("testTraceStateWithAnAccount.json"));
   }
 
@@ -147,7 +126,7 @@ public class WorldstateProofTest {
         accountStateTrie.putAndProve(
             zkAccount2.getHkey(), zkAccount2.getAddress(), zkAccount2.getEncodedBytes());
 
-    assertThat(gson.toJson(List.of(trace, trace2)))
+    assertThat(JSON_OBJECT_MAPPER.writeValueAsString(List.of(trace, trace2)))
         .isEqualToIgnoringWhitespace(getResources("testWorldStateWithTwoAccount.json"));
   }
 
@@ -175,7 +154,7 @@ public class WorldstateProofTest {
         accountStateTrie.putAndProve(
             zkAccount2.getHkey(), zkAccount2.getAddress(), zkAccount2.getEncodedBytes());
 
-    assertThat(gson.toJson(List.of(trace, trace2)))
+    assertThat(JSON_OBJECT_MAPPER.writeValueAsString(List.of(trace, trace2)))
         .isEqualToIgnoringWhitespace(getResources("testWorldStateWithAccountAndContract.json"));
   }
 
@@ -221,7 +200,7 @@ public class WorldstateProofTest {
         accountStateTrie.putAndProve(
             zkAccount2.getHkey(), zkAccount2.getAddress(), zkAccount2.getEncodedBytes());
 
-    assertThat(gson.toJson(List.of(trace, trace2, trace3, trace4)))
+    assertThat(JSON_OBJECT_MAPPER.writeValueAsString(List.of(trace, trace2, trace3, trace4)))
         .isEqualToIgnoringWhitespace(getResources("testWorldStateWithUpdateContractStorage.json"));
   }
 
@@ -286,7 +265,8 @@ public class WorldstateProofTest {
         accountStateTrie.putAndProve(
             zkAccount2.getHkey(), zkAccount2.getAddress(), zkAccount2.getEncodedBytes());
 
-    assertThat(gson.toJson(List.of(trace, trace2, trace3, trace4, trace5)))
+    assertThat(
+            JSON_OBJECT_MAPPER.writeValueAsString(List.of(trace, trace2, trace3, trace4, trace5)))
         .isEqualToIgnoringWhitespace(
             getResources("testWorldStateWithDeleteAccountAndStorage.json"));
   }
@@ -333,7 +313,7 @@ public class WorldstateProofTest {
         accountStateTrie.putAndProve(
             zkAccount3.getHkey(), zkAccount3.getAddress(), zkAccount3.getEncodedBytes());
 
-    assertThat(gson.toJson(List.of(trace, trace2)))
+    assertThat(JSON_OBJECT_MAPPER.writeValueAsString(List.of(trace, trace2)))
         .isEqualToIgnoringWhitespace(getResources("testAddAndDeleteAccounts.json"));
   }
 

@@ -25,17 +25,10 @@ import java.util.Queue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.PriorityBlockingQueue;
-import java.util.concurrent.TimeUnit;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.JsonPrimitive;
-import com.google.gson.JsonSerializer;
-import org.apache.tuweni.bytes.Bytes;
-import org.apache.tuweni.units.bigints.UInt256;
+import com.google.common.annotations.VisibleForTesting;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.ethereum.rlp.RLP;
-import org.hyperledger.besu.ethereum.trie.Node;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -59,28 +52,20 @@ public class ZkEvmWorldStateEntryPoint implements TrieLogObserver {
     this.trieLogLayerConverter = new TrieLogLayerConverter(worldStateStorage);
   }
 
-  public void importBlock(final TrieLogIdentifier trieLogId) throws MissingTrieLogException {
-    if (currentWorldState.getBlockNumber() <= trieLogId.blockNumber()) {
-      Optional<TrieLogLayer> trieLog =
-          worldStateStorage
-              .getTrieLog(trieLogId.blockHash())
-              .map(RLP::input)
-              .map(trieLogLayerConverter::decodeTrieLog);
-      if (trieLog.isPresent()) {
-        applyTrieLog(trieLogId.blockNumber(), trieLog.get());
-      } else {
-        throw new MissingTrieLogException(trieLogId.blockNumber());
-      }
+  private void importBlock(final TrieLogIdentifier trieLogId) throws MissingTrieLogException {
+    Optional<TrieLogLayer> trieLog =
+        worldStateStorage
+            .getTrieLog(trieLogId.blockNumber())
+            .map(RLP::input)
+            .map(trieLogLayerConverter::decodeTrieLog);
+    if (trieLog.isPresent()) {
+      applyTrieLog(trieLogId.blockNumber(), trieLog.get());
     } else {
-      throw new RuntimeException(
-          "block parent is missing : trying to import "
-              + trieLogId.blockNumber()
-              + " but the head is "
-              + currentWorldState.getBlockNumber()
-              + " ");
+      throw new MissingTrieLogException(trieLogId.blockNumber());
     }
   }
 
+  @VisibleForTesting
   public void applyTrieLog(final long newBlockNumber, final TrieLogLayer trieLogLayer) {
     currentWorldState.getAccumulator().rollForward(trieLogLayer);
     currentWorldState.commit(newBlockNumber, trieLogLayer.getBlockHash());
@@ -92,7 +77,6 @@ public class ZkEvmWorldStateEntryPoint implements TrieLogObserver {
 
   @Override
   public synchronized void onTrieLogAdded(final TrieLogIdentifier trieLogId) {
-    // receive trie log
     LOG.atDebug().setMessage("receive trie log {} ").addArgument(trieLogId).log();
     blockQueue.offer(trieLogId);
     if (!isProcessing) {
@@ -102,63 +86,40 @@ public class ZkEvmWorldStateEntryPoint implements TrieLogObserver {
   }
 
   public void processQueue() {
-    while (!blockQueue.isEmpty()) {
-      long start = System.nanoTime();
-      final TrieLogIdentifier trieLogId = blockQueue.poll();
-      try {
-        importBlock(trieLogId);
-        if (currentWorldState
-            .getBlockHash()
-            .equals(Objects.requireNonNull(trieLogId.blockHash()))) {
-          LOG.atInfo()
-              .setMessage("Imported block {} ({})")
-              .addArgument(trieLogId.blockNumber())
-              .addArgument(trieLogId.blockHash())
-              .log();
-        } else {
+    boolean foundMissingTrieLog = false;
+    while (!blockQueue.isEmpty() && !foundMissingTrieLog) {
+      if (blockQueue.element().blockNumber() == currentWorldState.getBlockNumber() + 1) {
+        final TrieLogIdentifier trieLogId = blockQueue.poll();
+        try {
+          importBlock(Objects.requireNonNull(trieLogId));
+          if (currentWorldState
+              .getBlockHash()
+              .equals(Objects.requireNonNull(trieLogId.blockHash()))) {
+            LOG.atInfo()
+                .setMessage("Imported block {} ({})")
+                .addArgument(trieLogId.blockNumber())
+                .addArgument(trieLogId.blockHash())
+                .log();
+          } else {
+            LOG.atError()
+                .setMessage("Failed to import block {} ({})")
+                .addArgument(trieLogId.blockNumber())
+                .addArgument(trieLogId.blockHash())
+                .log();
+          }
+        } catch (Exception e) {
           LOG.atError()
-              .setMessage("Failed to import block {} ({})")
+              .setMessage("Exception during import block {} ({}) : {}")
               .addArgument(trieLogId.blockNumber())
               .addArgument(trieLogId.blockHash())
+              .addArgument(e.getMessage())
               .log();
         }
-      } catch (Exception e) {
-        LOG.atError()
-            .setMessage("Failed to import block {} ({})")
-            .addArgument(trieLogId.blockNumber())
-            .addArgument(trieLogId.blockHash())
-            .log();
-        throw new RuntimeException(e);
+      } else {
+        LOG.atInfo().setMessage("Detect missing trie log, waiting ...").log();
+        foundMissingTrieLog = true;
       }
-      // TODO use Jackson
-      gson.toJson(currentWorldState.getLastTraces());
-      LOG.atInfo()
-          .setMessage("Generated trace for block {}:{} in {} ms")
-          .addArgument(trieLogId.blockNumber())
-          .addArgument(trieLogId.blockHash())
-          .addArgument(TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start))
-          .log();
     }
     isProcessing = false;
   }
-
-  Gson gson =
-      new GsonBuilder()
-          .registerTypeAdapter(
-              Node.class,
-              (JsonSerializer<Node<Bytes>>)
-                  (src, typeOfSrc, context) -> new JsonPrimitive(src.getHash().toHexString()))
-          .registerTypeAdapter(
-              UInt256.class,
-              (JsonSerializer<UInt256>)
-                  (src, typeOfSrc, context) -> new JsonPrimitive(src.toHexString()))
-          .registerTypeAdapter(
-              Hash.class,
-              (JsonSerializer<Hash>)
-                  (src, typeOfSrc, context) -> new JsonPrimitive(src.toHexString()))
-          .registerTypeAdapter(
-              Bytes.class,
-              (JsonSerializer<Bytes>)
-                  (src, typeOfSrc, context) -> new JsonPrimitive(src.toHexString()))
-          .create();
 }

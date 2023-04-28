@@ -24,7 +24,7 @@ public class TrieLogShippingTests {
         ZKTrie.createTrie(new WorldStateStorageProxy(new InMemoryWorldStateStorage()));
 
     // add contract with storage
-    MutableZkAccount contract = getAccountTwo();
+    MutableZkAccount contract = TestFixtureGenerator.getAccountTwo();
     StorageSlotKey storageSlotKey = new StorageSlotKey(UInt256.valueOf(14));
     MimcSafeBytes<UInt256> slotValue = safeUInt256(UInt256.valueOf(12));
     ZKTrie contractStorageTrie = getContractStorageTrie(contract);
@@ -61,7 +61,7 @@ public class TrieLogShippingTests {
     trieLogLayer.setBlockHash(Hash.wrap(Bytes32.random()));
     trieLogLayer.addStorageChange(
         contract.getAddress().getOriginalUnsafeValue(),
-        new BonsaiWorldStateUpdateAccumulator.StorageSlotKey(
+        new org.hyperledger.besu.ethereum.bonsai.worldview.StorageSlotKey(
             storageSlotKey.slotKey().getOriginalUnsafeValue()),
         null,
         slotValue.getOriginalUnsafeValue());
@@ -88,7 +88,7 @@ public class TrieLogShippingTests {
     trieLogLayer2.setBlockHash(Hash.wrap(Bytes32.random()));
     trieLogLayer2.addStorageChange(
         contract.getAddress().getOriginalUnsafeValue(),
-        new BonsaiWorldStateUpdateAccumulator.StorageSlotKey(
+        new org.hyperledger.besu.ethereum.bonsai.worldview.StorageSlotKey(
             storageSlotKey.slotKey().getOriginalUnsafeValue()),
         slotValue.getOriginalUnsafeValue(),
         newStorageValue.getOriginalUnsafeValue());
@@ -98,7 +98,7 @@ public class TrieLogShippingTests {
     // init the worldstate entrypoint with empty worldstate
     InMemoryWorldStateStorage storage = new InMemoryWorldStateStorage();
     ZkEvmWorldStateEntryPoint evmWorldStateEntryPoint = new ZkEvmWorldStateEntryPoint(storage);
-    assertThat(evmWorldStateEntryPoint.getCurrentRootHash()).isEqualTo(EMPTY_TRIE_ROOT);
+    assertThat(evmWorldStateEntryPoint.getCurrentRootHash()).isEqualTo(ZKTrie.EMPTY_TRIE_ROOT);
 
     // decode trielog from Besu
     TrieLogLayer decodedLayer =
@@ -106,7 +106,7 @@ public class TrieLogShippingTests {
             .decodeTrieLog(RLP.input(Bytes.wrap(zkTrieLogFactory.serialize(trieLogLayer))));
 
     // move head with the new trielog
-    evmWorldStateEntryPoint.moveHead(0, decodedLayer);
+    evmWorldStateEntryPoint.applyTrieLog(0, decodedLayer);
     assertThat(evmWorldStateEntryPoint.getCurrentRootHash()).isEqualTo(topRootHashBeforeUpdate);
 
     // decode second trielog from Besu
@@ -115,7 +115,7 @@ public class TrieLogShippingTests {
             .decodeTrieLog(RLP.input(Bytes.wrap(zkTrieLogFactory.serialize(trieLogLayer2))));
 
     // move head with the second trielog
-    evmWorldStateEntryPoint.moveHead(1, decodedLayer2);
+    evmWorldStateEntryPoint.applyTrieLog(1, decodedLayer2);
     assertThat(evmWorldStateEntryPoint.getCurrentRootHash()).isEqualTo(topRootHashAfterUpdate);
   }*/
 }
