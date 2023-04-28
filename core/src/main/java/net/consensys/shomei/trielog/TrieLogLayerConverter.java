@@ -19,7 +19,6 @@ import static net.consensys.shomei.util.bytes.MimcSafeBytes.safeByte32;
 
 import net.consensys.shomei.ZkAccount;
 import net.consensys.shomei.storage.WorldStateStorage;
-import net.consensys.shomei.trie.ZKTrie;
 import net.consensys.shomei.trie.model.FlattenedLeaf;
 import net.consensys.zkevm.HashProvider;
 
@@ -79,8 +78,7 @@ public class TrieLogLayerConverter {
         final ZkAccount newAccountValue =
             nullOrValue(
                 input,
-                rlpInput ->
-                    prepareNewTrieLogAccount(accountKey, newCode, priorAccount, rlpInput));
+                rlpInput -> prepareNewTrieLogAccount(accountKey, newCode, priorAccount, rlpInput));
         final boolean isCleared = defaultOrValue(input, 0, RLPInput::readInt) == 1;
         input.leaveList();
         trieLogLayer.addAccountChange(accountKey, priorAccount.account, newAccountValue, isCleared);
@@ -97,30 +95,51 @@ public class TrieLogLayerConverter {
           final UInt256 newValue = nullOrValue(input, RLPInput::readUInt256Scalar);
           final boolean isCleared = defaultOrValue(input, 0, RLPInput::readInt) == 1;
 
-          if (!input.isEndOfCurrentList() ) {
+          if (!input.isEndOfCurrentList()) {
             final StorageSlotKey storageSlotKey =
-                    new StorageSlotKey(defaultOrValue(input, UInt256.ZERO, RLPInput::readUInt256Scalar));
+                new StorageSlotKey(
+                    defaultOrValue(input, UInt256.ZERO, RLPInput::readUInt256Scalar));
             final UInt256 oldValueFound =
-                    maybeAccountIndex
-                            .flatMap(
-                                    index ->
-                                            worldStateStorage
-                                                    .getFlatLeaf(
-                                                            Bytes.concatenate(
-                                                                    Bytes.wrap(Longs.toByteArray(index)),
-                                                                    storageSlotKey.slotHash()))
-                                                    .map(FlattenedLeaf::leafValue)
-                                                    .map(UInt256::fromBytes))
-                            .orElse(null);
-            System.out.println("storage -> "+address+" "+maybeAccountIndex+" "+storageSlotKey.slotHash()+" "+oldValueExpected+" "+oldValueFound+" "+newValue);
+                maybeAccountIndex
+                    .flatMap(
+                        index ->
+                            worldStateStorage
+                                .getFlatLeaf(
+                                    Bytes.concatenate(
+                                        Bytes.wrap(Longs.toByteArray(index)),
+                                        storageSlotKey.slotHash()))
+                                .map(FlattenedLeaf::leafValue)
+                                .map(UInt256::fromBytes))
+                    .orElse(null);
+            System.out.println(
+                "storage -> "
+                    + address
+                    + " "
+                    + maybeAccountIndex
+                    + " "
+                    + storageSlotKey.slotHash()
+                    + " "
+                    + oldValueExpected
+                    + " "
+                    + oldValueFound
+                    + " "
+                    + newValue);
             if (!Objects.equals(
-                    oldValueExpected, oldValueFound)) { // check consistency between trielog and db
+                oldValueExpected, oldValueFound)) { // check consistency between trielog and db
               throw new IllegalStateException("invalid trie log exception");
             }
             trieLogLayer.addStorageChange(
                 accountKey, storageSlotKey, oldValueExpected, newValue, isCleared);
           } else {
-            System.out.println("storage change skipped -> "+address+" "+oldValueExpected+" "+newValue+" "+trieLogLayer.getBlockHash());
+            System.out.println(
+                "storage change skipped -> "
+                    + address
+                    + " "
+                    + oldValueExpected
+                    + " "
+                    + newValue
+                    + " "
+                    + trieLogLayer.getBlockHash());
           }
           input.leaveList();
         }
@@ -136,6 +155,7 @@ public class TrieLogLayerConverter {
   }
 
   record PriorAccount(ZkAccount account, Hash evmStorageRoot, Optional<Long> index) {}
+
   public PriorAccount preparePriorTrieLogAccount(final AccountKey accountKey, final RLPInput in) {
 
     final ZkAccount oldAccountValue;
@@ -166,10 +186,17 @@ public class TrieLogLayerConverter {
       in.skipNext(); // skip keccak codeHash
       in.leaveList();
 
-      System.out.println("account -> "+accountKey.address()+" "+oldAccountValue.getBalance()+" "+balance);
+      System.out.println(
+          "account -> "
+              + accountKey.address()
+              + " "
+              + oldAccountValue.getBalance()
+              + " "
+              + balance);
       if (oldAccountValue.getNonce().equals(nonce) // check consistency between trielog and db
           && oldAccountValue.getBalance().equals(balance)) {
-        return new PriorAccount(oldAccountValue, evmStorageRoot, flatLeaf.map(FlattenedLeaf::leafIndex));
+        return new PriorAccount(
+            oldAccountValue, evmStorageRoot, flatLeaf.map(FlattenedLeaf::leafIndex));
       }
     }
 
@@ -191,7 +218,7 @@ public class TrieLogLayerConverter {
       in.skipNext();
     } else {
       final Hash newEvmStorageRoot = Hash.wrap(in.readBytes32());
-      System.out.println(priorAccount.evmStorageRoot+" "+newEvmStorageRoot);
+      System.out.println(priorAccount.evmStorageRoot + " " + newEvmStorageRoot);
       if (!priorAccount.evmStorageRoot.equals(newEvmStorageRoot)) {
         storageRoot = null;
       } else {
@@ -221,8 +248,6 @@ public class TrieLogLayerConverter {
       mimcCodeHash = prepareMimcCodeHash(code);
       codeSize = UInt256.valueOf(code.size());
     }
-
-
 
     return new ZkAccount(
         accountKey,
