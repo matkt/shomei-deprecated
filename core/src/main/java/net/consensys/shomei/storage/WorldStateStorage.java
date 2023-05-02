@@ -43,6 +43,10 @@ public interface WorldStateStorage extends StorageProxy {
 
   Optional<Bytes> getTrace(final long blockNumber);
 
+  default void close() {
+    // no-op
+  }
+
   interface WorldStateUpdater extends Updater {
 
     void setBlockHash(final Hash blockHash);

@@ -72,7 +72,7 @@ public class ZKTrie {
     final ZKTrie trie =
         new ZKTrie(ZKTrie.initWorldState(updater::putTrieNode).getHash(), worldStateStorage);
     trie.setHeadAndTail();
-    // updater.commit();
+    updater.commit();
     return trie;
   }
 

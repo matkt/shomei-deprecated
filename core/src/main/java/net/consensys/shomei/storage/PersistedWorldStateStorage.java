@@ -32,6 +32,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import services.storage.BidirectionalIterator;
 import services.storage.KeyValueStorage;
+import services.storage.KeyValueStorage.KeyValuePair;
 import services.storage.KeyValueStorageTransaction;
 
 public class PersistedWorldStateStorage
@@ -42,7 +43,23 @@ public class PersistedWorldStateStorage
       this(storage, new AtomicReference<>(storage.startTransaction()));
     }
 
-    void commit() {
+    synchronized Optional<byte[]> get(byte[] key) {
+      return txRef.getAcquire().get(key);
+    }
+
+    synchronized void put(byte[] key, byte[] value) {
+      txRef.getAcquire().put(key, value);
+    }
+
+    synchronized void remove(byte[] key) {
+      txRef.getAcquire().remove(key);
+    }
+
+    synchronized Optional<BidirectionalIterator<KeyValuePair>> getNearestTo(byte[] key) {
+      return txRef.getAcquire().getNearestTo(key);
+    }
+
+    synchronized void commit() {
       txRef.getAndUpdate(
           tx -> {
             tx.commit();
@@ -78,8 +95,6 @@ public class PersistedWorldStateStorage
   @Override
   public Optional<FlattenedLeaf> getFlatLeaf(final Bytes hkey) {
     return flatLeafStorage
-        .txRef
-        .get()
         .get(hkey.toArrayUnsafe())
         .map(Bytes::wrap)
         .map(RLP::input)
@@ -89,40 +104,40 @@ public class PersistedWorldStateStorage
   @Override
   public Range getNearestKeys(final Bytes hkey) {
     // call nearest key of rocksdb
-    final Optional<BidirectionalIterator<KeyValueStorage.KeyValuePair>> nearestTo =
-        flatLeafStorage.txRef.get().getNearestTo(hkey.toArrayUnsafe());
+    final Optional<BidirectionalIterator<KeyValuePair>> nearestTo =
+        flatLeafStorage.getNearestTo(hkey.toArrayUnsafe());
     if (nearestTo.isPresent()) {
       try (var iterator = nearestTo.get()) {
-        final KeyValueStorage.KeyValuePair next = iterator.current();
+        final KeyValuePair next = iterator.current();
         if (Bytes.wrap(next.key()).equals(hkey)) {
-          final KeyValueStorage.KeyValuePair left = iterator.previous();
-          final KeyValueStorage.KeyValuePair middle = iterator.next();
-          final KeyValueStorage.KeyValuePair right = iterator.next();
+          final KeyValuePair left = iterator.previous();
+          final KeyValuePair middle = iterator.next();
+          final KeyValuePair right = iterator.next();
           return new Range(
               Map.entry(
                   Hash.wrap(Bytes32.wrap(left.key())),
                   FlattenedLeaf.readFrom(RLP.input(Bytes.wrap(left.value())))),
               Optional.of(
                   Map.entry(
-                      Hash.wrap(Bytes32.wrap(middle.key())),
+                      Bytes.of(middle.key()),
                       FlattenedLeaf.readFrom(RLP.input(Bytes.wrap(middle.value()))))),
               Map.entry(
-                  Hash.wrap(Bytes32.wrap(right.key())),
+                  Bytes.of(right.key()),
                   FlattenedLeaf.readFrom(RLP.input(Bytes.wrap(right.value())))));
         } else {
-          final KeyValueStorage.KeyValuePair left = iterator.next();
-          final KeyValueStorage.KeyValuePair right = iterator.next();
+          final KeyValuePair left = iterator.next();
+          final KeyValuePair right = iterator.next();
           return new Range(
               Map.entry(
-                  Hash.wrap(Bytes32.wrap(left.key())),
+                  Bytes.of(left.key()),
                   FlattenedLeaf.readFrom(RLP.input(Bytes.wrap(left.value())))),
               Optional.empty(),
               Map.entry(
-                  Hash.wrap(Bytes32.wrap(right.key())),
+                  Bytes.of(right.key()),
                   FlattenedLeaf.readFrom(RLP.input(Bytes.wrap(right.value())))));
         }
       } catch (Exception ex) {
-        // close error
+        LOG.error("failed to get nearest keys", ex);
       }
     }
     throw new RuntimeException("not found leaf index");
@@ -130,47 +145,40 @@ public class PersistedWorldStateStorage
 
   @Override
   public Optional<Bytes> getTrieLog(final long blockNumber) {
-    return trieLogStorage.txRef.get().get(Longs.toByteArray(blockNumber)).map(Bytes::wrap);
+    return trieLogStorage.get(Longs.toByteArray(blockNumber)).map(Bytes::wrap);
   }
 
   @Override
   public Optional<Bytes> getZkStateRootHash(final long blockNumber) {
     return traceStorage
-        .txRef
-        .get()
         .get((ZK_STATE_ROOT_PREFIX + blockNumber).getBytes(StandardCharsets.UTF_8))
         .map(Bytes::wrap);
   }
 
   @Override
   public Optional<Bytes> getTrace(final long blockNumber) {
-    return traceStorage.txRef.get().get(Longs.toByteArray(blockNumber)).map(Bytes::wrap);
+    return traceStorage.get(Longs.toByteArray(blockNumber)).map(Bytes::wrap);
   }
 
   @Override
   public Optional<Bytes> getTrieNode(final Bytes location, final Bytes nodeHash) {
     // TODO use location
-    return trieNodeStorage.txRef.get().get(nodeHash.toArrayUnsafe()).map(Bytes::wrap);
+    return trieNodeStorage.get(nodeHash.toArrayUnsafe()).map(Bytes::wrap);
   }
 
   @Override
   public Optional<Hash> getWorldStateRootHash() {
-    return trieNodeStorage
-        .txRef
-        .get()
-        .get(WORLD_STATE_ROOT_HASH_KEY)
-        .map(Bytes32::wrap)
-        .map(Hash::wrap);
+    return trieNodeStorage.get(WORLD_STATE_ROOT_HASH_KEY).map(Bytes32::wrap).map(Hash::wrap);
   }
 
   @Override
   public Optional<Hash> getWorldStateBlockHash() {
-    return trieNodeStorage.txRef.get().get(WORLD_BLOCK_HASH_KEY).map(Bytes32::wrap).map(Hash::wrap);
+    return trieNodeStorage.get(WORLD_BLOCK_HASH_KEY).map(Bytes32::wrap).map(Hash::wrap);
   }
 
   @Override
   public Optional<Long> getWorldStateBlockNumber() {
-    return trieNodeStorage.txRef.get().get(WORLD_BLOCK_NUMBER_KEY).map(Longs::fromByteArray);
+    return trieNodeStorage.get(WORLD_BLOCK_NUMBER_KEY).map(Longs::fromByteArray);
   }
 
   @Override
@@ -178,6 +186,7 @@ public class PersistedWorldStateStorage
     return this;
   }
 
+  @Override
   public void close() {
     try {
       flatLeafStorage.storage.close();
@@ -192,27 +201,24 @@ public class PersistedWorldStateStorage
 
   @Override
   public void setBlockHash(final Hash blockHash) {
-    trieNodeStorage.txRef.get().put(WORLD_BLOCK_HASH_KEY, blockHash.toArrayUnsafe());
+    trieNodeStorage.put(WORLD_BLOCK_HASH_KEY, blockHash.toArrayUnsafe());
   }
 
   @Override
   public void setBlockNumber(final long blockNumber) {
-    trieNodeStorage.txRef.get().put(WORLD_BLOCK_NUMBER_KEY, Longs.toByteArray(blockNumber));
+    trieNodeStorage.put(WORLD_BLOCK_NUMBER_KEY, Longs.toByteArray(blockNumber));
   }
 
   @Override
   public void saveTrieLog(final long blockNumber, final Bytes rawTrieLogLayer) {
-    trieLogStorage.txRef.get().put(Longs.toByteArray(blockNumber), rawTrieLogLayer.toArrayUnsafe());
+    trieLogStorage.put(Longs.toByteArray(blockNumber), rawTrieLogLayer.toArrayUnsafe());
   }
 
   @Override
   public void saveZkStateRootHash(final long blockNumber, final Bytes stateRoot) {
-    traceStorage
-        .txRef
-        .get()
-        .put(
-            (ZK_STATE_ROOT_PREFIX + blockNumber).getBytes(StandardCharsets.UTF_8),
-            stateRoot.toArrayUnsafe());
+    traceStorage.put(
+        (ZK_STATE_ROOT_PREFIX + blockNumber).getBytes(StandardCharsets.UTF_8),
+        stateRoot.toArrayUnsafe());
   }
 
   @Override
@@ -222,20 +228,17 @@ public class PersistedWorldStateStorage
 
   @Override
   public void putFlatLeaf(final Bytes key, final FlattenedLeaf value) {
-    flatLeafStorage
-        .txRef
-        .get()
-        .put(key.toArrayUnsafe(), RLP.encode(value::writeTo).toArrayUnsafe());
+    flatLeafStorage.put(key.toArrayUnsafe(), RLP.encode(value::writeTo).toArrayUnsafe());
   }
 
   @Override
   public void putTrieNode(final Bytes location, final Bytes nodeHash, final Bytes value) {
-    trieNodeStorage.txRef.get().put(nodeHash.toArrayUnsafe(), value.toArrayUnsafe());
+    trieNodeStorage.put(nodeHash.toArrayUnsafe(), value.toArrayUnsafe());
   }
 
   @Override
   public void removeFlatLeafValue(final Bytes key) {
-    flatLeafStorage.txRef.get().remove(key.toArrayUnsafe());
+    flatLeafStorage.remove(key.toArrayUnsafe());
   }
 
   @Override

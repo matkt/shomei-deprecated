@@ -32,13 +32,14 @@ public class Runner {
 
   private final Vertx vertx;
   private final JsonRpcService jsonRpcService;
+  private final WorldStateStorage worldStateStorage;
 
   public Runner(final DataStorageOption dataStorageOption, JsonRpcOption jsonRpcOption) {
     this.vertx = Vertx.vertx();
 
     //    final InMemoryWorldStateStorage inMemoryWorldStateStorage = new
     // InMemoryWorldStateStorage();
-    final WorldStateStorage worldStateStorage =
+    worldStateStorage =
         new PersistedWorldStateStorage(
             new RocksDBSegmentedStorage(
                 new RocksDBConfigurationBuilder()
@@ -69,6 +70,7 @@ public class Runner {
   }
 
   public void stop() {
+    worldStateStorage.close();
     vertx.close();
   }
 }
