@@ -39,7 +39,6 @@ import org.hyperledger.besu.ethereum.trie.NodeLoader;
 import org.hyperledger.besu.ethereum.trie.NullNode;
 import org.hyperledger.besu.ethereum.trie.StoredNode;
 
-@SuppressWarnings("unused")
 public class StoredNodeFactory implements NodeFactory<Bytes> {
 
   @SuppressWarnings("rawtypes")
@@ -50,15 +49,11 @@ public class StoredNodeFactory implements NodeFactory<Bytes> {
 
   private final NodeLoader nodeLoader;
   private final Function<Bytes, Bytes> valueSerializer;
-  private final Function<Bytes, Bytes> valueDeserializer;
 
   public StoredNodeFactory(
-      final NodeLoader nodeLoader,
-      final Function<Bytes, Bytes> valueSerializer,
-      final Function<Bytes, Bytes> valueDeserializer) {
+      final NodeLoader nodeLoader, final Function<Bytes, Bytes> valueSerializer) {
     this.nodeLoader = nodeLoader;
     this.valueSerializer = valueSerializer;
-    this.valueDeserializer = valueDeserializer;
   }
 
   @Override
@@ -111,7 +106,6 @@ public class StoredNodeFactory implements NodeFactory<Bytes> {
     return node;
   }
 
-  @SuppressWarnings("unchecked")
   @Override
   public Optional<Node<Bytes>> retrieve(final Bytes location, final Bytes32 hash)
       throws MerkleTrieException {
@@ -128,10 +122,6 @@ public class StoredNodeFactory implements NodeFactory<Bytes> {
             });
   }
 
-  public Node<Bytes> decode(final Bytes location, final Bytes rlp) {
-    return decode(location, rlp, () -> String.format("Failed to decode value %s", rlp.toString()));
-  }
-
   private Node<Bytes> decode(
       final Bytes location, final Bytes input, final Supplier<String> errMessage) {
 
@@ -143,21 +133,20 @@ public class StoredNodeFactory implements NodeFactory<Bytes> {
     switch (type) {
       case 1 -> {
         if (location.isEmpty()) {
-          return decodeRoot(input, errMessage);
+          return decodeRoot(input);
         }
-        return decodeBranch(location, input, errMessage);
+        return decodeBranch(location, input);
       }
       case 2 -> {
-        return decodeLeaf(location, input, errMessage);
+        return decodeLeaf(input);
       }
       default -> throw new MerkleTrieException(
           errMessage.get() + format(": invalid node %s", type));
     }
   }
 
-  protected BranchNode<Bytes> decodeRoot(final Bytes input, final Supplier<String> errMessage) {
+  protected BranchNode<Bytes> decodeRoot(final Bytes input) {
     final ArrayList<Node<Bytes>> children = new ArrayList<>(NB_CHILD);
-    final int nbChilds = input.size() / Hash.SIZE;
     final Bytes32 nextFreeNode = Bytes32.wrap(input.slice(0, Bytes32.SIZE));
     children.add(
         new NextFreeNode<>(
@@ -165,14 +154,12 @@ public class StoredNodeFactory implements NodeFactory<Bytes> {
             nextFreeNode,
             this,
             valueSerializer));
-    final Bytes32 childHash = Bytes32.wrap(input.slice(1 * Bytes32.SIZE, Hash.SIZE));
+    final Bytes32 childHash = Bytes32.wrap(input.slice(Bytes32.SIZE, Hash.SIZE));
     children.add(new StoredNode<>(this, Bytes.concatenate(Bytes.of((byte) 1)), childHash));
     return new BranchNode<>(Bytes.EMPTY, children, Optional.empty(), this, valueSerializer);
   }
 
-  @SuppressWarnings("unchecked")
-  protected BranchNode<Bytes> decodeBranch(
-      final Bytes location, final Bytes input, final Supplier<String> errMessage) {
+  protected BranchNode<Bytes> decodeBranch(final Bytes location, final Bytes input) {
     final ArrayList<Node<Bytes>> children = new ArrayList<>(NB_CHILD);
     final int nbChilds = input.size() / Hash.SIZE;
     for (int i = 0; i < nbChilds; i++) {
@@ -186,8 +173,7 @@ public class StoredNodeFactory implements NodeFactory<Bytes> {
     return new BranchNode<>(location, children, Optional.empty(), this, valueSerializer);
   }
 
-  protected Node<Bytes> decodeLeaf(
-      final Bytes location, final Bytes input, final Supplier<String> errMessage) {
+  protected Node<Bytes> decodeLeaf(final Bytes input) {
     if (input.equals(Bytes32.ZERO)) {
       return EmptyLeafNode.instance();
     } else {

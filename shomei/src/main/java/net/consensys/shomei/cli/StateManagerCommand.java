@@ -27,7 +27,6 @@ import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Mixin;
 
-@SuppressWarnings("unused")
 @Command(
     name = "shomei",
     subcommands = {
@@ -46,12 +45,6 @@ import picocli.CommandLine.Mixin;
 public class StateManagerCommand implements Runnable {
 
   private static final Logger LOG = LoggerFactory.getLogger(StateManagerCommand.class);
-
-  public static final String LOG_FILE_PREFIX = VersionProvider.CLIENT_IDENTITY;
-
-  private CommandLine commandLine;
-
-  private Runnable init;
 
   @Mixin(name = "Logging level")
   private final LoggingLevelOption loggingLevelOption = LoggingLevelOption.create();
@@ -95,7 +88,7 @@ public class StateManagerCommand implements Runnable {
       addShutdownHook(runner);
       runner.start();
     } catch (final Exception e) {
-      throw new CommandLine.ParameterException(this.commandLine, e.getMessage(), e);
+      throw new CommandLine.ParameterException(new CommandLine(this), e.getMessage(), e);
     }
   }
 
