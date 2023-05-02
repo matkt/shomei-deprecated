@@ -11,20 +11,16 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package net.consensys.shomei.rpc;
+package net.consensys.shomei.trie;
 
-public enum ShomeiRpcMethod {
-  STATE_SEND_RAW_TRIE_LOG("state_sendRawTrieLog"),
+import org.apache.tuweni.bytes.Bytes32;
+import org.apache.tuweni.bytes.MutableBytes32;
 
-  ROLLUP_GET_ZKEVM_STATE_MERKLE_PROOF_V0("rollup_getZkEVMStateMerkleProofV0");
+public class DigestGenerator {
 
-  private final String methodName;
-
-  public String getMethodName() {
-    return methodName;
-  }
-
-  ShomeiRpcMethod(final String methodName) {
-    this.methodName = methodName;
+  public static Bytes32 createDumDigest(int value) {
+    MutableBytes32 mutableBytes = MutableBytes32.create();
+    mutableBytes.set(Bytes32.SIZE - 1, (byte) value);
+    return mutableBytes;
   }
 }

@@ -3,7 +3,7 @@
     "newNextFreeNode":4,
     "oldSubRoot":"0x26d89b00bb6a2f31e976cc7e77ffca69b6ef89e5fa8b1fe0b0900e938f13beb7",
     "newSubRoot":"0x2ffc1ef4ccde65e1bc3f343995f1ff92c463477eea5dcce428be97346647bac1",
-    "proofLeft":{
+    "leftProof":{
       "leafIndex":3,
       "siblings":[
         "0x26c6a8747c0c29a5572bd2859fe975be8d3c7a6d1b460eaf6e0d7d9852352ed6",
@@ -48,7 +48,7 @@
         "0x303b0a04f392124e9264916d8b752241e24f97fa2fa1276d5a7ad197fed3c9c5"
       ]
     },
-    "proofDeleted":{
+    "deletedProof":{
       "leafIndex":2,
       "siblings":[
         "0x2c9dd4f6e2ce330dc6aa20b8086b0dada58519bc04e923a2dcf0030622607693",
@@ -93,7 +93,7 @@
         "0x303b0a04f392124e9264916d8b752241e24f97fa2fa1276d5a7ad197fed3c9c5"
       ]
     },
-    "proofRight":{
+    "rightProof":{
       "leafIndex":1,
       "siblings":[
         "0x1fd713243bb31deced47060dcf6157189f3583ef2c35556d9b9edc068e8a60dd",
@@ -162,7 +162,7 @@
     "newNextFreeNode":3,
     "oldSubRoot":"0x0a89c90d816839da39617c3afa8e83b5ae864878648e09887dd8f9e9b73d1a7d",
     "newSubRoot":"0x21bf7e28464bf26302be46623b706eacf89b08134665b8f425d437f13218091b",
-    "proofLeft":{
+    "leftProof":{
       "leafIndex":0,
       "siblings":[
         "0x2d87eaae6ee164a80a573baac4c0c747296fe504c130a06a78f63c488ca43cdf",
@@ -207,7 +207,7 @@
         "0x303b0a04f392124e9264916d8b752241e24f97fa2fa1276d5a7ad197fed3c9c5"
       ]
     },
-    "proofDeleted":{
+    "deletedProof":{
       "leafIndex":2,
       "siblings":[
         "0x0000000000000000000000000000000000000000000000000000000000000000",
@@ -252,7 +252,7 @@
         "0x303b0a04f392124e9264916d8b752241e24f97fa2fa1276d5a7ad197fed3c9c5"
       ]
     },
-    "proofRight":{
+    "rightProof":{
       "leafIndex":1,
       "siblings":[
         "0x276935e06bee60ac996e056c4917ae55afb4d43efd636447f52baf8d174db1f9",
@@ -380,7 +380,7 @@
     "newNextFreeNode":4,
     "oldSubRoot":"0x21bf7e28464bf26302be46623b706eacf89b08134665b8f425d437f13218091b",
     "newSubRoot":"0x18e1e77a3af7ac9d06ce4261a01cf53cc35d8e8b892bd10f35d41066cb80acc3",
-    "proofLeft":{
+    "leftProof":{
       "leafIndex":0,
       "siblings":[
         "0x103cca8163b021373b6f24e3098a091b40ada3564f9b5d40a4f8185c61e49c60",
@@ -425,7 +425,7 @@
         "0x303b0a04f392124e9264916d8b752241e24f97fa2fa1276d5a7ad197fed3c9c5"
       ]
     },
-    "proofNew":{
+    "newProof":{
       "leafIndex":3,
       "siblings":[
         "0x0000000000000000000000000000000000000000000000000000000000000000",
@@ -470,7 +470,7 @@
         "0x303b0a04f392124e9264916d8b752241e24f97fa2fa1276d5a7ad197fed3c9c5"
       ]
     },
-    "proofRight":{
+    "rightProof":{
       "leafIndex":1,
       "siblings":[
         "0x1fd713243bb31deced47060dcf6157189f3583ef2c35556d9b9edc068e8a60dd",

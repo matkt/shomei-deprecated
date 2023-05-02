@@ -36,7 +36,7 @@ dependencyManagement {
 
     dependency 'com.google.code.gson:gson:2.10.1'
 
-    dependencySet(group: 'org.hyperledger.besu.internal', version: '23.4.0-SNAPSHOT') {
+    dependencySet(group: 'org.hyperledger.besu.internal', version: '23.4.1-SNAPSHOT') {
       entry 'api'
       entry 'util'
       entry 'algorithms'
@@ -45,18 +45,20 @@ dependencyManagement {
       entry 'core'
     }
 
+    dependencySet(group: 'org.hyperledger.besu', version: '23.4.1-SNAPSHOT') {
+      entry 'besu-datatypes'
+      entry 'evm'
+      entry 'plugin-api'
+    }
+
     dependencySet(group:'com.fasterxml.jackson.core', version:'2.14.2') {
-      entry 'jackson-datatype-jdk8'
+      entry 'jackson-databind'
     }
 
     dependency 'org.hyperledger.besu:mimc:0.7.2-SNAPSHOT'
     dependency 'net.java.dev.jna:jna:5.13.0'
 
-    dependencySet(group: 'org.hyperledger.besu', version: '23.4.0-SNAPSHOT') {
-      entry 'besu-datatypes'
-      entry 'evm'
-      entry 'plugin-api'
-    }
+
 
     dependencySet(group: 'org.apache.tuweni', version: '2.3.1') {
       entry 'tuweni-units'

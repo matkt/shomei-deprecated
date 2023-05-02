@@ -16,10 +16,11 @@ package net.consensys.shomei.rpc;
 import static com.google.common.collect.Streams.stream;
 
 import net.consensys.shomei.observer.TrieLogObserver;
+import net.consensys.shomei.rpc.rollup.RollupGetZkEVMStateMerkleProofV0;
 import net.consensys.shomei.rpc.trielog.SendRawTrieLog;
 import net.consensys.shomei.storage.WorldStateStorage;
+import net.consensys.shomei.trie.json.JsonTraceParser;
 
-import java.net.InetSocketAddress;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
@@ -29,6 +30,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Splitter;
 import com.google.common.collect.Iterables;
 import io.vertx.core.AbstractVerticle;
@@ -46,6 +48,7 @@ import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.BodyHandler;
 import io.vertx.ext.web.handler.CorsHandler;
 import org.hyperledger.besu.ethereum.api.handlers.HandlerFactory;
+import org.hyperledger.besu.ethereum.api.handlers.JsonRpcExecutorHandler;
 import org.hyperledger.besu.ethereum.api.handlers.TimeoutOptions;
 import org.hyperledger.besu.ethereum.api.jsonrpc.JsonRpcConfiguration;
 import org.hyperledger.besu.ethereum.api.jsonrpc.JsonRpcServiceException;
@@ -58,14 +61,12 @@ import org.hyperledger.besu.ethereum.api.jsonrpc.internal.exception.Logging403Er
 import org.hyperledger.besu.ethereum.api.jsonrpc.internal.methods.AdminChangeLogLevel;
 import org.hyperledger.besu.ethereum.api.jsonrpc.internal.methods.JsonRpcMethod;
 import org.hyperledger.besu.util.ExceptionUtils;
-import org.hyperledger.besu.util.NetworkUtility;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class JsonRpcService extends AbstractVerticle {
 
   private static final Logger LOG = LoggerFactory.getLogger(JsonRpcService.class);
-  private static final InetSocketAddress EMPTY_SOCKET_ADDRESS = new InetSocketAddress("0.0.0.0", 0);
   private static final String APPLICATION_JSON = "application/json";
 
   private final JsonRpcConfiguration config;
@@ -77,12 +78,19 @@ public class JsonRpcService extends AbstractVerticle {
   private final HealthService readinessService;
 
   public JsonRpcService(
-      final TrieLogObserver trieLogObserver, final WorldStateStorage worldStateStorage) {
+      final String rpcHttpHost,
+      final Integer rpcHttpPort,
+      final TrieLogObserver trieLogObserver,
+      final WorldStateStorage worldStateStorage) {
     this.config = JsonRpcConfiguration.createDefault();
-    config.setPort(8888);
+    config.setHost(rpcHttpHost);
+    config.setPort(rpcHttpPort);
     this.rpcMethods = new HashMap<>();
     this.rpcMethods.putAll(
-        mapOf(new AdminChangeLogLevel(), new SendRawTrieLog(trieLogObserver, worldStateStorage)));
+        mapOf(
+            new AdminChangeLogLevel(),
+            new SendRawTrieLog(trieLogObserver, worldStateStorage),
+            new RollupGetZkEVMStateMerkleProofV0(worldStateStorage)));
     this.maxActiveConnections = config.getMaxActiveConnections();
     this.livenessService = new HealthService(new LivenessCheck());
     this.readinessService = new HealthService(new LivenessCheck()); // TODO CHANGE
@@ -204,8 +212,12 @@ public class JsonRpcService extends AbstractVerticle {
         .handler(HandlerFactory.jsonRpcParser())
         .handler(HandlerFactory.timeout(new TimeoutOptions(config.getHttpTimeoutSec()), rpcMethods))
         .blockingHandler(
-            HandlerFactory.jsonRpcExecutor(
-                new JsonRpcExecutor(new BaseJsonRpcProcessor(), rpcMethods), null, config),
+            JsonRpcExecutorHandler.handler(
+                new ObjectMapper().registerModules(JsonTraceParser.modules),
+                // available in the besu main branch
+                new JsonRpcExecutor(new BaseJsonRpcProcessor(), rpcMethods),
+                null,
+                config),
             false);
     router
         .route("/login")
@@ -217,14 +229,11 @@ public class JsonRpcService extends AbstractVerticle {
   }
 
   private HttpServerOptions getHttpServerOptions() {
-    final HttpServerOptions httpServerOptions =
-        new HttpServerOptions()
-            .setHost(config.getHost())
-            .setPort(config.getPort())
-            .setHandle100ContinueAutomatically(true)
-            .setCompressionSupported(true);
-
-    return httpServerOptions;
+    return new HttpServerOptions()
+        .setHost(config.getHost())
+        .setPort(config.getPort())
+        .setHandle100ContinueAutomatically(true)
+        .setCompressionSupported(true);
   }
 
   private Throwable getFailureException(final Throwable listenFailure) {
@@ -275,8 +284,7 @@ public class JsonRpcService extends AbstractVerticle {
 
   private boolean hostIsInAllowlist(final String hostHeader) {
     if (config.getHostsAllowlist().stream()
-        .anyMatch(
-            allowlistEntry -> allowlistEntry.toLowerCase().equals(hostHeader.toLowerCase()))) {
+        .anyMatch(allowlistEntry -> allowlistEntry.equalsIgnoreCase(hostHeader))) {
       return true;
     } else {
       LOG.trace("Host not in allowlist: '{}'", hostHeader);
@@ -284,25 +292,6 @@ public class JsonRpcService extends AbstractVerticle {
     }
   }
 
-  public InetSocketAddress socketAddress() {
-    if (httpServer == null) {
-      return EMPTY_SOCKET_ADDRESS;
-    }
-    return new InetSocketAddress(config.getHost(), httpServer.actualPort());
-  }
-
-  public String url() {
-    if (httpServer == null) {
-      return "";
-    }
-    return NetworkUtility.urlForSocketAddress(getScheme(), socketAddress());
-  }
-
-  private String getScheme() {
-    return config.getTlsConfiguration().isPresent() ? "https" : "http";
-  }
-
-  // Facilitate remote health-checks in AWS, inter alia.
   private void handleEmptyRequest(final RoutingContext routingContext) {
     routingContext.response().setStatusCode(201).end();
   }

@@ -19,19 +19,22 @@ import net.consensys.shomei.storage.WorldStateStorage;
 import net.consensys.shomei.trielog.TrieLogLayer;
 import net.consensys.shomei.trielog.TrieLogLayerConverter;
 
+import java.util.Objects;
 import java.util.Optional;
+import java.util.Queue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.PriorityBlockingQueue;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.JsonPrimitive;
-import com.google.gson.JsonSerializer;
-import org.apache.tuweni.bytes.Bytes;
-import org.apache.tuweni.units.bigints.UInt256;
+import com.google.common.annotations.VisibleForTesting;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.ethereum.rlp.RLP;
-import org.hyperledger.besu.ethereum.trie.Node;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ZkEvmWorldStateEntryPoint implements TrieLogObserver {
+
+  private static final Logger LOG = LoggerFactory.getLogger(ZkEvmWorldStateEntryPoint.class);
 
   private final ZKEvmWorldState currentWorldState;
 
@@ -39,29 +42,31 @@ public class ZkEvmWorldStateEntryPoint implements TrieLogObserver {
 
   private final WorldStateStorage worldStateStorage;
 
+  private final Queue<TrieLogIdentifier> blockQueue = new PriorityBlockingQueue<>();
+  private final ExecutorService executor = Executors.newSingleThreadExecutor();
+  private volatile boolean isProcessing = false;
+
   public ZkEvmWorldStateEntryPoint(final WorldStateStorage worldStateStorage) {
     this.worldStateStorage = worldStateStorage;
     this.currentWorldState = new ZKEvmWorldState(worldStateStorage);
     this.trieLogLayerConverter = new TrieLogLayerConverter(worldStateStorage);
   }
 
-  public void moveHead(final long newBlockNumber, final Hash blockHash)
-      throws MissingTrieLogException {
-    while (currentWorldState.getBlockNumber() < newBlockNumber) {
-      Optional<TrieLogLayer> trieLog =
-          worldStateStorage
-              .getTrieLog(blockHash)
-              .map(RLP::input)
-              .map(trieLogLayerConverter::decodeTrieLog);
-      if (trieLog.isPresent()) {
-        moveHead(newBlockNumber, trieLog.get());
-      } else {
-        throw new MissingTrieLogException(newBlockNumber);
-      }
+  private void importBlock(final TrieLogIdentifier trieLogId) throws MissingTrieLogException {
+    Optional<TrieLogLayer> trieLog =
+        worldStateStorage
+            .getTrieLog(trieLogId.blockNumber())
+            .map(RLP::input)
+            .map(trieLogLayerConverter::decodeTrieLog);
+    if (trieLog.isPresent()) {
+      applyTrieLog(trieLogId.blockNumber(), trieLog.get());
+    } else {
+      throw new MissingTrieLogException(trieLogId.blockNumber());
     }
   }
 
-  public void moveHead(final long newBlockNumber, final TrieLogLayer trieLogLayer) {
+  @VisibleForTesting
+  public void applyTrieLog(final long newBlockNumber, final TrieLogLayer trieLogLayer) {
     currentWorldState.getAccumulator().rollForward(trieLogLayer);
     currentWorldState.commit(newBlockNumber, trieLogLayer.getBlockHash());
   }
@@ -70,37 +75,58 @@ public class ZkEvmWorldStateEntryPoint implements TrieLogObserver {
     return currentWorldState.getStateRootHash();
   }
 
-  static int block = 1;
-
   @Override
-  public void onTrieLogAdded(final Hash blockHash) {
-    // receive trie log
-    System.out.println("receive trie log " + blockHash);
-    try {
-      moveHead(++block, blockHash);
-    } catch (MissingTrieLogException e) {
-      throw new RuntimeException(e);
+  public synchronized void onTrieLogAdded(final TrieLogIdentifier trieLogId) {
+    LOG.atDebug().setMessage("receive trie log {} ").addArgument(trieLogId).log();
+    blockQueue.offer(trieLogId);
+    if (!isProcessing) {
+      isProcessing = true;
+      executor.execute(this::processQueue);
     }
-    // TODO use Jackson
-    Gson gson =
-        new GsonBuilder()
-            .registerTypeAdapter(
-                Node.class,
-                (JsonSerializer<Node<Bytes>>)
-                    (src, typeOfSrc, context) -> new JsonPrimitive(src.getHash().toHexString()))
-            .registerTypeAdapter(
-                UInt256.class,
-                (JsonSerializer<UInt256>)
-                    (src, typeOfSrc, context) -> new JsonPrimitive(src.toHexString()))
-            .registerTypeAdapter(
-                Hash.class,
-                (JsonSerializer<Hash>)
-                    (src, typeOfSrc, context) -> new JsonPrimitive(src.toHexString()))
-            .registerTypeAdapter(
-                Bytes.class,
-                (JsonSerializer<Bytes>)
-                    (src, typeOfSrc, context) -> new JsonPrimitive(src.toHexString()))
-            .create();
-    System.out.println(gson.toJson(currentWorldState.getLastTraces()));
+  }
+
+  public void processQueue() {
+    boolean foundMissingTrieLog = false;
+    while (!blockQueue.isEmpty() && !foundMissingTrieLog) {
+      if (blockQueue.element().blockNumber() == currentWorldState.getBlockNumber() + 1) {
+        final TrieLogIdentifier trieLogId = blockQueue.poll();
+        try {
+          importBlock(Objects.requireNonNull(trieLogId));
+          if (currentWorldState
+              .getBlockHash()
+              .equals(Objects.requireNonNull(trieLogId.blockHash()))) {
+            LOG.atInfo()
+                .setMessage("Imported block {} ({})")
+                .addArgument(trieLogId.blockNumber())
+                .addArgument(trieLogId.blockHash())
+                .log();
+          } else {
+            LOG.atError()
+                .setMessage("Failed to import block {} ({})")
+                .addArgument(trieLogId.blockNumber())
+                .addArgument(trieLogId.blockHash())
+                .log();
+          }
+        } catch (Exception e) {
+          LOG.atError()
+              .setMessage("Exception during import block {} ({}) : {}")
+              .addArgument(trieLogId.blockNumber())
+              .addArgument(trieLogId.blockHash())
+              .addArgument(e.getMessage())
+              .log();
+        }
+      } else if (blockQueue.element().blockNumber() <= currentWorldState.getBlockNumber()) {
+        final TrieLogIdentifier removed = blockQueue.remove();
+        LOG.atInfo()
+            .setMessage("Ignore already applied trie log for block {} ({})")
+            .addArgument(removed.blockNumber())
+            .addArgument(removed.blockHash())
+            .log();
+      } else {
+        LOG.atInfo().setMessage("Detect missing trie log, waiting ...").log();
+        foundMissingTrieLog = true;
+      }
+    }
+    isProcessing = false;
   }
 }

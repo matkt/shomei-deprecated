@@ -3,7 +3,7 @@
     "newNextFreeNode":3,
     "oldSubRoot":"0x21bf7e28464bf26302be46623b706eacf89b08134665b8f425d437f13218091b",
     "newSubRoot":"0x15154ecb54514b439ed9cd51078e08e51676c30fc2067d04320ef6b6d263584e",
-    "proofLeft":{
+    "leftProof":{
       "leafIndex":0,
       "siblings":[
         "0x103cca8163b021373b6f24e3098a091b40ada3564f9b5d40a4f8185c61e49c60",
@@ -48,7 +48,7 @@
         "0x303b0a04f392124e9264916d8b752241e24f97fa2fa1276d5a7ad197fed3c9c5"
       ]
     },
-    "proofNew":{
+    "newProof":{
       "leafIndex":2,
       "siblings":[
         "0x0000000000000000000000000000000000000000000000000000000000000000",
@@ -93,7 +93,7 @@
         "0x303b0a04f392124e9264916d8b752241e24f97fa2fa1276d5a7ad197fed3c9c5"
       ]
     },
-    "proofRight":{
+    "rightProof":{
       "leafIndex":1,
       "siblings":[
         "0x0b070604db69fe26e6fff2c547a04321e96f99557a54427111d344a7f9c4fe21",

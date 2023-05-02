@@ -15,6 +15,7 @@ package net.consensys.shomei.storage;
 
 import net.consensys.shomei.trie.storage.InMemoryStorage;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
@@ -31,11 +32,25 @@ public class InMemoryWorldStateStorage extends InMemoryStorage
 
   private Optional<Hash> currentStateRootHash = Optional.empty();
 
-  private final Map<Bytes, Bytes> trieLogStorage = new ConcurrentHashMap<>();
+  private final Map<Long, Bytes> trieLogStorage = new ConcurrentHashMap<>();
+
+  private final Map<Long, Bytes> zkStateRootHash = new ConcurrentHashMap<>();
+
+  private final Map<Long, Bytes> traces = new HashMap<>();
 
   @Override
-  public Optional<Bytes> getTrieLog(final Hash blockHash) {
-    return Optional.ofNullable(trieLogStorage.get(blockHash));
+  public Optional<Bytes> getTrieLog(final long blockNumber) {
+    return Optional.ofNullable(trieLogStorage.get(blockNumber));
+  }
+
+  @Override
+  public Optional<Bytes> getTrace(final long blockNumber) {
+    return Optional.ofNullable(traces.get(blockNumber));
+  }
+
+  @Override
+  public Optional<Bytes> getZkStateRootHash(final long blockNumber) {
+    return Optional.ofNullable(zkStateRootHash.get(blockNumber));
   }
 
   @Override
@@ -64,7 +79,18 @@ public class InMemoryWorldStateStorage extends InMemoryStorage
   }
 
   @Override
-  public void saveTrieLog(final Hash blockHash, final Bytes rawTrieLogLayer) {
-    trieLogStorage.put(blockHash, rawTrieLogLayer);
+  public void saveTrieLog(final long blockNumber, final Bytes rawTrieLogLayer) {
+    trieLogStorage.put(blockNumber, rawTrieLogLayer);
+  }
+
+  @Override
+  public void saveZkStateRootHash(final long blockNumber, final Bytes stateRoot) {
+    System.out.println(blockNumber + " " + stateRoot);
+    zkStateRootHash.put(blockNumber, stateRoot);
+  }
+
+  @Override
+  public void saveTrace(final long blockNumber, final Bytes rawTrace) {
+    traces.put(blockNumber, rawTrace);
   }
 }

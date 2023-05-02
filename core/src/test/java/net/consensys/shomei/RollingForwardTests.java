@@ -23,6 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import net.consensys.shomei.storage.InMemoryWorldStateStorage;
 import net.consensys.shomei.storage.WorldStateStorageProxy;
 import net.consensys.shomei.trie.ZKTrie;
+import net.consensys.shomei.trie.json.JsonTraceParser;
 import net.consensys.shomei.trie.proof.Trace;
 import net.consensys.shomei.trielog.AccountKey;
 import net.consensys.shomei.trielog.StorageSlotKey;
@@ -33,47 +34,25 @@ import net.consensys.shomei.worldview.ZKEvmWorldState;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.JsonPrimitive;
-import com.google.gson.JsonSerializer;
-import org.apache.tuweni.bytes.Bytes;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.Wei;
-import org.hyperledger.besu.ethereum.trie.Node;
 import org.junit.Before;
 import org.junit.Test;
 
 public class RollingForwardTests {
 
-  private Gson gson;
+  private static final ObjectMapper JSON_OBJECT_MAPPER = new ObjectMapper();
 
   @Before
   public void setup() {
-    gson =
-        new GsonBuilder()
-            .registerTypeAdapter(
-                Node.class,
-                (JsonSerializer<Node<Bytes>>)
-                    (src, typeOfSrc, context) -> new JsonPrimitive(src.getHash().toHexString()))
-            .registerTypeAdapter(
-                UInt256.class,
-                (JsonSerializer<UInt256>)
-                    (src, typeOfSrc, context) -> new JsonPrimitive(src.toHexString()))
-            .registerTypeAdapter(
-                Hash.class,
-                (JsonSerializer<Hash>)
-                    (src, typeOfSrc, context) -> new JsonPrimitive(src.toHexString()))
-            .registerTypeAdapter(
-                Bytes.class,
-                (JsonSerializer<Bytes>)
-                    (src, typeOfSrc, context) -> new JsonPrimitive(src.toHexString()))
-            .create();
+    JSON_OBJECT_MAPPER.registerModules(JsonTraceParser.modules);
   }
 
   @Test
-  public void rollingForwardZeroReadAccount() {
+  public void rollingForwardZeroReadAccount() throws JsonProcessingException {
 
     MutableZkAccount account = getAccountOne();
     MutableZkAccount missingAccount = getAccountTwo();
@@ -83,8 +62,7 @@ public class RollingForwardTests {
 
     final List<Trace> expectedTraces = new ArrayList<>();
     expectedTraces.add(
-        accountStateTrieOne.readZeroAndProve(
-            missingAccount.getHkey(), missingAccount.getAddress()));
+        accountStateTrieOne.readAndProve(missingAccount.getHkey(), missingAccount.getAddress()));
     expectedTraces.add(
         accountStateTrieOne.putAndProve(
             account.getHkey(), account.getAddress(), account.getEncodedBytes()));
@@ -104,11 +82,12 @@ public class RollingForwardTests {
     zkEvmWorldState.commit(0L, null);
 
     assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(topRootHash);
-    assertThat(gson.toJson(zkEvmWorldState.getLastTraces())).isEqualTo(gson.toJson(expectedTraces));
+    assertThat(JSON_OBJECT_MAPPER.writeValueAsString(zkEvmWorldState.getLastTraces()))
+        .isEqualTo(JSON_OBJECT_MAPPER.writeValueAsString(expectedTraces));
   }
 
   @Test
-  public void rollingForwardOneAccount() {
+  public void rollingForwardOneAccount() throws JsonProcessingException {
 
     MutableZkAccount account = getAccountOne();
 
@@ -133,12 +112,12 @@ public class RollingForwardTests {
     zkEvmWorldState.commit(0L, null);
 
     assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(topRootHash);
-    assertThat(gson.toJson(zkEvmWorldState.getLastTraces()))
-        .isEqualTo(gson.toJson(List.of(expectedTrace)));
+    assertThat(JSON_OBJECT_MAPPER.writeValueAsString(zkEvmWorldState.getLastTraces()))
+        .isEqualTo(JSON_OBJECT_MAPPER.writeValueAsString(List.of(expectedTrace)));
   }
 
   @Test
-  public void rollingForwardUpdatingAccount() {
+  public void rollingForwardUpdatingAccount() throws JsonProcessingException {
 
     ZKTrie accountStateTrieOne =
         ZKTrie.createTrie(new WorldStateStorageProxy(new InMemoryWorldStateStorage()));
@@ -180,12 +159,12 @@ public class RollingForwardTests {
     zkEvmWorldState.getAccumulator().rollForward(trieLogLayer2);
     zkEvmWorldState.commit(0L, null);
     assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(topRootHash);
-    assertThat(gson.toJson(zkEvmWorldState.getLastTraces()))
-        .isEqualTo(gson.toJson(List.of(expectedTrace)));
+    assertThat(JSON_OBJECT_MAPPER.writeValueAsString(zkEvmWorldState.getLastTraces()))
+        .isEqualTo(JSON_OBJECT_MAPPER.writeValueAsString(List.of(expectedTrace)));
   }
 
   @Test
-  public void rollingForwardTwoAccounts() {
+  public void rollingForwardTwoAccounts() throws JsonProcessingException {
 
     ZKTrie accountStateTrieOne =
         ZKTrie.createTrie(new WorldStateStorageProxy(new InMemoryWorldStateStorage()));
@@ -215,11 +194,12 @@ public class RollingForwardTests {
     zkEvmWorldState.getAccumulator().rollForward(trieLogLayer);
     zkEvmWorldState.commit(0L, null);
     assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(topRootHash);
-    assertThat(gson.toJson(zkEvmWorldState.getLastTraces())).isEqualTo(gson.toJson(expectedTraces));
+    assertThat(JSON_OBJECT_MAPPER.writeValueAsString(zkEvmWorldState.getLastTraces()))
+        .isEqualTo(JSON_OBJECT_MAPPER.writeValueAsString(expectedTraces));
   }
 
   @Test
-  public void rollingForwardContractWithStorage() {
+  public void rollingForwardContractWithStorage() throws JsonProcessingException {
 
     ZKTrie accountStateTrieOne =
         ZKTrie.createTrie(new WorldStateStorageProxy(new InMemoryWorldStateStorage()));
@@ -266,11 +246,12 @@ public class RollingForwardTests {
     zkEvmWorldState.getAccumulator().rollForward(trieLogLayer);
     zkEvmWorldState.commit(0L, null);
     assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(topRootHash);
-    assertThat(gson.toJson(zkEvmWorldState.getLastTraces())).isEqualTo(gson.toJson(expectedTraces));
+    assertThat(JSON_OBJECT_MAPPER.writeValueAsString(zkEvmWorldState.getLastTraces()))
+        .isEqualTo(JSON_OBJECT_MAPPER.writeValueAsString(expectedTraces));
   }
 
   @Test
-  public void rollingForwardContractWithStorageWithReadNonZero() {
+  public void rollingForwardContractWithStorageWithReadNonZero() throws JsonProcessingException {
 
     ZKTrie accountStateTrieOne =
         ZKTrie.createTrie(new WorldStateStorageProxy(new InMemoryWorldStateStorage()));
@@ -318,11 +299,12 @@ public class RollingForwardTests {
 
     zkEvmWorldState.getAccumulator().rollForward(trieLogLayer2);
     zkEvmWorldState.commit(0L, null);
-    assertThat(gson.toJson(zkEvmWorldState.getLastTraces())).isEqualTo(gson.toJson(expectedTraces));
+    assertThat(JSON_OBJECT_MAPPER.writeValueAsString(zkEvmWorldState.getLastTraces()))
+        .isEqualTo(JSON_OBJECT_MAPPER.writeValueAsString(expectedTraces));
   }
 
   @Test
-  public void rollingForwardAccountSelfDestructWithStorage() {
+  public void rollingForwardAccountSelfDestructWithStorage() throws JsonProcessingException {
 
     ZKTrie accountStateTrieOne =
         ZKTrie.createTrie(new WorldStateStorageProxy(new InMemoryWorldStateStorage()));
@@ -384,12 +366,14 @@ public class RollingForwardTests {
     zkEvmWorldState.getAccumulator().rollForward(trieLogLayer2);
     zkEvmWorldState.commit(0L, null);
 
-    assertThat(gson.toJson(zkEvmWorldState.getLastTraces())).isEqualTo(gson.toJson(expectedTraces));
+    assertThat(JSON_OBJECT_MAPPER.writeValueAsString(zkEvmWorldState.getLastTraces()))
+        .isEqualTo(JSON_OBJECT_MAPPER.writeValueAsString(expectedTraces));
     assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(topRootHash);
   }
 
   @Test
-  public void rollingForwardAccountSelfDestructWithDifferentStorageValue() {
+  public void rollingForwardAccountSelfDestructWithDifferentStorageValue()
+      throws JsonProcessingException {
 
     ZKTrie accountStateTrieOne =
         ZKTrie.createTrie(new WorldStateStorageProxy(new InMemoryWorldStateStorage()));
@@ -449,18 +433,21 @@ public class RollingForwardTests {
         trieLogLayer2.addAccountChange(contract.getAddress(), contract, updatedContract, true);
     trieLogLayer2.addStorageChange(
         accountKey,
-        storageSlotKey.slotKey().getOriginalUnsafeValue(),
+        storageSlotKey,
         slotValue.getOriginalUnsafeValue(),
-        newSlotValue.getOriginalUnsafeValue());
+        newSlotValue.getOriginalUnsafeValue(),
+        true);
     zkEvmWorldState.getAccumulator().rollForward(trieLogLayer2);
     zkEvmWorldState.commit(0L, null);
 
-    assertThat(gson.toJson(zkEvmWorldState.getLastTraces())).isEqualTo(gson.toJson(expectedTraces));
+    assertThat(JSON_OBJECT_MAPPER.writeValueAsString(zkEvmWorldState.getLastTraces()))
+        .isEqualTo(JSON_OBJECT_MAPPER.writeValueAsString(expectedTraces));
     assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(topRootHash);
   }
 
   @Test
-  public void rollingForwardAccountSelfDestructWithDifferentStorageKeyAndValue() {
+  public void rollingForwardAccountSelfDestructWithDifferentStorageKeyAndValue()
+      throws JsonProcessingException {
 
     ZKTrie accountStateTrieOne =
         ZKTrie.createTrie(new WorldStateStorageProxy(new InMemoryWorldStateStorage()));
@@ -520,19 +507,14 @@ public class RollingForwardTests {
     accountKey =
         trieLogLayer2.addAccountChange(contract.getAddress(), contract, updatedContract, true);
     trieLogLayer2.addStorageChange(
-        accountKey,
-        storageSlotKey.slotKey().getOriginalUnsafeValue(),
-        slotValue.getOriginalUnsafeValue(),
-        null);
+        accountKey, storageSlotKey, slotValue.getOriginalUnsafeValue(), null, true);
     trieLogLayer2.addStorageChange(
-        accountKey,
-        newStorageSlotKey.slotKey().getOriginalUnsafeValue(),
-        null,
-        newSlotValue.getOriginalUnsafeValue());
+        accountKey, newStorageSlotKey, null, newSlotValue.getOriginalUnsafeValue());
     zkEvmWorldState.getAccumulator().rollForward(trieLogLayer2);
     zkEvmWorldState.commit(0L, null);
 
-    assertThat(gson.toJson(zkEvmWorldState.getLastTraces())).isEqualTo(gson.toJson(expectedTraces));
+    assertThat(JSON_OBJECT_MAPPER.writeValueAsString(zkEvmWorldState.getLastTraces()))
+        .isEqualTo(JSON_OBJECT_MAPPER.writeValueAsString(expectedTraces));
     assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(topRootHash);
   }
 }

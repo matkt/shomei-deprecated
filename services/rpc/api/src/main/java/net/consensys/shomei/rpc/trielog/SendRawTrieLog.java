@@ -18,7 +18,6 @@ import net.consensys.shomei.rpc.ShomeiRpcMethod;
 import net.consensys.shomei.storage.WorldStateStorage;
 
 import org.apache.tuweni.bytes.Bytes;
-import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.ethereum.api.jsonrpc.internal.JsonRpcRequestContext;
 import org.hyperledger.besu.ethereum.api.jsonrpc.internal.methods.JsonRpcMethod;
 import org.hyperledger.besu.ethereum.api.jsonrpc.internal.response.JsonRpcError;
@@ -45,19 +44,15 @@ public class SendRawTrieLog implements JsonRpcMethod {
 
   @Override
   public JsonRpcResponse response(final JsonRpcRequestContext requestContext) {
-    if (requestContext.getRequest().getParamLength() != 2) {
-      return new JsonRpcErrorResponse(
-          requestContext.getRequest().getId(), JsonRpcError.INVALID_PARAMS);
-    }
-    final Hash blockHash = requestContext.getRequiredParameter(0, Hash.class);
-    final String rawTrieLog = requestContext.getRequiredParameter(1, String.class);
+    final SendRawTrieLogParameter param =
+        requestContext.getRequiredParameter(0, SendRawTrieLogParameter.class);
     try {
       final WorldStateStorage.WorldStateUpdater updater =
           (WorldStateStorage.WorldStateUpdater) worldStateStorage.updater();
-      updater.saveTrieLog(blockHash, Bytes.fromHexString(rawTrieLog));
+      updater.saveTrieLog(param.getBlockNumber(), Bytes.fromHexString(param.getTrieLog()));
       // updater.commit(); //TODO commit
-      trieLogObserver.onTrieLogAdded(blockHash);
-    } catch (Exception e) {
+      trieLogObserver.onTrieLogAdded(param.getTrieLogIdentifier());
+    } catch (RuntimeException e) {
       e.printStackTrace(System.out);
       return new JsonRpcErrorResponse(
           requestContext.getRequest().getId(), JsonRpcError.INVALID_PARAMS);

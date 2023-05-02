@@ -59,7 +59,7 @@ public class ZKEvmWorldState {
         new State(
             zkEvmWorldStateStorage.getWorldStateRootHash().orElse(EMPTY_TRIE_ROOT),
             new ArrayList<>());
-    this.blockNumber = zkEvmWorldStateStorage.getWorldStateBlockNumber().orElse(0L);
+    this.blockNumber = zkEvmWorldStateStorage.getWorldStateBlockNumber().orElse(-1L);
     this.blockHash = zkEvmWorldStateStorage.getWorldStateBlockHash().orElse(Hash.EMPTY);
     this.accumulator = new ZkEvmWorldStateUpdateAccumulator();
     this.zkEvmWorldStateStorage = zkEvmWorldStateStorage;
@@ -71,6 +71,7 @@ public class ZKEvmWorldState {
         .addArgument(blockNumber)
         .addArgument(blockHash)
         .log();
+    long start = System.currentTimeMillis();
     final WorldStateStorage.WorldStateUpdater updater =
         (WorldStateStorage.WorldStateUpdater) zkEvmWorldStateStorage.updater();
     this.state = generateNewState(updater);
@@ -79,7 +80,23 @@ public class ZKEvmWorldState {
 
     updater.setBlockHash(blockHash);
     updater.setBlockNumber(blockNumber);
+    updater.saveZkStateRootHash(blockNumber, state.stateRoot);
+    updater.saveTrace(blockNumber, Trace.serialize(state.traces));
 
+    if (!state.traces.isEmpty()) {
+      LOG.atInfo()
+          .setMessage("Generated trace for block {}:{} in {} ms")
+          .addArgument(blockNumber)
+          .addArgument(blockHash)
+          .addArgument(System.currentTimeMillis() - start)
+          .log();
+    } else {
+      LOG.atInfo()
+          .setMessage("Ignore empty trace for block {}:{}")
+          .addArgument(blockNumber)
+          .addArgument(blockHash)
+          .log();
+    }
     // persist
     // updater.commit();
     accumulator.reset();
@@ -117,19 +134,14 @@ public class ZKEvmWorldState {
 
     // check read and read zero for rollfoward
     if (accountValue.isRollforward()) {
-      if (accountValue.isZeroRead()) {
-        // read zero
-        traces.add(zkAccountTrie.readZeroAndProve(accountKey.accountHash(), accountKey.address()));
-      } else if (accountValue.isNonZeroRead()) {
-        // read non zero
+      if (accountValue.isZeroRead() || accountValue.isNonZeroRead()) {
+        // read zero or non zero
         traces.add(zkAccountTrie.readAndProve(accountKey.accountHash(), accountKey.address()));
       }
       // only read if the contract already exist
       if (accountValue.getPrior() != null) {
         final long accountLeafIndex =
-            zkAccountTrie
-                .getLeafIndex(accountKey.accountHash())
-                .orElse(zkAccountTrie.getNextFreeNode());
+            zkAccountTrie.getLeafIndex(accountKey.accountHash()).orElseThrow();
         traces.addAll(readSlots(accountKey, accountLeafIndex, accountValue, updater));
       }
     }
@@ -196,17 +208,8 @@ public class ZKEvmWorldState {
               (storageEntry) -> {
                 final StorageSlotKey storageSlotKey = storageEntry.getKey();
                 final ZkValue<UInt256> storageValue = storageEntry.getValue();
-
-                if (storageValue.getPrior() == null) {
-                  if (storageValue.getUpdated() == null) {
-                    // read zero
-                    traces.add(
-                        zkStorageTrie.readZeroAndProve(
-                            storageSlotKey.slotHash(), storageSlotKey.slotKey()));
-                  }
-                } else if (Objects.equals(storageValue.getPrior(), storageValue.getUpdated())
-                    || accountValue.isCleared()) {
-                  // read non zero
+                if (Objects.equals(storageValue.getPrior(), storageValue.getUpdated())
+                    || storageValue.isCleared()) {
                   traces.add(
                       zkStorageTrie.readAndProve(
                           storageSlotKey.slotHash(), storageSlotKey.slotKey()));
@@ -255,7 +258,6 @@ public class ZKEvmWorldState {
       final ZkValue<UInt256> storageValue,
       final ZKTrie zkStorageTrie) {
     final List<Trace> traces = new ArrayList<>();
-
     // check remove needed (not needed in case of selfdestruct contract)
     if (storageValue.isCleared() && !accountValue.isRecreated()) {
       if (!storageValue.isRollforward()) {

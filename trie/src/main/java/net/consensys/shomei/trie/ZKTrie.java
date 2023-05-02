@@ -146,10 +146,6 @@ public class ZKTrie {
         .flatMap(this::get);
   }
 
-  public Trace readZeroAndProve(final Hash hkey, final Bytes key) {
-    return readAndProve(hkey, key);
-  }
-
   public Trace readAndProve(final Hash hkey, final Bytes key) {
     // GET the openings HKEY-,  hash(k) , HKEY+
     final Range nearestKeys = worldStateStorage.getNearestKeys(hkey);
@@ -172,9 +168,9 @@ public class ZKTrie {
       readZeroTrace.setNextFreeNode(pathResolver.getNextFreeLeafNodeIndex());
       readZeroTrace.setLeftLeaf(leftData.nodeValue().map(LeafOpening::readFrom).orElseThrow());
       readZeroTrace.setRightLeaf(rightData.nodeValue().map(LeafOpening::readFrom).orElseThrow());
-      readZeroTrace.setProofLeft(
+      readZeroTrace.setLeftProof(
           new Proof(nearestKeys.getLeftNodeValue().leafIndex(), leftData.proof()));
-      readZeroTrace.setProofRight(
+      readZeroTrace.setRightProof(
           new Proof(nearestKeys.getRightNodeValue().leafIndex(), rightData.proof()));
 
       return readZeroTrace;
@@ -266,10 +262,10 @@ public class ZKTrie {
       insertionTrace.setValue(newValue.getOriginalUnsafeValue());
       insertionTrace.setPriorLeftLeaf(priorLeftLeaf);
       insertionTrace.setPriorRightLeaf(priorRightLeaf);
-      insertionTrace.setProofLeft(
+      insertionTrace.setLeftProof(
           new Proof(nearestKeys.getLeftNodeValue().leafIndex(), leftSiblings));
-      insertionTrace.setProofNew(new Proof(nextFreeNode, centerSiblings));
-      insertionTrace.setProofRight(
+      insertionTrace.setNewProof(new Proof(nextFreeNode, centerSiblings));
+      insertionTrace.setRightProof(
           new Proof(nearestKeys.getRightNodeValue().leafIndex(), rightSiblings));
       insertionTrace.setNewNextFreeNode(pathResolver.getNextFreeLeafNodeIndex());
       insertionTrace.setNewSubRoot(getSubRootNode());
@@ -355,10 +351,10 @@ public class ZKTrie {
       deleteTrace.setPriorLeftLeaf(priorLeftLeaf);
       deleteTrace.setPriorDeletedLeaf(priorDeletedLeaf);
       deleteTrace.setPriorRightLeaf(priorRightLeaf);
-      deleteTrace.setProofLeft(new Proof(nearestKeys.getLeftNodeValue().leafIndex(), leftSiblings));
-      deleteTrace.setProofDeleted(
+      deleteTrace.setLeftProof(new Proof(nearestKeys.getLeftNodeValue().leafIndex(), leftSiblings));
+      deleteTrace.setDeletedProof(
           new Proof(nearestKeys.getCenterNodeValue().orElseThrow().leafIndex(), centerSiblings));
-      deleteTrace.setProofRight(
+      deleteTrace.setRightProof(
           new Proof(nearestKeys.getRightNodeValue().leafIndex(), rightSiblings));
       deleteTrace.setNewNextFreeNode(pathResolver.getNextFreeLeafNodeIndex());
       deleteTrace.setNewSubRoot(getSubRootNode());

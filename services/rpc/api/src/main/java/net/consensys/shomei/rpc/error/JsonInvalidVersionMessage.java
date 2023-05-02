@@ -11,18 +11,27 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package net.consensys.shomei.trie.proof;
+package net.consensys.shomei.rpc.error;
 
-import org.hyperledger.besu.ethereum.rlp.RLPOutput;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
-public class EmptyTrace implements Trace {
-  @Override
-  public int getTransactionType() {
-    return -1;
+@SuppressWarnings("unused")
+public record JsonInvalidVersionMessage(
+    @JsonProperty("requestedVersion") String requestedVersion,
+    @JsonProperty("supportedVersion") String supportedVersion) {
+
+  public JsonInvalidVersionMessage(final String requestedVersion, final String supportedVersion) {
+    this.requestedVersion = requestedVersion;
+    this.supportedVersion = supportedVersion;
   }
 
   @Override
-  public void writeTo(final RLPOutput out) {
-    throw new RuntimeException("cannot serialize empty trace");
+  public String requestedVersion() {
+    return requestedVersion;
+  }
+
+  @Override
+  public String supportedVersion() {
+    return supportedVersion;
   }
 }

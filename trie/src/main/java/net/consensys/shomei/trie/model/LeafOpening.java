@@ -17,6 +17,7 @@ import net.consensys.shomei.util.bytes.BytesBuffer;
 
 import java.util.Objects;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
@@ -122,6 +123,7 @@ public class LeafOpening {
                 bytesInput.readBytes32()));
   }
 
+  @JsonIgnore
   public Bytes getEncodesBytes() {
     return Bytes.concatenate(
         UInt256.valueOf(prevLeaf), // Prev

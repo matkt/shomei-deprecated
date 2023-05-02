@@ -63,7 +63,9 @@ public class ZkValue<T> {
   }
 
   public boolean isCleared() {
-    return isCleared || ((prior != null && updated == null) || (prior == null && updated != null));
+    return isCleared
+        || ((isRollforward && prior != null && updated == null)
+            || (!isRollforward && prior == null && updated != null));
   }
 
   public boolean isRecreated() {

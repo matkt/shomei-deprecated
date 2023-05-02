@@ -16,7 +16,11 @@ package net.consensys.shomei.trie.proof;
 import net.consensys.shomei.trie.model.LeafOpening;
 
 import org.apache.tuweni.bytes.Bytes;
+import org.hyperledger.besu.datatypes.Hash;
+import org.hyperledger.besu.ethereum.rlp.RLPInput;
+import org.hyperledger.besu.ethereum.rlp.RLPOutput;
 import org.hyperledger.besu.ethereum.trie.Node;
+import org.hyperledger.besu.ethereum.trie.StoredNode;
 
 public class UpdateTrace implements Trace {
 
@@ -32,6 +36,25 @@ public class UpdateTrace implements Trace {
 
   // Value of the leaf opening before being modified
   public LeafOpening priorUpdatedLeaf;
+
+  public UpdateTrace(
+      final long newNextFreeNode,
+      final Node<Bytes> oldSubRoot,
+      final Node<Bytes> newSubRoot,
+      final Proof proof,
+      final Bytes key,
+      final Bytes oldValue,
+      final Bytes newValue,
+      final LeafOpening priorUpdatedLeaf) {
+    this.newNextFreeNode = newNextFreeNode;
+    this.oldSubRoot = oldSubRoot;
+    this.newSubRoot = newSubRoot;
+    this.proof = proof;
+    this.key = key;
+    this.oldValue = oldValue;
+    this.newValue = newValue;
+    this.priorUpdatedLeaf = priorUpdatedLeaf;
+  }
 
   public UpdateTrace(final Node<Bytes> oldSubRoot) {
     this.oldSubRoot = oldSubRoot;
@@ -95,5 +118,39 @@ public class UpdateTrace implements Trace {
 
   public void setPriorUpdatedLeaf(final LeafOpening priorUpdatedLeaf) {
     this.priorUpdatedLeaf = priorUpdatedLeaf;
+  }
+
+  @Override
+  public int getTransactionType() {
+    return UPDATE_TRACE_CODE;
+  }
+
+  public static UpdateTrace readFrom(final RLPInput in) {
+    in.enterList();
+    final long newNextFreeNode = in.readLongScalar();
+    final Node<Bytes> oldSubRoot = new StoredNode<>(null, null, Hash.wrap(in.readBytes32()));
+    final Node<Bytes> newSubRoot = new StoredNode<>(null, null, Hash.wrap(in.readBytes32()));
+    final Proof proof = Proof.readFrom(in);
+    final Bytes key = in.readBytes();
+    final Bytes oldValue = in.readBytes();
+    final Bytes newValue = in.readBytes();
+    final LeafOpening priorUpdatedLeaf = LeafOpening.readFrom(in.readBytes());
+    in.leaveList();
+    return new UpdateTrace(
+        newNextFreeNode, oldSubRoot, newSubRoot, proof, key, oldValue, newValue, priorUpdatedLeaf);
+  }
+
+  @Override
+  public void writeTo(final RLPOutput out) {
+    out.startList();
+    out.writeLongScalar(newNextFreeNode);
+    out.writeBytes(oldSubRoot.getHash());
+    out.writeBytes(newSubRoot.getHash());
+    proof.writeTo(out);
+    out.writeBytes(key);
+    out.writeBytes(oldValue);
+    out.writeBytes(newValue);
+    out.writeBytes(priorUpdatedLeaf.getEncodesBytes());
+    out.endList();
   }
 }

@@ -98,8 +98,18 @@ public class PersistedWorldStateStorage implements WorldStateStorage {
   }
 
   @Override
-  public Optional<Bytes> getTrieLog(final Hash blockHash) {
-    return trieLogStorage.get(blockHash.toArrayUnsafe()).map(Bytes::wrap);
+  public Optional<Bytes> getTrieLog(final long blockNumber) {
+    return trieLogStorage.get(Longs.toByteArray(blockNumber)).map(Bytes::wrap);
+  }
+
+  @Override
+  public Optional<Bytes> getZkStateRootHash(final long blockNumber) {
+    return Optional.empty();
+  }
+
+  @Override
+  public Optional<Bytes> getTrace(final long blockNumber) {
+    return Optional.empty();
   }
 
   @Override
