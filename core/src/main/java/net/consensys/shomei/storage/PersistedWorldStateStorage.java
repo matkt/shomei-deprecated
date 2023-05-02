@@ -115,25 +115,25 @@ public class PersistedWorldStateStorage
           final KeyValuePair right = iterator.next();
           return new Range(
               Map.entry(
-                  Hash.wrap(Bytes32.wrap(left.key())),
+                  Bytes.wrap(left.key()),
                   FlattenedLeaf.readFrom(RLP.input(Bytes.wrap(left.value())))),
               Optional.of(
                   Map.entry(
-                      Bytes.of(middle.key()),
+                      Bytes.wrap(middle.key()),
                       FlattenedLeaf.readFrom(RLP.input(Bytes.wrap(middle.value()))))),
               Map.entry(
-                  Bytes.of(right.key()),
+                  Bytes.wrap(right.key()),
                   FlattenedLeaf.readFrom(RLP.input(Bytes.wrap(right.value())))));
         } else {
           final KeyValuePair left = iterator.next();
           final KeyValuePair right = iterator.next();
           return new Range(
               Map.entry(
-                  Bytes.of(left.key()),
+                  Bytes.wrap(left.key()),
                   FlattenedLeaf.readFrom(RLP.input(Bytes.wrap(left.value())))),
               Optional.empty(),
               Map.entry(
-                  Bytes.of(right.key()),
+                  Bytes.wrap(right.key()),
                   FlattenedLeaf.readFrom(RLP.input(Bytes.wrap(right.value())))));
         }
       } catch (Exception ex) {
