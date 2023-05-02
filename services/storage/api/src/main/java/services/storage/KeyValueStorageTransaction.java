@@ -13,19 +13,35 @@
 
 package services.storage;
 
+import java.util.Optional;
+
 /** A transaction that can atomically commit a sequence of operations to a key-value store. */
 public interface KeyValueStorageTransaction {
 
   /**
-   * Associates the specified value with the specified key.
-   *
-   * <p>If a previously value had been store against the given key, the old value is replaced by the
-   * given value.
-   *
-   * @param key the given value is to be associated with.
-   * @param value associated with the specified key.
+   * Reads the value associated with the given key.
+   * @param key
    */
-  KeyValueStorageTransaction put(byte[] key, byte[] value);
+  Optional<byte[]> get(final byte[] key);
+
+  /**
+   * Returns an iterator that can be used to iterate over all key-value pairs in the storage.
+   * @param key
+   * @return
+   */
+  Optional<BidirectionalIterator<KeyValueStorage.KeyValuePair>> getNearestTo(byte[] key);
+
+
+  /**
+     * Associates the specified value with the specified key.
+     *
+     * <p>If a previously value had been store against the given key, the old value is replaced by the
+     * given value.
+     *
+     * @param key the given value is to be associated with.
+     * @param value associated with the specified key.
+     */
+      KeyValueStorageTransaction put(byte[] key, byte[] value);
 
   /**
    * When the given key is present, the key and mapped value will be removed from storage.

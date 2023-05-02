@@ -27,7 +27,7 @@ public class Shomei {
     Thread.currentThread().setUncaughtExceptionHandler(exceptionHandler());
 
     final StateManagerCommand stateManagerCommand = new StateManagerCommand();
-    stateManagerCommand.parse(new CommandLine.RunLast(), args);
+    stateManagerCommand.parse(args);
   }
 
   private static Thread.UncaughtExceptionHandler exceptionHandler() {

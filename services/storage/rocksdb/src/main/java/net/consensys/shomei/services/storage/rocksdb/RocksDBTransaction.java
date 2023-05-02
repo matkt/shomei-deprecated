@@ -67,6 +67,7 @@ public class RocksDBTransaction implements KeyValueStorageTransaction, AutoClose
    * @param key the key
    * @return the optional data
    */
+  @Override
   public Optional<byte[]> get(final byte[] key) {
     throwIfClosed();
 
@@ -77,6 +78,7 @@ public class RocksDBTransaction implements KeyValueStorageTransaction, AutoClose
     }
   }
 
+  @Override
   public Optional<BidirectionalIterator<KeyValuePair>> getNearestTo(byte[] key) {
     throwIfClosed();
 

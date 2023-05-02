@@ -19,6 +19,7 @@ dependencies {
     implementation project(':core')
     implementation project(':trie')
     implementation project(':services:rpc:api')
+    implementation project(':services:storage:rocksdb')
 
     implementation 'io.vertx:vertx-core'
     implementation 'io.vertx:vertx-unit'

@@ -31,7 +31,7 @@ public class RocksDBSegmentIdentifier implements SegmentIdentifier {
   public enum SegmentNames {
     DEFAULT("default"), // default rocksdb segment
     ZK_TRIE_NODE("ZK_TRIE_NODE"),
-
+    ZK_TRACE("ZK_TRACE"),
     ZK_LEAF_INDEX("ZK_LEAF_INDEX"),
     ZK_TRIE_LOG("ZK_TRIE_LOG");
 

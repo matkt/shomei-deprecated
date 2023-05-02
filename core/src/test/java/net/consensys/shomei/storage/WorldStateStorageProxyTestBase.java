@@ -22,75 +22,81 @@ import java.util.Optional;
 import org.apache.tuweni.bytes.Bytes;
 import org.junit.Test;
 
-public class WorldStateStorageProxyTest {
+public abstract class WorldStateStorageProxyTestBase {
+
+  abstract WorldStateStorage getWorldStateStorage();
 
   @Test
   public void wrapCorrectlyPutKeyIndex() {
-    final InMemoryWorldStateStorage inMemoryWorldStateStorage = new InMemoryWorldStateStorage();
+    final WorldStateStorage worldStateStorage = getWorldStateStorage();
     final WorldStateStorageProxy worldStateStorageProxy =
-        new WorldStateStorageProxy(inMemoryWorldStateStorage);
+        new WorldStateStorageProxy(worldStateStorage);
     final FlattenedLeaf flatLeafValue = new FlattenedLeaf(1L, Bytes.EMPTY);
     worldStateStorageProxy.updater().putFlatLeaf(Bytes.of(3), flatLeafValue);
-    assertThat(inMemoryWorldStateStorage.getFlatLeafStorage().get(Bytes.of(3)))
-        .isEqualTo(flatLeafValue);
+    var res = worldStateStorage.getFlatLeaf(Bytes.of(3));
+    assertThat(res).isPresent();
+    assertThat(res.get()).isEqualTo(flatLeafValue);
   }
 
   @Test
   public void wrapCorrectlyPutKeyIndexWithPrefix() {
-    final InMemoryWorldStateStorage inMemoryWorldStateStorage = new InMemoryWorldStateStorage();
+    final WorldStateStorage worldStateStorage = getWorldStateStorage();
     final WorldStateStorageProxy worldStateStorageProxy =
-        new WorldStateStorageProxy(Optional.of(Bytes.of(1)), inMemoryWorldStateStorage);
+        new WorldStateStorageProxy(Optional.of(Bytes.of(1)), worldStateStorage);
     final FlattenedLeaf flatLeafValue = new FlattenedLeaf(1L, Bytes.EMPTY);
     worldStateStorageProxy.updater().putFlatLeaf(Bytes.of(3), flatLeafValue);
-    assertThat(inMemoryWorldStateStorage.getFlatLeafStorage()).doesNotContainKey(Bytes.of(3));
-    assertThat(inMemoryWorldStateStorage.getFlatLeafStorage().get(Bytes.of(1, 3)))
-        .isEqualTo(flatLeafValue);
+    assertThat(worldStateStorage.getFlatLeaf(Bytes.of(3))).isEmpty();
+    var res = worldStateStorage.getFlatLeaf(Bytes.of(1, 3));
+    assertThat(res).isPresent();
+    assertThat(res.get()).isEqualTo(flatLeafValue);
   }
 
   @Test
   public void wrapCorrectlyRemoveKeyIndex() {
-    final InMemoryWorldStateStorage inMemoryWorldStateStorage = new InMemoryWorldStateStorage();
+    final WorldStateStorage worldStateStorage = getWorldStateStorage();
     final WorldStateStorageProxy worldStateStorageProxy =
-        new WorldStateStorageProxy(inMemoryWorldStateStorage);
+        new WorldStateStorageProxy(worldStateStorage);
     final FlattenedLeaf flatLeafValue = new FlattenedLeaf(1L, Bytes.EMPTY);
     worldStateStorageProxy.updater().putFlatLeaf(Bytes.of(3), flatLeafValue);
-    assertThat(inMemoryWorldStateStorage.getFlatLeafStorage().get(Bytes.of(3)))
-        .isEqualTo(flatLeafValue);
+    var res = worldStateStorage.getFlatLeaf(Bytes.of(3));
+    assertThat(res).isPresent();
+    assertThat(res.get()).isEqualTo(flatLeafValue);
     worldStateStorageProxy.updater().removeFlatLeafValue(Bytes.of(3));
-    assertThat(inMemoryWorldStateStorage.getFlatLeafStorage()).doesNotContainKey(Bytes.of(3));
+    assertThat(worldStateStorage.getFlatLeaf(Bytes.of(3))).isEmpty();
   }
 
   @Test
   public void wrapCorrectlyRemoveKeyIndexWithPrefix() {
-    final InMemoryWorldStateStorage inMemoryWorldStateStorage = new InMemoryWorldStateStorage();
+    final WorldStateStorage worldStateStorage = getWorldStateStorage();
     final WorldStateStorageProxy worldStateStorageProxy =
-        new WorldStateStorageProxy(Optional.of(Bytes.of(1)), inMemoryWorldStateStorage);
+        new WorldStateStorageProxy(Optional.of(Bytes.of(1)), worldStateStorage);
     final FlattenedLeaf flatLeafValue = new FlattenedLeaf(1L, Bytes.EMPTY);
     worldStateStorageProxy.updater().putFlatLeaf(Bytes.of(3), flatLeafValue);
-    assertThat(inMemoryWorldStateStorage.getFlatLeafStorage().get(Bytes.of(1, 3)))
-        .isEqualTo(flatLeafValue);
+    var res = worldStateStorage.getFlatLeaf(Bytes.of(1, 3));
+    assertThat(res).isPresent();
+    assertThat(res.get()).isEqualTo(flatLeafValue);
     worldStateStorageProxy.updater().removeFlatLeafValue(Bytes.of(3));
-    assertThat(inMemoryWorldStateStorage.getFlatLeafStorage()).doesNotContainKey(Bytes.of(1, 3));
+    assertThat(worldStateStorage.getFlatLeaf(Bytes.of(1, 3))).isEmpty();
   }
 
   @Test
   public void wrapCorrectlyPutTrieNode() {
-    final InMemoryWorldStateStorage inMemoryWorldStateStorage = new InMemoryWorldStateStorage();
+    final WorldStateStorage worldStateStorage = getWorldStateStorage();
     final WorldStateStorageProxy worldStateStorageProxy =
-        new WorldStateStorageProxy(inMemoryWorldStateStorage);
+        new WorldStateStorageProxy(worldStateStorage);
     worldStateStorageProxy.updater().putTrieNode(Bytes.of(1), Bytes.of(1), Bytes.of(3));
-    assertThat(inMemoryWorldStateStorage.getTrieNode(Bytes.of(1), Bytes.of(1)))
+    assertThat(worldStateStorage.getTrieNode(Bytes.of(1), Bytes.of(1)))
         .contains(Bytes.of(3));
   }
 
   @Test
   public void wrapCorrectlyPutTrieNodeWithPrefix() {
-    final InMemoryWorldStateStorage inMemoryWorldStateStorage = new InMemoryWorldStateStorage();
+    final WorldStateStorage worldStateStorage = getWorldStateStorage();
     final WorldStateStorageProxy worldStateStorageProxy =
-        new WorldStateStorageProxy(Optional.of(Bytes.of(1)), inMemoryWorldStateStorage);
+        new WorldStateStorageProxy(Optional.of(Bytes.of(1)), worldStateStorage);
     worldStateStorageProxy.updater().putTrieNode(Bytes.of(1), Bytes.of(1), Bytes.of(3));
-    assertThat(inMemoryWorldStateStorage.getTrieNode(Bytes.of(1), Bytes.of(1))).isEmpty();
-    assertThat(inMemoryWorldStateStorage.getTrieNode(Bytes.of(1, 1), Bytes.of(1, 1)))
+    assertThat(worldStateStorage.getTrieNode(Bytes.of(1), Bytes.of(1))).isEmpty();
+    assertThat(worldStateStorage.getTrieNode(Bytes.of(1, 1), Bytes.of(1, 1)))
         .contains(Bytes.of(3));
   }
 }

@@ -98,7 +98,7 @@ public class ZKEvmWorldState {
           .log();
     }
     // persist
-    // updater.commit();
+    updater.commit();
     accumulator.reset();
   }
 

@@ -23,6 +23,8 @@ import org.hyperledger.besu.datatypes.Hash;
 
 public interface WorldStateStorage extends StorageProxy {
 
+  byte[] ZK_WORLD_STATE_ROOT_HASH_KEY = "zkStateRootHash".getBytes(StandardCharsets.UTF_8);
+
   byte[] WORLD_STATE_ROOT_HASH_KEY = "stateRootHash".getBytes(StandardCharsets.UTF_8);
 
   byte[] WORLD_BLOCK_HASH_KEY = "blockHash".getBytes(StandardCharsets.UTF_8);
