@@ -115,6 +115,13 @@ public class ZkEvmWorldStateEntryPoint implements TrieLogObserver {
               .addArgument(e.getMessage())
               .log();
         }
+      } else if (blockQueue.element().blockNumber() <= currentWorldState.getBlockNumber()) {
+        final TrieLogIdentifier removed = blockQueue.remove();
+        LOG.atInfo()
+            .setMessage("Ignore already applied trie log for block {} ({})")
+            .addArgument(removed.blockNumber())
+            .addArgument(removed.blockHash())
+            .log();
       } else {
         LOG.atInfo().setMessage("Detect missing trie log, waiting ...").log();
         foundMissingTrieLog = true;

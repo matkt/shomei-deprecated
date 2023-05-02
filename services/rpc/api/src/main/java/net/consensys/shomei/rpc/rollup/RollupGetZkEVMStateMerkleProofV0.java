@@ -16,6 +16,8 @@ package net.consensys.shomei.rpc.rollup;
 import static net.consensys.shomei.rpc.ShomeiVersion.IMPL_VERSION;
 
 import net.consensys.shomei.rpc.ShomeiRpcMethod;
+import net.consensys.shomei.rpc.error.InvalidVersionMessage;
+import net.consensys.shomei.rpc.error.ShomeiJsonRpcErrorResponse;
 import net.consensys.shomei.storage.WorldStateStorage;
 import net.consensys.shomei.trie.proof.Trace;
 
@@ -27,7 +29,6 @@ import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.ethereum.api.jsonrpc.internal.JsonRpcRequestContext;
 import org.hyperledger.besu.ethereum.api.jsonrpc.internal.methods.JsonRpcMethod;
 import org.hyperledger.besu.ethereum.api.jsonrpc.internal.response.JsonRpcError;
-import org.hyperledger.besu.ethereum.api.jsonrpc.internal.response.JsonRpcErrorResponse;
 import org.hyperledger.besu.ethereum.api.jsonrpc.internal.response.JsonRpcResponse;
 import org.hyperledger.besu.ethereum.api.jsonrpc.internal.response.JsonRpcSuccessResponse;
 import org.hyperledger.besu.ethereum.rlp.RLP;
@@ -47,29 +48,32 @@ public class RollupGetZkEVMStateMerkleProofV0 implements JsonRpcMethod {
 
   @Override
   public JsonRpcResponse response(final JsonRpcRequestContext requestContext) {
-    if (requestContext.getRequest().getParamLength() != 3) {
-      return new JsonRpcErrorResponse(
-          requestContext.getRequest().getId(), JsonRpcError.INVALID_PARAMS);
-    }
-    final long startBlockNumber = requestContext.getRequiredParameter(0, Long.class);
-    final long endBlockNumber = requestContext.getRequiredParameter(1, Long.class);
-    final String zkStateManagerVersion = requestContext.getRequiredParameter(2, String.class);
-    if (!IMPL_VERSION.equals(zkStateManagerVersion)) {
-      return new JsonRpcErrorResponse(
+    final RollupGetZkEvmStateV0Parameter param =
+        requestContext.getRequiredParameter(0, RollupGetZkEvmStateV0Parameter.class);
+    if (!IMPL_VERSION.equals(param.getZkStateManagerVersion())) {
+      return new ShomeiJsonRpcErrorResponse(
           requestContext.getRequest().getId(),
-          JsonRpcError.INVALID_REQUEST); // TODO return UNSUPPORTED_VERSION
+          JsonRpcError.INVALID_PARAMS,
+          "UNSUPPORTED_VERSION",
+          new InvalidVersionMessage(param.getZkStateManagerVersion(), IMPL_VERSION));
     }
     final List<List<Trace>> traces = new ArrayList<>();
-    for (long i = startBlockNumber; i <= endBlockNumber; i++) {
+    for (long i = param.getStartBlockNumber(); i <= param.getEndBlockNumber(); i++) {
       Optional<Bytes> traceRaw = worldStateStorage.getTrace(i);
       traceRaw.ifPresent(bytes -> traces.add(Trace.deserialize(RLP.input(bytes))));
       if (traceRaw.isEmpty()) {
-        return new JsonRpcErrorResponse(
+        return new ShomeiJsonRpcErrorResponse(
             requestContext.getRequest().getId(),
-            JsonRpcError.INVALID_REQUEST); // TODO return BLOCK_MISSING_IN_CHAIN
+            JsonRpcError.INVALID_REQUEST,
+            "BLOCK_MISSING_IN_CHAIN - block %d is missing".formatted(i));
       }
     }
 
-    return new JsonRpcSuccessResponse(requestContext.getRequest().getId(), traces);
+    return new JsonRpcSuccessResponse(
+        requestContext.getRequest().getId(),
+        new RollupGetZkEVMStateMerkleProofV0Response(
+            "", // TODO we really need this one ?
+            traces,
+            IMPL_VERSION));
   }
 }

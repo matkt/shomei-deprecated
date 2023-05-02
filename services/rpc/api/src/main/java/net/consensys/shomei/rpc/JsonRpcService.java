@@ -19,6 +19,7 @@ import net.consensys.shomei.observer.TrieLogObserver;
 import net.consensys.shomei.rpc.rollup.RollupGetZkEVMStateMerkleProofV0;
 import net.consensys.shomei.rpc.trielog.SendRawTrieLog;
 import net.consensys.shomei.storage.WorldStateStorage;
+import net.consensys.shomei.trie.json.JsonTraceParser;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -29,6 +30,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Splitter;
 import com.google.common.collect.Iterables;
 import io.vertx.core.AbstractVerticle;
@@ -211,9 +213,11 @@ public class JsonRpcService extends AbstractVerticle {
         .handler(HandlerFactory.timeout(new TimeoutOptions(config.getHttpTimeoutSec()), rpcMethods))
         .blockingHandler(
             JsonRpcExecutorHandler.handler(
-                // new ObjectMapper().registerModules(JsonTraceParser.modules), //TODO add when
+                new ObjectMapper().registerModules(JsonTraceParser.modules),
                 // available in the besu main branch
-                new JsonRpcExecutor(new BaseJsonRpcProcessor(), rpcMethods), null, config),
+                new JsonRpcExecutor(new BaseJsonRpcProcessor(), rpcMethods),
+                null,
+                config),
             false);
     router
         .route("/login")
