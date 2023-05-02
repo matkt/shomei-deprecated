@@ -132,8 +132,6 @@ public class WorldStateStorageProxy implements StorageProxy {
     }
 
     @Override
-    public void commit() {
-
-    }
+    public void commit() {}
   }
 }

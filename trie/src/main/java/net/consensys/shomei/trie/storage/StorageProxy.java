@@ -28,9 +28,7 @@ public interface StorageProxy {
 
   Optional<Bytes> getTrieNode(final Bytes location, final Bytes nodeHash);
 
-  /**
-   * Returns an updater that can be used to update the storage.
-   */
+  /** Returns an updater that can be used to update the storage. */
   Updater updater();
 
   interface Updater {

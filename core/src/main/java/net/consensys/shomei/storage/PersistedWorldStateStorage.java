@@ -13,8 +13,9 @@
 
 package net.consensys.shomei.storage;
 
-import org.hyperledger.besu.datatypes.Hash;
-import org.hyperledger.besu.ethereum.rlp.RLP;
+import net.consensys.shomei.services.storage.rocksdb.RocksDBSegmentIdentifier.SegmentNames;
+import net.consensys.shomei.services.storage.rocksdb.RocksDBSegmentedStorage;
+import net.consensys.shomei.trie.model.FlattenedLeaf;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -23,28 +24,30 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
 import com.google.common.primitives.Longs;
-import net.consensys.shomei.services.storage.rocksdb.RocksDBSegmentIdentifier.SegmentNames;
-import net.consensys.shomei.services.storage.rocksdb.RocksDBSegmentedStorage;
-import net.consensys.shomei.trie.model.FlattenedLeaf;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
+import org.hyperledger.besu.datatypes.Hash;
+import org.hyperledger.besu.ethereum.rlp.RLP;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import services.storage.BidirectionalIterator;
 import services.storage.KeyValueStorage;
 import services.storage.KeyValueStorageTransaction;
 
-public class PersistedWorldStateStorage implements WorldStateStorage, WorldStateStorage.WorldStateUpdater {
+public class PersistedWorldStateStorage
+    implements WorldStateStorage, WorldStateStorage.WorldStateUpdater {
   record UpdateableStorage(
       KeyValueStorage storage, AtomicReference<KeyValueStorageTransaction> txRef) {
     UpdateableStorage(KeyValueStorage storage) {
       this(storage, new AtomicReference<>(storage.startTransaction()));
     }
+
     void commit() {
-      txRef.getAndUpdate(tx -> {
-        tx.commit();
-        return storage.startTransaction();
-      });
+      txRef.getAndUpdate(
+          tx -> {
+            tx.commit();
+            return storage.startTransaction();
+          });
     }
   }
 
@@ -57,19 +60,26 @@ public class PersistedWorldStateStorage implements WorldStateStorage, WorldState
   static final String ZK_STATE_ROOT_PREFIX = "zkStateRoot";
 
   public PersistedWorldStateStorage(final RocksDBSegmentedStorage storage) {
-    this.flatLeafStorage = new UpdateableStorage(
-        storage.getKeyValueStorageForSegment(SegmentNames.ZK_LEAF_INDEX.getSegmentIdentifier()));
-    this.trieLogStorage = new UpdateableStorage(
-        storage.getKeyValueStorageForSegment(SegmentNames.ZK_TRIE_LOG.getSegmentIdentifier()));
-    this.trieNodeStorage = new UpdateableStorage(
-        storage.getKeyValueStorageForSegment(SegmentNames.ZK_TRIE_NODE.getSegmentIdentifier()));
-    this.traceStorage = new UpdateableStorage(
-        storage.getKeyValueStorageForSegment(SegmentNames.ZK_TRACE.getSegmentIdentifier()));
+    this.flatLeafStorage =
+        new UpdateableStorage(
+            storage.getKeyValueStorageForSegment(
+                SegmentNames.ZK_LEAF_INDEX.getSegmentIdentifier()));
+    this.trieLogStorage =
+        new UpdateableStorage(
+            storage.getKeyValueStorageForSegment(SegmentNames.ZK_TRIE_LOG.getSegmentIdentifier()));
+    this.trieNodeStorage =
+        new UpdateableStorage(
+            storage.getKeyValueStorageForSegment(SegmentNames.ZK_TRIE_NODE.getSegmentIdentifier()));
+    this.traceStorage =
+        new UpdateableStorage(
+            storage.getKeyValueStorageForSegment(SegmentNames.ZK_TRACE.getSegmentIdentifier()));
   }
 
   @Override
   public Optional<FlattenedLeaf> getFlatLeaf(final Bytes hkey) {
-    return flatLeafStorage.txRef.get()
+    return flatLeafStorage
+        .txRef
+        .get()
         .get(hkey.toArrayUnsafe())
         .map(Bytes::wrap)
         .map(RLP::input)
@@ -125,8 +135,10 @@ public class PersistedWorldStateStorage implements WorldStateStorage, WorldState
 
   @Override
   public Optional<Bytes> getZkStateRootHash(final long blockNumber) {
-    return traceStorage.txRef.get().get(
-        (ZK_STATE_ROOT_PREFIX + blockNumber).getBytes(StandardCharsets.UTF_8))
+    return traceStorage
+        .txRef
+        .get()
+        .get((ZK_STATE_ROOT_PREFIX + blockNumber).getBytes(StandardCharsets.UTF_8))
         .map(Bytes::wrap);
   }
 
@@ -143,7 +155,12 @@ public class PersistedWorldStateStorage implements WorldStateStorage, WorldState
 
   @Override
   public Optional<Hash> getWorldStateRootHash() {
-    return trieNodeStorage.txRef.get().get(WORLD_STATE_ROOT_HASH_KEY).map(Bytes32::wrap).map(Hash::wrap);
+    return trieNodeStorage
+        .txRef
+        .get()
+        .get(WORLD_STATE_ROOT_HASH_KEY)
+        .map(Bytes32::wrap)
+        .map(Hash::wrap);
   }
 
   @Override
@@ -190,9 +207,12 @@ public class PersistedWorldStateStorage implements WorldStateStorage, WorldState
 
   @Override
   public void saveZkStateRootHash(final long blockNumber, final Bytes stateRoot) {
-    traceStorage.txRef.get().put(
-        (ZK_STATE_ROOT_PREFIX + blockNumber).getBytes(StandardCharsets.UTF_8),
-        stateRoot.toArrayUnsafe());
+    traceStorage
+        .txRef
+        .get()
+        .put(
+            (ZK_STATE_ROOT_PREFIX + blockNumber).getBytes(StandardCharsets.UTF_8),
+            stateRoot.toArrayUnsafe());
   }
 
   @Override
@@ -202,7 +222,10 @@ public class PersistedWorldStateStorage implements WorldStateStorage, WorldState
 
   @Override
   public void putFlatLeaf(final Bytes key, final FlattenedLeaf value) {
-    flatLeafStorage.txRef.get().put(key.toArrayUnsafe(), RLP.encode(value::writeTo).toArrayUnsafe());
+    flatLeafStorage
+        .txRef
+        .get()
+        .put(key.toArrayUnsafe(), RLP.encode(value::writeTo).toArrayUnsafe());
   }
 
   @Override
@@ -217,9 +240,9 @@ public class PersistedWorldStateStorage implements WorldStateStorage, WorldState
 
   @Override
   public void commit() {
-      flatLeafStorage.commit();
-      trieLogStorage.commit();
-      trieNodeStorage.commit();
-      traceStorage.commit();
+    flatLeafStorage.commit();
+    trieLogStorage.commit();
+    trieNodeStorage.commit();
+    traceStorage.commit();
   }
 }

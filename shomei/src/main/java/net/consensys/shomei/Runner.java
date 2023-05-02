@@ -18,7 +18,6 @@ import net.consensys.shomei.cli.option.JsonRpcOption;
 import net.consensys.shomei.rpc.JsonRpcService;
 import net.consensys.shomei.services.storage.rocksdb.RocksDBSegmentedStorage;
 import net.consensys.shomei.services.storage.rocksdb.configuration.RocksDBConfigurationBuilder;
-import net.consensys.shomei.storage.InMemoryWorldStateStorage;
 import net.consensys.shomei.storage.PersistedWorldStateStorage;
 import net.consensys.shomei.storage.WorldStateStorage;
 import net.consensys.shomei.worldview.ZkEvmWorldStateEntryPoint;
@@ -37,12 +36,14 @@ public class Runner {
   public Runner(final DataStorageOption dataStorageOption, JsonRpcOption jsonRpcOption) {
     this.vertx = Vertx.vertx();
 
-//    final InMemoryWorldStateStorage inMemoryWorldStateStorage = new InMemoryWorldStateStorage();
-    final WorldStateStorage worldStateStorage = new PersistedWorldStateStorage(
-        new RocksDBSegmentedStorage(
-            new RocksDBConfigurationBuilder()
-                .databaseDir(dataStorageOption.getDataStoragePath())
-                .build())    );
+    //    final InMemoryWorldStateStorage inMemoryWorldStateStorage = new
+    // InMemoryWorldStateStorage();
+    final WorldStateStorage worldStateStorage =
+        new PersistedWorldStateStorage(
+            new RocksDBSegmentedStorage(
+                new RocksDBConfigurationBuilder()
+                    .databaseDir(dataStorageOption.getDataStoragePath())
+                    .build()));
     final ZkEvmWorldStateEntryPoint zkEvmWorldStateEntryPoint =
         new ZkEvmWorldStateEntryPoint(worldStateStorage);
 

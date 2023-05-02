@@ -85,8 +85,7 @@ public abstract class WorldStateStorageProxyTestBase {
     final WorldStateStorageProxy worldStateStorageProxy =
         new WorldStateStorageProxy(worldStateStorage);
     worldStateStorageProxy.updater().putTrieNode(Bytes.of(1), Bytes.of(1), Bytes.of(3));
-    assertThat(worldStateStorage.getTrieNode(Bytes.of(1), Bytes.of(1)))
-        .contains(Bytes.of(3));
+    assertThat(worldStateStorage.getTrieNode(Bytes.of(1), Bytes.of(1))).contains(Bytes.of(3));
   }
 
   @Test
@@ -96,7 +95,6 @@ public abstract class WorldStateStorageProxyTestBase {
         new WorldStateStorageProxy(Optional.of(Bytes.of(1)), worldStateStorage);
     worldStateStorageProxy.updater().putTrieNode(Bytes.of(1), Bytes.of(1), Bytes.of(3));
     assertThat(worldStateStorage.getTrieNode(Bytes.of(1), Bytes.of(1))).isEmpty();
-    assertThat(worldStateStorage.getTrieNode(Bytes.of(1, 1), Bytes.of(1, 1)))
-        .contains(Bytes.of(3));
+    assertThat(worldStateStorage.getTrieNode(Bytes.of(1, 1), Bytes.of(1, 1))).contains(Bytes.of(3));
   }
 }
