@@ -80,7 +80,9 @@ public class ZKEvmWorldState {
 
     updater.setBlockHash(blockHash);
     updater.setBlockNumber(blockNumber);
+    updater.saveZkStateRootHash(blockNumber, state.stateRoot);
     updater.saveTrace(blockNumber, Trace.serialize(state.traces));
+
     if (!state.traces.isEmpty()) {
       LOG.atInfo()
           .setMessage("Generated trace for block {}:{} in {} ms")

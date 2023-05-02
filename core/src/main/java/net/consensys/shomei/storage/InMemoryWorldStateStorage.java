@@ -34,6 +34,8 @@ public class InMemoryWorldStateStorage extends InMemoryStorage
 
   private final Map<Long, Bytes> trieLogStorage = new ConcurrentHashMap<>();
 
+  private final Map<Long, Bytes> zkStateRootHash = new ConcurrentHashMap<>();
+
   private final Map<Long, Bytes> traces = new HashMap<>();
 
   @Override
@@ -44,6 +46,11 @@ public class InMemoryWorldStateStorage extends InMemoryStorage
   @Override
   public Optional<Bytes> getTrace(final long blockNumber) {
     return Optional.ofNullable(traces.get(blockNumber));
+  }
+
+  @Override
+  public Optional<Bytes> getZkStateRootHash(final long blockNumber) {
+    return Optional.ofNullable(zkStateRootHash.get(blockNumber));
   }
 
   @Override
@@ -74,6 +81,12 @@ public class InMemoryWorldStateStorage extends InMemoryStorage
   @Override
   public void saveTrieLog(final long blockNumber, final Bytes rawTrieLogLayer) {
     trieLogStorage.put(blockNumber, rawTrieLogLayer);
+  }
+
+  @Override
+  public void saveZkStateRootHash(final long blockNumber, final Bytes stateRoot) {
+    System.out.println(blockNumber + " " + stateRoot);
+    zkStateRootHash.put(blockNumber, stateRoot);
   }
 
   @Override

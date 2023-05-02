@@ -16,11 +16,11 @@ package net.consensys.shomei.rpc.error;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 @SuppressWarnings("unused")
-public record InvalidVersionMessage(
+public record JsonInvalidVersionMessage(
     @JsonProperty("requestedVersion") String requestedVersion,
     @JsonProperty("supportedVersion") String supportedVersion) {
 
-  public InvalidVersionMessage(final String requestedVersion, final String supportedVersion) {
+  public JsonInvalidVersionMessage(final String requestedVersion, final String supportedVersion) {
     this.requestedVersion = requestedVersion;
     this.supportedVersion = supportedVersion;
   }

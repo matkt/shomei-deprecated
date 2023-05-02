@@ -103,6 +103,11 @@ public class PersistedWorldStateStorage implements WorldStateStorage {
   }
 
   @Override
+  public Optional<Bytes> getZkStateRootHash(final long blockNumber) {
+    return Optional.empty();
+  }
+
+  @Override
   public Optional<Bytes> getTrace(final long blockNumber) {
     return Optional.empty();
   }

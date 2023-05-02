@@ -16,9 +16,10 @@ package net.consensys.shomei.rpc.rollup;
 import static net.consensys.shomei.rpc.ShomeiVersion.IMPL_VERSION;
 
 import net.consensys.shomei.rpc.ShomeiRpcMethod;
-import net.consensys.shomei.rpc.error.InvalidVersionMessage;
+import net.consensys.shomei.rpc.error.JsonInvalidVersionMessage;
 import net.consensys.shomei.rpc.error.ShomeiJsonRpcErrorResponse;
 import net.consensys.shomei.storage.WorldStateStorage;
+import net.consensys.shomei.trie.ZKTrie;
 import net.consensys.shomei.trie.proof.Trace;
 
 import java.util.ArrayList;
@@ -55,7 +56,7 @@ public class RollupGetZkEVMStateMerkleProofV0 implements JsonRpcMethod {
           requestContext.getRequest().getId(),
           JsonRpcError.INVALID_PARAMS,
           "UNSUPPORTED_VERSION",
-          new InvalidVersionMessage(param.getZkStateManagerVersion(), IMPL_VERSION));
+          new JsonInvalidVersionMessage(param.getZkStateManagerVersion(), IMPL_VERSION));
     }
     final List<List<Trace>> traces = new ArrayList<>();
     for (long i = param.getStartBlockNumber(); i <= param.getEndBlockNumber(); i++) {
@@ -72,7 +73,10 @@ public class RollupGetZkEVMStateMerkleProofV0 implements JsonRpcMethod {
     return new JsonRpcSuccessResponse(
         requestContext.getRequest().getId(),
         new RollupGetZkEVMStateMerkleProofV0Response(
-            "", // TODO we really need this one ?
+            worldStateStorage
+                .getZkStateRootHash(param.getStartBlockNumber() - 1)
+                .orElse(ZKTrie.EMPTY_TRIE_ROOT)
+                .toHexString(),
             traces,
             IMPL_VERSION));
   }
