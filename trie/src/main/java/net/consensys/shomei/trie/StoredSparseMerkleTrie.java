@@ -44,9 +44,8 @@ public class StoredSparseMerkleTrie {
   public StoredSparseMerkleTrie(
       final NodeLoader nodeLoader,
       final Bytes32 rootHash,
-      final Function<Bytes, Bytes> valueSerializer,
-      final Function<Bytes, Bytes> valueDeserializer) {
-    this.nodeFactory = new StoredNodeFactory(nodeLoader, valueSerializer, valueDeserializer);
+      final Function<Bytes, Bytes> valueSerializer) {
+    this.nodeFactory = new StoredNodeFactory(nodeLoader, valueSerializer);
     this.root =
         rootHash.equals(EMPTY_TRIE_ROOT)
             ? NullNode.instance()

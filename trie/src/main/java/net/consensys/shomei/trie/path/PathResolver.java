@@ -21,7 +21,6 @@ import java.math.BigInteger;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.MutableBytes32;
 
-@SuppressWarnings({"DoNotInvokeMessageDigestDirectly", "unused"})
 public class PathResolver {
 
   public static final Bytes NEXT_FREE_NODE_PATH = Bytes.of(0);
