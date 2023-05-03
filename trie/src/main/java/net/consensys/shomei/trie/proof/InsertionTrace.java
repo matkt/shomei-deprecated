@@ -143,7 +143,7 @@ public class InsertionTrace implements Trace {
   }
 
   @Override
-  public int getTransactionType() {
+  public int getType() {
     return INSERTION_TRACE_CODE;
   }
 

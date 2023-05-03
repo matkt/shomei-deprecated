@@ -103,7 +103,7 @@ public class ReadTrace implements Trace {
   }
 
   @Override
-  public int getTransactionType() {
+  public int getType() {
     return READ_TRACE_CODE;
   }
 

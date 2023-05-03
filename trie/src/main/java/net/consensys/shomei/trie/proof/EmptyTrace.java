@@ -17,7 +17,7 @@ import org.hyperledger.besu.ethereum.rlp.RLPOutput;
 
 public class EmptyTrace implements Trace {
   @Override
-  public int getTransactionType() {
+  public int getType() {
     return -1;
   }
 
