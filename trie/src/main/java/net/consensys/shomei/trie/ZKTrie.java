@@ -63,8 +63,7 @@ public class ZKTrie {
   private ZKTrie(final Bytes32 rootHash, final StorageProxy worldStateStorage) {
     this.worldStateStorage = worldStateStorage;
     this.updater = worldStateStorage.updater();
-    this.state =
-        new StoredSparseMerkleTrie(worldStateStorage::getTrieNode, rootHash, b -> b, b -> b);
+    this.state = new StoredSparseMerkleTrie(worldStateStorage::getTrieNode, rootHash, b -> b);
     this.pathResolver = new PathResolver(ZK_TRIE_DEPTH, state);
   }
 
@@ -84,7 +83,7 @@ public class ZKTrie {
   private static Node<Bytes> initWorldState(final NodeUpdater nodeUpdater) {
     // if empty we need to fill the sparse trie with zero leaves
     final StoredNodeFactory nodeFactory =
-        new StoredNodeFactory((location, hash) -> Optional.empty(), a -> a, b -> b);
+        new StoredNodeFactory((location, hash) -> Optional.empty(), a -> a);
     Node<Bytes> defaultNode = EmptyLeafNode.instance();
     for (int i = 0; i < ZK_TRIE_DEPTH; i++) {
       nodeUpdater.store(null, defaultNode.getHash(), defaultNode.getEncodedBytes());
