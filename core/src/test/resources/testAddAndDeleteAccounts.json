@@ -156,7 +156,8 @@
       "hval":"0x0000000000000000000000000000000000000000000000000000000000000000",
       "prevLeaf":2,
       "nextLeaf":1
-    }
+    },
+    "type":4
   },
   {
     "newNextFreeNode":5,
@@ -310,6 +311,7 @@
       "hval":"0x167adfbcc2f8cf8c6479c2d71d21d39a0bd9a5e422b5a001d415ec3c3cd987d7",
       "prevLeaf":0,
       "nextLeaf":1
-    }
+    },
+    "type":2
   }
 ]
