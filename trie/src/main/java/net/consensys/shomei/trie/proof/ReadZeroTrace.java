@@ -114,7 +114,7 @@ public class ReadZeroTrace implements Trace {
   }
 
   @Override
-  public int getTransactionType() {
+  public int getType() {
     return READ_ZERO_TRACE_CODE;
   }
 

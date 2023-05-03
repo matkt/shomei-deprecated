@@ -121,7 +121,7 @@ public class UpdateTrace implements Trace {
   }
 
   @Override
-  public int getTransactionType() {
+  public int getType() {
     return UPDATE_TRACE_CODE;
   }
 

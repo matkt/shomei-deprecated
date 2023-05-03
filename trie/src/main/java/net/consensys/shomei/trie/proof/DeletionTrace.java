@@ -67,7 +67,7 @@ public class DeletionTrace implements Trace {
   }
 
   @Override
-  public int getTransactionType() {
+  public int getType() {
     return DELETION_TRACE_CODE;
   }
 

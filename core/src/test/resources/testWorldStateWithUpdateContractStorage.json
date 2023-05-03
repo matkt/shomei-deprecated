@@ -151,7 +151,8 @@
       "hval":"0x0000000000000000000000000000000000000000000000000000000000000000",
       "prevLeaf":0,
       "nextLeaf":1
-    }
+    },
+    "type":2
   },
   {
     "newNextFreeNode":4,
@@ -305,7 +306,8 @@
       "hval":"0x25ddd6106526ffb2c9b923617cf3bcab669a5d57821d0ec81daa23155c1513ea",
       "prevLeaf":0,
       "nextLeaf":1
-    }
+    },
+    "type":2
   },
   {
     "newNextFreeNode":3,
@@ -459,7 +461,8 @@
       "hval":"0x0000000000000000000000000000000000000000000000000000000000000000",
       "prevLeaf":0,
       "nextLeaf":1
-    }
+    },
+    "type":2
   },
   {
     "newNextFreeNode":4,
@@ -518,6 +521,7 @@
       "hval":"0x167adfbcc2f8cf8c6479c2d71d21d39a0bd9a5e422b5a001d415ec3c3cd987d7",
       "prevLeaf":0,
       "nextLeaf":2
-    }
+    },
+    "type":3
   }
 ]

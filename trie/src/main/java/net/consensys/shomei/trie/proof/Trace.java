@@ -15,7 +15,6 @@ package net.consensys.shomei.trie.proof;
 
 import java.util.List;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.ethereum.rlp.BytesValueRLPOutput;
 import org.hyperledger.besu.ethereum.rlp.RLPInput;
@@ -29,8 +28,7 @@ public interface Trace {
   int UPDATE_TRACE_CODE = 3;
   int DELETION_TRACE_CODE = 4;
 
-  @JsonIgnore
-  int getTransactionType();
+  int getType();
 
   void writeTo(final RLPOutput out);
 
@@ -40,7 +38,7 @@ public interface Trace {
         traces,
         (trace, rlpOutput) -> {
           out.startList();
-          out.writeInt(trace.getTransactionType());
+          out.writeInt(trace.getType());
           trace.writeTo(out);
           out.endList();
         });
