@@ -28,9 +28,9 @@ import net.consensys.shomei.trie.proof.ReadTrace;
 import net.consensys.shomei.trie.proof.ReadZeroTrace;
 import net.consensys.shomei.trie.proof.Trace;
 import net.consensys.shomei.trie.proof.UpdateTrace;
-import net.consensys.shomei.trie.storage.InMemoryStorage;
-import net.consensys.shomei.trie.storage.StorageProxy;
-import net.consensys.shomei.trie.storage.StorageProxy.Range;
+import net.consensys.shomei.trie.storage.InMemoryRepository;
+import net.consensys.shomei.trie.storage.TrieRepository;
+import net.consensys.shomei.trie.storage.TrieRepository.Range;
 import net.consensys.shomei.util.bytes.MimcSafeBytes;
 import net.consensys.zkevm.HashProvider;
 
@@ -46,36 +46,55 @@ import org.hyperledger.besu.ethereum.trie.NodeUpdater;
 
 public class ZKTrie {
 
-  public static final Hash EMPTY_TRIE_ROOT =
-      Hash.wrap(ZKTrie.createTrie(new InMemoryStorage()).getTopRootHash());
+  public static final ZKTrie EMPTY_TRIE = generateEmptyTrie();
 
-  public static final Hash EMPTY_TRIE_SUB_ROOT =
-      Hash.wrap(ZKTrie.createTrie(new InMemoryStorage()).getSubRootHash());
+  public static final Hash DEFAULT_TRIE_ROOT =
+      Hash.wrap(createTrie(new InMemoryRepository()).getTopRootHash());
 
   private static final int ZK_TRIE_DEPTH = 40;
 
   private final PathResolver pathResolver;
   private final StoredSparseMerkleTrie state;
-  private final StorageProxy worldStateStorage;
+  private final TrieRepository worldStateStorage;
 
-  private final StorageProxy.Updater updater;
+  private final TrieRepository.TrieUpdater updater;
 
-  private ZKTrie(final Bytes32 rootHash, final StorageProxy worldStateStorage) {
+  public TrieRepository getWorldStateStorage() {
+    return worldStateStorage;
+  }
+
+  private ZKTrie(final Bytes32 rootHash, final TrieRepository worldStateStorage) {
     this.worldStateStorage = worldStateStorage;
     this.updater = worldStateStorage.updater();
     this.state = new StoredSparseMerkleTrie(worldStateStorage::getTrieNode, rootHash, b -> b);
     this.pathResolver = new PathResolver(ZK_TRIE_DEPTH, state);
   }
 
-  public static ZKTrie createTrie(final StorageProxy worldStateStorage) {
-    StorageProxy.Updater updater = worldStateStorage.updater();
-    final ZKTrie trie =
-        new ZKTrie(ZKTrie.initWorldState(updater::putTrieNode).getHash(), worldStateStorage);
+  public static ZKTrie generateEmptyTrie() {
+    final InMemoryRepository inMemoryStorage =
+        new InMemoryRepository() {
+          @Override
+          public Optional<Bytes> getTrieNode(final Bytes location, final Bytes nodeHash) {
+            return Optional.ofNullable(super.getTrieNodeStorage().get(nodeHash));
+            // the first nodes are saved by hash in order to not have to fill all the trie during
+            // the init step
+          }
+
+          @Override
+          public void putTrieNode(final Bytes location, final Bytes nodeHash, final Bytes value) {
+            super.getTrieNodeStorage().put(nodeHash, value);
+          }
+        };
+    return new ZKTrie(initWorldState(inMemoryStorage::putTrieNode).getHash(), inMemoryStorage);
+  }
+
+  public static ZKTrie createTrie(final TrieRepository worldStateStorage) {
+    final ZKTrie trie = new ZKTrie(EMPTY_TRIE.getTopRootHash(), worldStateStorage);
     trie.setHeadAndTail();
     return trie;
   }
 
-  public static ZKTrie loadTrie(final Bytes32 rootHash, final StorageProxy worldStateStorage) {
+  public static ZKTrie loadTrie(final Bytes32 rootHash, final TrieRepository worldStateStorage) {
     return new ZKTrie(rootHash, worldStateStorage);
   }
 

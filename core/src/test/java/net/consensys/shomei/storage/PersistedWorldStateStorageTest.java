@@ -17,13 +17,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import net.consensys.shomei.services.storage.rocksdb.RocksDBSegmentedStorage;
 import net.consensys.shomei.services.storage.rocksdb.configuration.RocksDBConfigurationBuilder;
-import net.consensys.shomei.storage.WorldStateStorage.WorldStateUpdater;
+import net.consensys.shomei.storage.WorldStateRepository.WorldStateUpdater;
 import net.consensys.shomei.trie.model.FlattenedLeaf;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 
 import org.apache.tuweni.bytes.Bytes;
+import org.hyperledger.besu.datatypes.Hash;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -34,14 +35,16 @@ public class PersistedWorldStateStorageTest {
   private static final FlattenedLeaf FLAT_LEAF = new FlattenedLeaf(1L, Bytes.EMPTY);
   private static final Bytes BYTES_TEST = Bytes.fromHexString("0xfeeddeadbeef");
 
+  private static final Hash HASH_TEST = Hash.hash(BYTES_TEST);
+
   @Rule public final TemporaryFolder tempData = new TemporaryFolder();
-  protected PersistedWorldStateStorage storage;
+  protected PersistedWorldStateRepository storage;
   protected WorldStateUpdater updater;
 
   @Before
   public void setup() {
     storage =
-        new PersistedWorldStateStorage(
+        new PersistedWorldStateRepository(
             new RocksDBSegmentedStorage(
                 new RocksDBConfigurationBuilder()
                     .databaseDir(tempData.getRoot().toPath())
@@ -76,29 +79,29 @@ public class PersistedWorldStateStorageTest {
     var newTrieVal = Bytes.of("newval".getBytes(StandardCharsets.UTF_8));
 
     // assert the prior value
-    assertVal(storage.getTrieNode(null, Bytes.of(1)), BYTES_TEST);
-    updater.putTrieNode(null, Bytes.of(1), newTrieVal);
+    assertVal(storage.getTrieNode(Bytes.of(1), Bytes.of(1)), BYTES_TEST);
+    updater.putTrieNode(Bytes.of(1), Bytes.of(1), newTrieVal);
 
     // assert the new value
-    assertVal(storage.getTrieNode(null, Bytes.of(1)), newTrieVal);
+    assertVal(storage.getTrieNode(Bytes.of(1), Bytes.of(1)), newTrieVal);
     updater.commit();
 
     // assert post commit returns the new value
-    assertVal(storage.getTrieNode(null, Bytes.of(1)), newTrieVal);
+    assertVal(storage.getTrieNode(Bytes.of(1), Bytes.of(1)), newTrieVal);
   }
 
   void mutateWorldStateStorage() {
     updater.putFlatLeaf(Bytes.of(1), FLAT_LEAF);
     updater.putTrieNode(Bytes.of(1), Bytes.of(1), BYTES_TEST);
-    updater.saveZkStateRootHash(1337L, BYTES_TEST);
+    updater.saveZkStateRootHash(1337L, HASH_TEST);
     updater.saveTrace(80085, BYTES_TEST);
     updater.saveTrieLog(99L, BYTES_TEST);
   }
 
   void assertWorldStateStorage() {
     assertVal(storage.getFlatLeaf(Bytes.of(1)), FLAT_LEAF);
-    assertVal(storage.getTrieNode(null, Bytes.of(1)), BYTES_TEST);
-    assertVal(storage.getZkStateRootHash(1337L), BYTES_TEST);
+    assertVal(storage.getTrieNode(Bytes.of(1), Bytes.of(1)), BYTES_TEST);
+    assertVal(storage.getZkStateRootHash(1337L), HASH_TEST);
     assertVal(storage.getTrace(80085), BYTES_TEST);
     assertVal(storage.getTrieLog(99L), BYTES_TEST);
   }

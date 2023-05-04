@@ -15,7 +15,7 @@ package net.consensys.shomei.worldview;
 
 import net.consensys.shomei.exception.MissingTrieLogException;
 import net.consensys.shomei.observer.TrieLogObserver;
-import net.consensys.shomei.storage.WorldStateStorage;
+import net.consensys.shomei.storage.WorldStateRepository;
 import net.consensys.shomei.trielog.TrieLogLayer;
 import net.consensys.shomei.trielog.TrieLogLayerConverter;
 
@@ -40,13 +40,13 @@ public class ZkEvmWorldStateEntryPoint implements TrieLogObserver {
 
   private final TrieLogLayerConverter trieLogLayerConverter;
 
-  private final WorldStateStorage worldStateStorage;
+  private final WorldStateRepository worldStateStorage;
 
   private final Queue<TrieLogIdentifier> blockQueue = new PriorityBlockingQueue<>();
   private final ExecutorService executor = Executors.newSingleThreadExecutor();
   private volatile boolean isProcessing = false;
 
-  public ZkEvmWorldStateEntryPoint(final WorldStateStorage worldStateStorage) {
+  public ZkEvmWorldStateEntryPoint(final WorldStateRepository worldStateStorage) {
     this.worldStateStorage = worldStateStorage;
     this.currentWorldState = new ZKEvmWorldState(worldStateStorage);
     this.trieLogLayerConverter = new TrieLogLayerConverter(worldStateStorage);

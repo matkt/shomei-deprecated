@@ -21,15 +21,15 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.rules.TemporaryFolder;
 
-public class WorldStatePersistedStorageProxyTest extends WorldStateStorageProxyTestBase {
+public class WorldStatePersistedStorageProxyTest extends WorldStateWrapperTestBase {
 
   @Rule public final TemporaryFolder tempData = new TemporaryFolder();
-  protected PersistedWorldStateStorage storage;
+  protected PersistedWorldStateRepository storage;
 
   @Before
   public void setup() {
     storage =
-        new PersistedWorldStateStorage(
+        new PersistedWorldStateRepository(
             new RocksDBSegmentedStorage(
                 new RocksDBConfigurationBuilder()
                     .databaseDir(tempData.getRoot().toPath())
@@ -43,7 +43,7 @@ public class WorldStatePersistedStorageProxyTest extends WorldStateStorageProxyT
   }
 
   @Override
-  WorldStateStorage getWorldStateStorage() {
+  WorldStateRepository getWorldStateStorage() {
     return storage;
   }
 }

@@ -13,7 +13,7 @@
 
 package net.consensys.shomei.storage;
 
-import net.consensys.shomei.trie.storage.InMemoryStorage;
+import net.consensys.shomei.trie.storage.InMemoryRepository;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -23,18 +23,16 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Hash;
 
-public class InMemoryWorldStateStorage extends InMemoryStorage
-    implements WorldStateStorage, WorldStateStorage.WorldStateUpdater {
+public class InMemoryWorldStateRepository extends InMemoryRepository
+    implements WorldStateRepository, WorldStateRepository.WorldStateUpdater {
 
   private Optional<Long> currentBlockNumber = Optional.empty();
 
   private Optional<Hash> currentBlockHash = Optional.empty();
 
-  private Optional<Hash> currentStateRootHash = Optional.empty();
-
   private final Map<Long, Bytes> trieLogStorage = new ConcurrentHashMap<>();
 
-  private final Map<Long, Bytes> zkStateRootHash = new ConcurrentHashMap<>();
+  private final Map<Long, Hash> zkStateRootHash = new ConcurrentHashMap<>();
 
   private final Map<Long, Bytes> traces = new HashMap<>();
 
@@ -49,13 +47,13 @@ public class InMemoryWorldStateStorage extends InMemoryStorage
   }
 
   @Override
-  public Optional<Bytes> getZkStateRootHash(final long blockNumber) {
+  public Optional<Hash> getZkStateRootHash(final long blockNumber) {
     return Optional.ofNullable(zkStateRootHash.get(blockNumber));
   }
 
   @Override
   public Optional<Hash> getWorldStateRootHash() {
-    return currentStateRootHash;
+    return currentBlockNumber.flatMap(this::getZkStateRootHash);
   }
 
   @Override
@@ -84,8 +82,7 @@ public class InMemoryWorldStateStorage extends InMemoryStorage
   }
 
   @Override
-  public void saveZkStateRootHash(final long blockNumber, final Bytes stateRoot) {
-    System.out.println(blockNumber + " " + stateRoot);
+  public void saveZkStateRootHash(final long blockNumber, final Hash stateRoot) {
     zkStateRootHash.put(blockNumber, stateRoot);
   }
 

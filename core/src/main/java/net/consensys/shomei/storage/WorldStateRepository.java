@@ -13,7 +13,7 @@
 
 package net.consensys.shomei.storage;
 
-import net.consensys.shomei.trie.storage.StorageProxy;
+import net.consensys.shomei.trie.storage.TrieRepository;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Optional;
@@ -21,12 +21,7 @@ import java.util.Optional;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Hash;
 
-public interface WorldStateStorage extends StorageProxy {
-
-  byte[] ZK_WORLD_STATE_ROOT_HASH_KEY = "zkStateRootHash".getBytes(StandardCharsets.UTF_8);
-
-  byte[] WORLD_STATE_ROOT_HASH_KEY = "stateRootHash".getBytes(StandardCharsets.UTF_8);
-
+public interface WorldStateRepository extends TrieRepository {
   byte[] WORLD_BLOCK_HASH_KEY = "blockHash".getBytes(StandardCharsets.UTF_8);
 
   byte[] WORLD_BLOCK_NUMBER_KEY = "blockNumber".getBytes(StandardCharsets.UTF_8);
@@ -35,7 +30,7 @@ public interface WorldStateStorage extends StorageProxy {
 
   Optional<Hash> getWorldStateBlockHash();
 
-  Optional<Bytes> getZkStateRootHash(long blockNumber);
+  Optional<Hash> getZkStateRootHash(long blockNumber);
 
   Optional<Hash> getWorldStateRootHash();
 
@@ -47,7 +42,7 @@ public interface WorldStateStorage extends StorageProxy {
     // no-op
   }
 
-  interface WorldStateUpdater extends Updater {
+  interface WorldStateUpdater extends TrieUpdater {
 
     void setBlockHash(final Hash blockHash);
 
@@ -55,7 +50,7 @@ public interface WorldStateStorage extends StorageProxy {
 
     void saveTrieLog(final long blockNumber, final Bytes rawTrieLogLayer);
 
-    void saveZkStateRootHash(long blockNumber, Bytes stateRoot);
+    void saveZkStateRootHash(long blockNumber, Hash stateRoot);
 
     void saveTrace(final long blockNumber, final Bytes rawTrace);
   }

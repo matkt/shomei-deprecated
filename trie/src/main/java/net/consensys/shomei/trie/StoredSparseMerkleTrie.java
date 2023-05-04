@@ -14,7 +14,6 @@
 package net.consensys.shomei.trie;
 
 import static com.google.common.base.Preconditions.checkNotNull;
-import static net.consensys.shomei.trie.ZKTrie.EMPTY_TRIE_ROOT;
 
 import net.consensys.shomei.trie.visitor.CommitVisitor;
 import net.consensys.shomei.trie.visitor.GetVisitor;
@@ -31,7 +30,6 @@ import org.hyperledger.besu.ethereum.trie.Node;
 import org.hyperledger.besu.ethereum.trie.NodeFactory;
 import org.hyperledger.besu.ethereum.trie.NodeLoader;
 import org.hyperledger.besu.ethereum.trie.NodeUpdater;
-import org.hyperledger.besu.ethereum.trie.NullNode;
 import org.hyperledger.besu.ethereum.trie.StoredNode;
 
 /** A {@link StoredSparseMerkleTrie} that persists trie nodes to a key/value store. */
@@ -46,10 +44,7 @@ public class StoredSparseMerkleTrie {
       final Bytes32 rootHash,
       final Function<Bytes, Bytes> valueSerializer) {
     this.nodeFactory = new StoredNodeFactory(nodeLoader, valueSerializer);
-    this.root =
-        rootHash.equals(EMPTY_TRIE_ROOT)
-            ? NullNode.instance()
-            : new StoredNode<>(nodeFactory, Bytes.EMPTY, rootHash);
+    this.root = new StoredNode<>(nodeFactory, Bytes.EMPTY, rootHash);
   }
 
   public Bytes32 getRootHash() {

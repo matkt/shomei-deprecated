@@ -17,7 +17,7 @@ import static net.consensys.shomei.trie.DigestGenerator.createDumDigest;
 import static net.consensys.shomei.util.bytes.MimcSafeBytes.unsafeFromBytes;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import net.consensys.shomei.trie.storage.InMemoryStorage;
+import net.consensys.shomei.trie.storage.InMemoryRepository;
 import net.consensys.shomei.util.bytes.MimcSafeBytes;
 import net.consensys.zkevm.HashProvider;
 
@@ -30,7 +30,7 @@ public class ZKTrieTest {
   @Test
   public void testEmptyRootHash() {
 
-    final InMemoryStorage storage = new InMemoryStorage();
+    final InMemoryRepository storage = new InMemoryRepository();
     ZKTrie zkTrie = ZKTrie.createTrie(storage);
     zkTrie.commit();
 
@@ -48,7 +48,7 @@ public class ZKTrieTest {
   @Test
   public void testInsertionRootHash() {
 
-    final InMemoryStorage storage = new InMemoryStorage();
+    final InMemoryRepository storage = new InMemoryRepository();
     ZKTrie zkTrie = ZKTrie.createTrie(storage);
 
     final MimcSafeBytes<Bytes> key = unsafeFromBytes(createDumDigest(58));
@@ -71,7 +71,7 @@ public class ZKTrieTest {
   @Test
   public void testInsertionAndUpdateRootHash() {
 
-    final InMemoryStorage storage = new InMemoryStorage();
+    final InMemoryRepository storage = new InMemoryRepository();
     ZKTrie zkTrie = ZKTrie.createTrie(storage);
 
     final MimcSafeBytes<Bytes> key = unsafeFromBytes(createDumDigest(58));
@@ -106,7 +106,7 @@ public class ZKTrieTest {
 
   @Test
   public void testInsertionAndDeleteRootHash() {
-    final InMemoryStorage storage = new InMemoryStorage();
+    final InMemoryRepository storage = new InMemoryRepository();
     ZKTrie zkTrie = ZKTrie.createTrie(storage);
 
     final MimcSafeBytes<Bytes> key = unsafeFromBytes(createDumDigest(58));

@@ -25,7 +25,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 
-public class InMemoryStorage implements StorageProxy, StorageProxy.Updater {
+public class InMemoryRepository implements TrieRepository, TrieRepository.TrieUpdater {
 
   private final TreeMap<Bytes, FlattenedLeaf> flatLeafStorage =
       new TreeMap<>(Comparator.naturalOrder());
@@ -68,16 +68,16 @@ public class InMemoryStorage implements StorageProxy, StorageProxy.Updater {
 
   @Override
   public Optional<Bytes> getTrieNode(final Bytes location, final Bytes nodeHash) {
-    return Optional.ofNullable(trieNodeStorage.get(nodeHash));
+    return Optional.ofNullable(trieNodeStorage.get(location));
   }
 
   @Override
   public void putTrieNode(final Bytes location, final Bytes nodeHash, final Bytes value) {
-    trieNodeStorage.put(nodeHash, value);
+    trieNodeStorage.put(location, value);
   }
 
   @Override
-  public InMemoryStorage updater() {
+  public InMemoryRepository updater() {
     return this;
   }
 

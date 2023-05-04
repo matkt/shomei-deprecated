@@ -18,7 +18,7 @@ import static net.consensys.shomei.rpc.ShomeiVersion.IMPL_VERSION;
 import net.consensys.shomei.rpc.ShomeiRpcMethod;
 import net.consensys.shomei.rpc.error.JsonInvalidVersionMessage;
 import net.consensys.shomei.rpc.error.ShomeiJsonRpcErrorResponse;
-import net.consensys.shomei.storage.WorldStateStorage;
+import net.consensys.shomei.storage.WorldStateRepository;
 import net.consensys.shomei.trie.ZKTrie;
 import net.consensys.shomei.trie.proof.Trace;
 
@@ -36,9 +36,9 @@ import org.hyperledger.besu.ethereum.rlp.RLP;
 
 public class RollupGetZkEVMStateMerkleProofV0 implements JsonRpcMethod {
 
-  final WorldStateStorage worldStateStorage;
+  final WorldStateRepository worldStateStorage;
 
-  public RollupGetZkEVMStateMerkleProofV0(final WorldStateStorage worldStateStorage) {
+  public RollupGetZkEVMStateMerkleProofV0(final WorldStateRepository worldStateStorage) {
     this.worldStateStorage = worldStateStorage;
   }
 
@@ -75,7 +75,7 @@ public class RollupGetZkEVMStateMerkleProofV0 implements JsonRpcMethod {
         new RollupGetZkEVMStateMerkleProofV0Response(
             worldStateStorage
                 .getZkStateRootHash(param.getStartBlockNumber() - 1)
-                .orElse(ZKTrie.EMPTY_TRIE_ROOT)
+                .orElse(ZKTrie.DEFAULT_TRIE_ROOT)
                 .toHexString(),
             traces,
             IMPL_VERSION));

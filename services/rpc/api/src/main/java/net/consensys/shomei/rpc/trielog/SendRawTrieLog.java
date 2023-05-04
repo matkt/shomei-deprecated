@@ -15,7 +15,7 @@ package net.consensys.shomei.rpc.trielog;
 
 import net.consensys.shomei.observer.TrieLogObserver;
 import net.consensys.shomei.rpc.ShomeiRpcMethod;
-import net.consensys.shomei.storage.WorldStateStorage;
+import net.consensys.shomei.storage.WorldStateRepository;
 
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.ethereum.api.jsonrpc.internal.JsonRpcRequestContext;
@@ -31,10 +31,10 @@ public class SendRawTrieLog implements JsonRpcMethod {
   private static final Logger LOG = LoggerFactory.getLogger(SendRawTrieLog.class);
   final TrieLogObserver trieLogObserver;
 
-  final WorldStateStorage worldStateStorage;
+  final WorldStateRepository worldStateStorage;
 
   public SendRawTrieLog(
-      final TrieLogObserver trieLogObserver, final WorldStateStorage worldStateStorage) {
+      final TrieLogObserver trieLogObserver, final WorldStateRepository worldStateStorage) {
     this.trieLogObserver = trieLogObserver;
     this.worldStateStorage = worldStateStorage;
   }
@@ -49,8 +49,8 @@ public class SendRawTrieLog implements JsonRpcMethod {
     final SendRawTrieLogParameter param =
         requestContext.getRequiredParameter(0, SendRawTrieLogParameter.class);
     try {
-      final WorldStateStorage.WorldStateUpdater updater =
-          (WorldStateStorage.WorldStateUpdater) worldStateStorage.updater();
+      final WorldStateRepository.WorldStateUpdater updater =
+          (WorldStateRepository.WorldStateUpdater) worldStateStorage.updater();
       updater.saveTrieLog(param.getBlockNumber(), Bytes.fromHexString(param.getTrieLog()));
       // updater.commit();
       trieLogObserver.onTrieLogAdded(param.getTrieLogIdentifier());
