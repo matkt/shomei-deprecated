@@ -24,6 +24,7 @@ import org.hyperledger.besu.ethereum.trie.StoredNode;
 
 public class ReadTrace implements Trace {
 
+  private Bytes location;
   private long nextFreeNode;
   public Node<Bytes> subRoot;
 
@@ -36,12 +37,14 @@ public class ReadTrace implements Trace {
   public Bytes value;
 
   public ReadTrace(
+      final Bytes location,
       final long nextFreeNode,
       final Node<Bytes> subRoot,
       final LeafOpening leaf,
       final Proof proof,
       final Bytes key,
       final Bytes value) {
+    this.location = location;
     this.nextFreeNode = nextFreeNode;
     this.subRoot = subRoot;
     this.leaf = leaf;
@@ -50,56 +53,38 @@ public class ReadTrace implements Trace {
     this.value = value;
   }
 
-  public ReadTrace(final Node<Bytes> subRoot) {
-    this.subRoot = subRoot;
+  @Override
+  public Bytes getLocation() {
+    return location;
+  }
+
+  @Override
+  public void setLocation(final Bytes location) {
+    this.location = location;
   }
 
   public long getNextFreeNode() {
     return nextFreeNode;
   }
 
-  public void setNextFreeNode(final long nextFreeNode) {
-    this.nextFreeNode = nextFreeNode;
-  }
-
   public Node<Bytes> getSubRoot() {
     return subRoot;
-  }
-
-  public void setSubRoot(final Node<Bytes> subRoot) {
-    this.subRoot = subRoot;
   }
 
   public LeafOpening getLeaf() {
     return leaf;
   }
 
-  public void setLeaf(final LeafOpening leaf) {
-    this.leaf = leaf;
-  }
-
   public Proof getProof() {
     return proof;
-  }
-
-  public void setProof(final Proof proof) {
-    this.proof = proof;
   }
 
   public Bytes getKey() {
     return key;
   }
 
-  public void setKey(final Bytes key) {
-    this.key = key;
-  }
-
   public Bytes getValue() {
     return value;
-  }
-
-  public void setValue(final Bytes value) {
-    this.value = value;
   }
 
   @Override
@@ -109,6 +94,13 @@ public class ReadTrace implements Trace {
 
   public static ReadTrace readFrom(final RLPInput in) {
     in.enterList();
+    final Bytes location;
+    if (in.nextIsNull()) {
+      location = Bytes.EMPTY;
+      in.skipNext();
+    } else {
+      location = in.readBytes();
+    }
     final long newNextFreeNode = in.readLongScalar();
     final Node<Bytes> subRoot = new StoredNode<>(null, null, Hash.wrap(in.readBytes32()));
     final LeafOpening leaf = LeafOpening.readFrom(in.readBytes());
@@ -116,12 +108,13 @@ public class ReadTrace implements Trace {
     final Bytes key = in.readBytes();
     final Bytes value = in.readBytes();
     in.leaveList();
-    return new ReadTrace(newNextFreeNode, subRoot, leaf, proof, key, value);
+    return new ReadTrace(location, newNextFreeNode, subRoot, leaf, proof, key, value);
   }
 
   @Override
   public void writeTo(final RLPOutput out) {
     out.startList();
+    out.writeBytes(location);
     out.writeLongScalar(nextFreeNode);
     out.writeBytes(subRoot.getHash());
     out.writeBytes(leaf.getEncodesBytes());

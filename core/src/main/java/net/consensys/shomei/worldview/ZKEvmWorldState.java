@@ -215,6 +215,12 @@ public class ZKEvmWorldState {
                 }
               });
     }
+    traces.forEach(
+        trace ->
+            trace.setLocation(
+                accountKey
+                    .address()
+                    .getOriginalUnsafeValue())); // mark this traces as storage traces
     return traces;
   }
 
@@ -248,6 +254,12 @@ public class ZKEvmWorldState {
 
       zkStorageTrie.commit();
     }
+    traces.forEach(
+        trace ->
+            trace.setLocation(
+                accountKey
+                    .address()
+                    .getOriginalUnsafeValue())); // mark this traces as storage traces
     return traces;
   }
 

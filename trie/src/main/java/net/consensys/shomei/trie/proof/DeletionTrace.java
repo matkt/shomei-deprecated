@@ -24,6 +24,8 @@ import org.hyperledger.besu.ethereum.trie.StoredNode;
 
 public class DeletionTrace implements Trace {
 
+  private Bytes location;
+
   private long newNextFreeNode;
   public Node<Bytes> oldSubRoot;
   public Node<Bytes> newSubRoot;
@@ -40,6 +42,7 @@ public class DeletionTrace implements Trace {
   public LeafOpening priorRightLeaf;
 
   public DeletionTrace(
+      final Bytes location,
       final long newNextFreeNode,
       final Node<Bytes> oldSubRoot,
       final Node<Bytes> newSubRoot,
@@ -50,6 +53,7 @@ public class DeletionTrace implements Trace {
       final LeafOpening priorLeftLeaf,
       final LeafOpening priorDeletedLeaf,
       final LeafOpening priorRightLeaf) {
+    this.location = location;
     this.newNextFreeNode = newNextFreeNode;
     this.oldSubRoot = oldSubRoot;
     this.newSubRoot = newSubRoot;
@@ -71,12 +75,18 @@ public class DeletionTrace implements Trace {
     return DELETION_TRACE_CODE;
   }
 
-  public long getNewNextFreeNode() {
-    return newNextFreeNode;
+  @Override
+  public Bytes getLocation() {
+    return location;
   }
 
-  public void setNewNextFreeNode(final long newNextFreeNode) {
-    this.newNextFreeNode = newNextFreeNode;
+  @Override
+  public void setLocation(final Bytes location) {
+    this.location = location;
+  }
+
+  public long getNewNextFreeNode() {
+    return newNextFreeNode;
   }
 
   public Node<Bytes> getOldSubRoot() {
@@ -87,68 +97,44 @@ public class DeletionTrace implements Trace {
     return newSubRoot;
   }
 
-  public void setNewSubRoot(final Node<Bytes> newSubRoot) {
-    this.newSubRoot = newSubRoot;
-  }
-
   public Proof getLeftProof() {
     return leftProof;
-  }
-
-  public void setLeftProof(final Proof leftProof) {
-    this.leftProof = leftProof;
   }
 
   public Proof getDeletedProof() {
     return deletedProof;
   }
 
-  public void setDeletedProof(final Proof deletedProof) {
-    this.deletedProof = deletedProof;
-  }
-
   public Proof getRightProof() {
     return rightProof;
-  }
-
-  public void setRightProof(final Proof rightProof) {
-    this.rightProof = rightProof;
   }
 
   public Bytes getKey() {
     return key;
   }
 
-  public void setKey(final Bytes key) {
-    this.key = key;
-  }
-
   public LeafOpening getPriorLeftLeaf() {
     return priorLeftLeaf;
-  }
-
-  public void setPriorLeftLeaf(final LeafOpening priorLeftLeaf) {
-    this.priorLeftLeaf = priorLeftLeaf;
   }
 
   public LeafOpening getPriorDeletedLeaf() {
     return priorDeletedLeaf;
   }
 
-  public void setPriorDeletedLeaf(final LeafOpening priorDeletedLeaf) {
-    this.priorDeletedLeaf = priorDeletedLeaf;
-  }
-
   public LeafOpening getPriorRightLeaf() {
     return priorRightLeaf;
   }
 
-  public void setPriorRightLeaf(final LeafOpening priorRightLeaf) {
-    this.priorRightLeaf = priorRightLeaf;
-  }
-
   public static DeletionTrace readFrom(final RLPInput in) {
     in.enterList();
+
+    final Bytes location;
+    if (in.nextIsNull()) {
+      location = Bytes.EMPTY;
+      in.skipNext();
+    } else {
+      location = in.readBytes();
+    }
     final long newNextFreeNode = in.readLongScalar();
     final Node<Bytes> oldSubRoot = new StoredNode<>(null, null, Hash.wrap(in.readBytes32()));
     final Node<Bytes> newSubRoot = new StoredNode<>(null, null, Hash.wrap(in.readBytes32()));
@@ -161,6 +147,7 @@ public class DeletionTrace implements Trace {
     final LeafOpening priorRightLeaf = LeafOpening.readFrom(in.readBytes());
     in.leaveList();
     return new DeletionTrace(
+        location,
         newNextFreeNode,
         oldSubRoot,
         newSubRoot,
@@ -176,6 +163,7 @@ public class DeletionTrace implements Trace {
   @Override
   public void writeTo(final RLPOutput out) {
     out.startList();
+    out.writeBytes(location);
     out.writeLongScalar(newNextFreeNode);
     out.writeBytes(oldSubRoot.getHash());
     out.writeBytes(newSubRoot.getHash());

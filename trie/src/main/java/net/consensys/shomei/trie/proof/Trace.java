@@ -30,6 +30,10 @@ public interface Trace {
 
   int getType();
 
+  Bytes getLocation();
+
+  void setLocation(final Bytes location);
+
   void writeTo(final RLPOutput out);
 
   static Bytes serialize(final List<Trace> traces) {
