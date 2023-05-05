@@ -154,7 +154,7 @@ public class PersistedWorldStateRepository implements WorldStateRepository {
 
   @Override
   public Optional<Bytes> getTrieLog(final long blockNumber) {
-    return Optional.ofNullable(trielog.get(blockNumber)).map(Bytes::wrap);
+    return Optional.ofNullable(trielog.remove(blockNumber)).map(Bytes::wrap);
   }
 
   @Override
