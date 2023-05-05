@@ -1,5 +1,5 @@
 /*
- * Copyright ConsenSys Software Inc., 2022
+ * Copyright ConsenSys Software Inc., 2023
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
  * the License. You may obtain a copy of the License at
@@ -16,6 +16,7 @@ package net.consensys.shomei.cli;
 import net.consensys.shomei.Runner;
 import net.consensys.shomei.cli.error.ExecutionExceptionHandler;
 import net.consensys.shomei.cli.error.ParameterExceptionHandler;
+import net.consensys.shomei.cli.option.DataStorageOption;
 import net.consensys.shomei.cli.option.JsonRpcOption;
 import net.consensys.shomei.cli.option.LoggingLevelOption;
 import net.consensys.shomei.util.logging.LoggingConfiguration;
@@ -46,6 +47,9 @@ public class StateManagerCommand implements Runnable {
 
   private static final Logger LOG = LoggerFactory.getLogger(StateManagerCommand.class);
 
+  @Mixin(name = "Data storage configuration")
+  private final DataStorageOption dataStorageOption = DataStorageOption.create();
+
   @Mixin(name = "Logging level")
   private final LoggingLevelOption loggingLevelOption = LoggingLevelOption.create();
 
@@ -54,7 +58,7 @@ public class StateManagerCommand implements Runnable {
 
   public StateManagerCommand() {}
 
-  public int parse(final CommandLine.IExecutionStrategy resultHandler, final String... args) {
+  public int parse(final String... args) {
     return new CommandLine(this)
         .setCaseInsensitiveEnumValuesAllowed(true)
         .setParameterExceptionHandler(
@@ -84,7 +88,7 @@ public class StateManagerCommand implements Runnable {
   public void run() {
     try {
       configureLogging();
-      final Runner runner = new Runner(jsonRpcOption);
+      final Runner runner = new Runner(dataStorageOption, jsonRpcOption);
       addShutdownHook(runner);
       runner.start();
     } catch (final Exception e) {

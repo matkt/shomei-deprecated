@@ -130,5 +130,8 @@ public class WorldStateStorageProxy implements StorageProxy {
     public void removeFlatLeafValue(final Bytes hkey) {
       this.updater.removeFlatLeafValue(keySerializer.apply(hkey));
     }
+
+    @Override
+    public void commit() {}
   }
 }

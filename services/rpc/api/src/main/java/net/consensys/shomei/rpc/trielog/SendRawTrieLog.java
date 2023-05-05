@@ -24,9 +24,11 @@ import org.hyperledger.besu.ethereum.api.jsonrpc.internal.response.JsonRpcError;
 import org.hyperledger.besu.ethereum.api.jsonrpc.internal.response.JsonRpcErrorResponse;
 import org.hyperledger.besu.ethereum.api.jsonrpc.internal.response.JsonRpcResponse;
 import org.hyperledger.besu.ethereum.api.jsonrpc.internal.response.JsonRpcSuccessResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class SendRawTrieLog implements JsonRpcMethod {
-
+  private static final Logger LOG = LoggerFactory.getLogger(SendRawTrieLog.class);
   final TrieLogObserver trieLogObserver;
 
   final WorldStateStorage worldStateStorage;
@@ -50,10 +52,11 @@ public class SendRawTrieLog implements JsonRpcMethod {
       final WorldStateStorage.WorldStateUpdater updater =
           (WorldStateStorage.WorldStateUpdater) worldStateStorage.updater();
       updater.saveTrieLog(param.getBlockNumber(), Bytes.fromHexString(param.getTrieLog()));
-      // updater.commit(); //TODO commit
+      // updater.commit();
       trieLogObserver.onTrieLogAdded(param.getTrieLogIdentifier());
     } catch (RuntimeException e) {
-      e.printStackTrace(System.out);
+      LOG.error("failed to handle new TrieLog {}", e.getMessage());
+      LOG.debug("exception handling TrieLog", e);
       return new JsonRpcErrorResponse(
           requestContext.getRequest().getId(), JsonRpcError.INVALID_PARAMS);
     }

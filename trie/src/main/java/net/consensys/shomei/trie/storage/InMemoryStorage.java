@@ -90,4 +90,9 @@ public class InMemoryStorage implements StorageProxy, StorageProxy.Updater {
   public void removeFlatLeafValue(final Bytes key) {
     flatLeafStorage.remove(key);
   }
+
+  @Override
+  public void commit() {
+    // no-op
+  }
 }

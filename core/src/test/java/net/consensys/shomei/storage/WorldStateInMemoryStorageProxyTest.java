@@ -11,14 +11,12 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package net.consensys.shomei.cli;
+package net.consensys.shomei.storage;
 
-import picocli.CommandLine;
-
-public class PicoCliVersionProvider implements CommandLine.IVersionProvider {
+public class WorldStateInMemoryStorageProxyTest extends WorldStateStorageProxyTestBase {
 
   @Override
-  public String[] getVersion() {
-    return new String[] {VersionProvider.VERSION};
+  WorldStateStorage getWorldStateStorage() {
+    return new InMemoryWorldStateStorage();
   }
 }

@@ -17,7 +17,6 @@ import net.consensys.shomei.cli.StateManagerCommand;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import picocli.CommandLine;
 
 public class Shomei {
   private static final Logger LOG = LoggerFactory.getLogger(Shomei.class);
@@ -27,7 +26,7 @@ public class Shomei {
     Thread.currentThread().setUncaughtExceptionHandler(exceptionHandler());
 
     final StateManagerCommand stateManagerCommand = new StateManagerCommand();
-    stateManagerCommand.parse(new CommandLine.RunLast(), args);
+    stateManagerCommand.parse(args);
   }
 
   private static Thread.UncaughtExceptionHandler exceptionHandler() {

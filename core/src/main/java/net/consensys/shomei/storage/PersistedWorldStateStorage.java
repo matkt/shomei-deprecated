@@ -17,38 +17,86 @@ import net.consensys.shomei.services.storage.rocksdb.RocksDBSegmentIdentifier.Se
 import net.consensys.shomei.services.storage.rocksdb.RocksDBSegmentedStorage;
 import net.consensys.shomei.trie.model.FlattenedLeaf;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicReference;
 
 import com.google.common.primitives.Longs;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.ethereum.rlp.RLP;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import services.storage.BidirectionalIterator;
 import services.storage.KeyValueStorage;
-import services.storage.SnappableKeyValueStorage;
+import services.storage.KeyValueStorage.KeyValuePair;
+import services.storage.KeyValueStorageTransaction;
 
 public class PersistedWorldStateStorage implements WorldStateStorage {
+  record UpdateableStorage(
+      KeyValueStorage storage, AtomicReference<KeyValueStorageTransaction> txRef) {
+    UpdateableStorage(KeyValueStorage storage) {
+      this(storage, new AtomicReference<>(storage.startTransaction()));
+    }
 
-  private final SnappableKeyValueStorage keyIndexStorage;
+    synchronized Optional<byte[]> get(byte[] key) {
+      return txRef.getAcquire().get(key);
+    }
 
-  private final SnappableKeyValueStorage trieLogStorage;
+    synchronized void put(byte[] key, byte[] value) {
+      txRef.getAcquire().put(key, value);
+    }
 
-  private final SnappableKeyValueStorage trieNodeStorage;
+    synchronized void remove(byte[] key) {
+      txRef.getAcquire().remove(key);
+    }
+
+    synchronized Optional<BidirectionalIterator<KeyValuePair>> getNearestTo(byte[] key) {
+      return txRef.getAcquire().getNearestTo(key);
+    }
+
+    synchronized void commit() {
+      txRef.getAndUpdate(
+          tx -> {
+            tx.commit();
+            return storage.startTransaction();
+          });
+    }
+  }
+
+  private static final Logger LOG = LoggerFactory.getLogger(PersistedWorldStateStorage.class);
+  private final UpdateableStorage flatLeafStorage;
+  private final UpdateableStorage trieLogStorage;
+  private final UpdateableStorage trieNodeStorage;
+  private final UpdateableStorage traceStorage;
+
+  private final Map<Long, Bytes> trielog = new ConcurrentHashMap<>();
+
+  static final String ZK_STATE_ROOT_PREFIX = "zkStateRoot";
 
   public PersistedWorldStateStorage(final RocksDBSegmentedStorage storage) {
-    this.keyIndexStorage =
-        storage.getKeyValueStorageForSegment(SegmentNames.ZK_LEAF_INDEX.getSegmentIdentifier());
+    this.flatLeafStorage =
+        new UpdateableStorage(
+            storage.getKeyValueStorageForSegment(
+                SegmentNames.ZK_LEAF_INDEX.getSegmentIdentifier()));
     this.trieLogStorage =
-        storage.getKeyValueStorageForSegment(SegmentNames.ZK_TRIE_LOG.getSegmentIdentifier());
+        new UpdateableStorage(
+            storage.getKeyValueStorageForSegment(SegmentNames.ZK_TRIE_LOG.getSegmentIdentifier()));
     this.trieNodeStorage =
-        storage.getKeyValueStorageForSegment(SegmentNames.ZK_TRIE_NODE.getSegmentIdentifier());
+        new UpdateableStorage(
+            storage.getKeyValueStorageForSegment(SegmentNames.ZK_TRIE_NODE.getSegmentIdentifier()));
+    this.traceStorage =
+        new UpdateableStorage(
+            storage.getKeyValueStorageForSegment(SegmentNames.ZK_TRACE.getSegmentIdentifier()));
   }
 
   @Override
   public Optional<FlattenedLeaf> getFlatLeaf(final Bytes hkey) {
-    return keyIndexStorage
+    return flatLeafStorage
         .get(hkey.toArrayUnsafe())
         .map(Bytes::wrap)
         .map(RLP::input)
@@ -58,40 +106,46 @@ public class PersistedWorldStateStorage implements WorldStateStorage {
   @Override
   public Range getNearestKeys(final Bytes hkey) {
     // call nearest key of rocksdb
-    final Optional<BidirectionalIterator<KeyValueStorage.KeyValuePair>> nearestTo =
-        keyIndexStorage.getNearestTo(hkey.toArrayUnsafe());
+    final Optional<BidirectionalIterator<KeyValuePair>> nearestTo =
+        flatLeafStorage.getNearestTo(hkey.toArrayUnsafe());
     if (nearestTo.isPresent()) {
       try (var iterator = nearestTo.get()) {
-        final KeyValueStorage.KeyValuePair next = iterator.current();
+        final KeyValuePair next = iterator.current();
+        final Range range;
         if (Bytes.wrap(next.key()).equals(hkey)) {
-          final KeyValueStorage.KeyValuePair left = iterator.previous();
-          final KeyValueStorage.KeyValuePair middle = iterator.next();
-          final KeyValueStorage.KeyValuePair right = iterator.next();
-          return new Range(
-              Map.entry(
-                  Hash.wrap(Bytes32.wrap(left.key())),
-                  FlattenedLeaf.readFrom(RLP.input(Bytes.wrap(left.value())))),
-              Optional.of(
+          iterator.previous();
+          final KeyValuePair left = iterator.next();
+          final KeyValuePair middle = iterator.next();
+          final KeyValuePair right = iterator.next();
+          range =
+              new Range(
                   Map.entry(
-                      Hash.wrap(Bytes32.wrap(middle.key())),
-                      FlattenedLeaf.readFrom(RLP.input(Bytes.wrap(middle.value()))))),
-              Map.entry(
-                  Hash.wrap(Bytes32.wrap(right.key())),
-                  FlattenedLeaf.readFrom(RLP.input(Bytes.wrap(right.value())))));
+                      Bytes.wrap(left.key()),
+                      FlattenedLeaf.readFrom(RLP.input(Bytes.wrap(left.value())))),
+                  Optional.of(
+                      Map.entry(
+                          Bytes.wrap(middle.key()),
+                          FlattenedLeaf.readFrom(RLP.input(Bytes.wrap(middle.value()))))),
+                  Map.entry(
+                      Bytes.wrap(right.key()),
+                      FlattenedLeaf.readFrom(RLP.input(Bytes.wrap(right.value())))));
         } else {
-          final KeyValueStorage.KeyValuePair left = iterator.next();
-          final KeyValueStorage.KeyValuePair right = iterator.next();
-          return new Range(
-              Map.entry(
-                  Hash.wrap(Bytes32.wrap(left.key())),
-                  FlattenedLeaf.readFrom(RLP.input(Bytes.wrap(left.value())))),
-              Optional.empty(),
-              Map.entry(
-                  Hash.wrap(Bytes32.wrap(right.key())),
-                  FlattenedLeaf.readFrom(RLP.input(Bytes.wrap(right.value())))));
+          final KeyValuePair left = iterator.next();
+          final KeyValuePair right = iterator.next();
+          range =
+              new Range(
+                  Map.entry(
+                      Bytes.wrap(left.key()),
+                      FlattenedLeaf.readFrom(RLP.input(Bytes.wrap(left.value())))),
+                  Optional.empty(),
+                  Map.entry(
+                      Bytes.wrap(right.key()),
+                      FlattenedLeaf.readFrom(RLP.input(Bytes.wrap(right.value())))));
         }
+        iterator.close();
+        return range;
       } catch (Exception ex) {
-        // close error
+        LOG.error("failed to get nearest keys", ex);
       }
     }
     throw new RuntimeException("not found leaf index");
@@ -99,22 +153,25 @@ public class PersistedWorldStateStorage implements WorldStateStorage {
 
   @Override
   public Optional<Bytes> getTrieLog(final long blockNumber) {
-    return trieLogStorage.get(Longs.toByteArray(blockNumber)).map(Bytes::wrap);
+    return Optional.ofNullable(trielog.get(blockNumber)).map(Bytes::wrap);
   }
 
   @Override
   public Optional<Bytes> getZkStateRootHash(final long blockNumber) {
-    return Optional.empty();
+    return traceStorage
+        .get((ZK_STATE_ROOT_PREFIX + blockNumber).getBytes(StandardCharsets.UTF_8))
+        .map(Bytes::wrap);
   }
 
   @Override
   public Optional<Bytes> getTrace(final long blockNumber) {
-    return Optional.empty();
+    return traceStorage.get(Longs.toByteArray(blockNumber)).map(Bytes::wrap);
   }
 
   @Override
   public Optional<Bytes> getTrieNode(final Bytes location, final Bytes nodeHash) {
-    return trieNodeStorage.get(nodeHash.toArrayUnsafe()).map(Bytes::wrap); // TODO use location
+    // TODO use location
+    return trieNodeStorage.get(nodeHash.toArrayUnsafe()).map(Bytes::wrap);
   }
 
   @Override
@@ -133,7 +190,71 @@ public class PersistedWorldStateStorage implements WorldStateStorage {
   }
 
   @Override
-  public Updater updater() {
-    return null;
+  public WorldStateUpdater updater() {
+    return new WorldStateUpdater() {
+      @Override
+      public void setBlockHash(final Hash blockHash) {
+        trieNodeStorage.put(WORLD_BLOCK_HASH_KEY, blockHash.toArrayUnsafe());
+      }
+
+      @Override
+      public void setBlockNumber(final long blockNumber) {
+        trieNodeStorage.put(WORLD_BLOCK_NUMBER_KEY, Longs.toByteArray(blockNumber));
+      }
+
+      @Override
+      public void saveTrieLog(final long blockNumber, final Bytes rawTrieLogLayer) {
+        trielog.put(blockNumber, rawTrieLogLayer);
+        // trieLogStorage.put(Longs.toByteArray(blockNumber), rawTrieLogLayer.toArrayUnsafe());
+      }
+
+      @Override
+      public void saveZkStateRootHash(final long blockNumber, final Bytes stateRoot) {
+        traceStorage.put(
+            (ZK_STATE_ROOT_PREFIX + blockNumber).getBytes(StandardCharsets.UTF_8),
+            stateRoot.toArrayUnsafe());
+      }
+
+      @Override
+      public void saveTrace(final long blockNumber, final Bytes rawTrace) {
+        traceStorage.txRef.get().put(Longs.toByteArray(blockNumber), rawTrace.toArrayUnsafe());
+      }
+
+      @Override
+      public void putFlatLeaf(final Bytes key, final FlattenedLeaf value) {
+        flatLeafStorage.put(key.toArrayUnsafe(), RLP.encode(value::writeTo).toArrayUnsafe());
+      }
+
+      @Override
+      public void putTrieNode(final Bytes location, final Bytes nodeHash, final Bytes value) {
+        trieNodeStorage.put(nodeHash.toArrayUnsafe(), value.toArrayUnsafe());
+      }
+
+      @Override
+      public void removeFlatLeafValue(final Bytes key) {
+        flatLeafStorage.remove(key.toArrayUnsafe());
+      }
+
+      @Override
+      public void commit() {
+        flatLeafStorage.commit();
+        trieLogStorage.commit();
+        trieNodeStorage.commit();
+        traceStorage.commit();
+      }
+    };
+  }
+
+  @Override
+  public void close() {
+    try {
+      flatLeafStorage.storage.close();
+      trieLogStorage.storage.close();
+      trieNodeStorage.storage.close();
+      traceStorage.storage.close();
+    } catch (IOException e) {
+      LOG.error("Failed to close storage", e);
+      throw new RuntimeException(e);
+    }
   }
 }
