@@ -83,6 +83,9 @@ jobs:
 
   build:
     runs-on: ubuntu-latest
+    env:
+      architecture: "amd64"
+      GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.parallel=true -Dorg.gradle.workers.max=2"
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -106,9 +109,62 @@ jobs:
           curl -L https://github.com/aelsabbahy/goss/releases/download/v0.3.9/goss-linux-amd64 -o ./docker/tests/goss-linux-amd64
           ./gradlew --no-daemon testDocker
 
-  publish:
+  buildArm64:
+    runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        architecture: [ arm64 ]
+    env:
+      architecture: "arm64"
+      GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.parallel=true -Dorg.gradle.workers.max=2"
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Setup JDK
+        uses: actions/setup-java@v2
+        with:
+          java-version: '17'
+          distribution: 'adopt'
+      - name: Check Dockerfile syntax
+        run: |
+          docker run --rm -i hadolint/hadolint < docker/openjdk-17/Dockerfile
+          docker run --rm -i hadolint/hadolint < docker/openjdk-17-debug/Dockerfile
+          docker run --rm -i hadolint/hadolint < docker/openjdk-latest/Dockerfile
+          docker run --rm -i hadolint/hadolint < docker/graalvm/Dockerfile
+      - name: Build Docker Image
+        run: |
+          ./gradlew --no-daemon distDocker
+      - name: Test Docker Image
+        run: |
+          mkdir -p docker/reports
+          curl -L https://github.com/aelsabbahy/goss/releases/download/v0.3.9/goss-linux-arm -o ./docker/tests/goss-linux-arm64
+          ./gradlew --no-daemon testDocker
+
+  publishDocker:
     needs: build
     runs-on: ubuntu-latest
+    env:
+      architecture: "amd64"
+      GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.parallel=true -Dorg.gradle.workers.max=2"
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Setup JDK
+        uses: actions/setup-java@v2
+        with:
+          java-version: '17'
+          distribution: 'adopt'
+      - name: Publish Docker Image
+        run: |
+          docker login --username "${{ secrets.DOCKER_USER_RW }}" --password "${{ secrets.DOCKER_PASSWORD_RW }}"
+          ./gradlew --no-daemon "-Pbranch=${CIRCLE_BRANCH}" dockerUpload
+
+  publishDockerArm64:
+    needs: build
+    runs-on: ubuntu-latest
+    env:
+      architecture: "arm64"
+      GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.parallel=true -Dorg.gradle.workers.max=2"
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
