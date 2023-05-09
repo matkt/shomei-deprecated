@@ -80,3 +80,50 @@ jobs:
         with:
           name: distributions
           path: build/distributions
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Setup JDK
+        uses: actions/setup-java@v2
+        with:
+          java-version: '17'
+      - name: Install Docker
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y docker.io
+      - name: Check Dockerfile syntax
+        run: |
+          docker run --rm -i hadolint/hadolint < docker/openjdk-17/Dockerfile
+          docker run --rm -i hadolint/hadolint < docker/openjdk-17-debug/Dockerfile
+          docker run --rm -i hadolint/hadolint < docker/openjdk-latest/Dockerfile
+          docker run --rm -i hadolint/hadolint < docker/graalvm/Dockerfile
+      - name: Build Docker Image
+        run: |
+          ./gradlew --no-daemon distDocker
+      - name: Test Docker Image
+        run: |
+          mkdir -p docker/reports
+          curl -L https://github.com/aelsabbahy/goss/releases/download/v0.3.9/goss-linux-amd64 -o ./docker/tests/goss-linux-amd64
+          ./gradlew --no-daemon testDocker
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Setup JDK
+        uses: actions/setup-java@v2
+        with:
+          java-version: '17'
+      - name: Install Docker
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y docker.io
+      - name: Publish Docker Image
+        run: |
+          docker login --username "${{ secrets.DOCKER_USER_RW }}" --password "${{ secrets.DOCKER_PASSWORD_RW }}"
+          ./gradlew --no-daemon "-Pbranch=${CIRCLE_BRANCH}" dockerUpload
