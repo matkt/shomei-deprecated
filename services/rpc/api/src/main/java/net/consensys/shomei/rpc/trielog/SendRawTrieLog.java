@@ -17,6 +17,10 @@ import net.consensys.shomei.observer.TrieLogObserver;
 import net.consensys.shomei.rpc.ShomeiRpcMethod;
 import net.consensys.shomei.storage.WorldStateRepository;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.IntStream;
+
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.ethereum.api.jsonrpc.internal.JsonRpcRequestContext;
 import org.hyperledger.besu.ethereum.api.jsonrpc.internal.methods.JsonRpcMethod;
@@ -46,15 +50,24 @@ public class SendRawTrieLog implements JsonRpcMethod {
 
   @Override
   public JsonRpcResponse response(final JsonRpcRequestContext requestContext) {
-    final SendRawTrieLogParameter param =
-        requestContext.getRequiredParameter(0, SendRawTrieLogParameter.class);
     try {
       final WorldStateRepository.WorldStateUpdater updater =
           (WorldStateRepository.WorldStateUpdater) worldStateStorage.updater();
 
-      updater.saveTrieLog(param.blockNumber(), Bytes.fromHexString(param.trieLog()));
-      // updater.commit();
-      trieLogObserver.onTrieLogAdded(param.getTrieLogIdentifier());
+      final List<TrieLogObserver.TrieLogIdentifier> trieLogIdentifiers = new ArrayList<>();
+      IntStream.range(0, requestContext.getRequest().getParamLength())
+          .forEach(
+              index -> {
+                SendRawTrieLogParameter param =
+                    requestContext
+                        .getRequest()
+                        .getRequiredParameter(index, SendRawTrieLogParameter.class);
+                updater.saveTrieLog(param.blockNumber(), Bytes.fromHexString(param.trieLog()));
+                trieLogIdentifiers.add(param.getTrieLogIdentifier());
+              });
+      // updater.commitTrieLog();
+      trieLogObserver.onTrieLogsAdded(trieLogIdentifiers);
+
     } catch (RuntimeException e) {
       LOG.error("failed to handle new TrieLog {}", e.getMessage());
       LOG.debug("exception handling TrieLog", e);
