@@ -36,7 +36,8 @@ import services.storage.KeyValueStorage;
 import services.storage.KeyValueStorage.KeyValuePair;
 import services.storage.KeyValueStorageTransaction;
 
-public class PersistedWorldStateStorage implements WorldStateStorage {
+public class PersistedWorldStateRepository implements WorldStateRepository {
+
   record UpdateableStorage(
       KeyValueStorage storage, AtomicReference<KeyValueStorageTransaction> txRef) {
     UpdateableStorage(KeyValueStorage storage) {
@@ -68,7 +69,7 @@ public class PersistedWorldStateStorage implements WorldStateStorage {
     }
   }
 
-  private static final Logger LOG = LoggerFactory.getLogger(PersistedWorldStateStorage.class);
+  private static final Logger LOG = LoggerFactory.getLogger(PersistedWorldStateRepository.class);
   private final UpdateableStorage flatLeafStorage;
   private final UpdateableStorage trieLogStorage;
   private final UpdateableStorage trieNodeStorage;
@@ -78,7 +79,7 @@ public class PersistedWorldStateStorage implements WorldStateStorage {
 
   static final String ZK_STATE_ROOT_PREFIX = "zkStateRoot";
 
-  public PersistedWorldStateStorage(final RocksDBSegmentedStorage storage) {
+  public PersistedWorldStateRepository(final RocksDBSegmentedStorage storage) {
     this.flatLeafStorage =
         new UpdateableStorage(
             storage.getKeyValueStorageForSegment(
@@ -153,14 +154,15 @@ public class PersistedWorldStateStorage implements WorldStateStorage {
 
   @Override
   public Optional<Bytes> getTrieLog(final long blockNumber) {
-    return Optional.ofNullable(trielog.get(blockNumber)).map(Bytes::wrap);
+    return Optional.ofNullable(trielog.remove(blockNumber)).map(Bytes::wrap);
   }
 
   @Override
-  public Optional<Bytes> getZkStateRootHash(final long blockNumber) {
+  public Optional<Hash> getZkStateRootHash(final long blockNumber) {
     return traceStorage
         .get((ZK_STATE_ROOT_PREFIX + blockNumber).getBytes(StandardCharsets.UTF_8))
-        .map(Bytes::wrap);
+        .map(Bytes32::wrap)
+        .map(Hash::wrap);
   }
 
   @Override
@@ -171,12 +173,15 @@ public class PersistedWorldStateStorage implements WorldStateStorage {
   @Override
   public Optional<Bytes> getTrieNode(final Bytes location, final Bytes nodeHash) {
     // TODO use location
-    return trieNodeStorage.get(nodeHash.toArrayUnsafe()).map(Bytes::wrap);
+    return trieNodeStorage.get(location.toArrayUnsafe()).map(Bytes::wrap);
   }
 
   @Override
   public Optional<Hash> getWorldStateRootHash() {
-    return trieNodeStorage.get(WORLD_STATE_ROOT_HASH_KEY).map(Bytes32::wrap).map(Hash::wrap);
+    return getWorldStateBlockNumber()
+        .flatMap(this::getZkStateRootHash)
+        .map(Bytes32::wrap)
+        .map(Hash::wrap);
   }
 
   @Override
@@ -209,7 +214,7 @@ public class PersistedWorldStateStorage implements WorldStateStorage {
       }
 
       @Override
-      public void saveZkStateRootHash(final long blockNumber, final Bytes stateRoot) {
+      public void saveZkStateRootHash(final long blockNumber, final Hash stateRoot) {
         traceStorage.put(
             (ZK_STATE_ROOT_PREFIX + blockNumber).getBytes(StandardCharsets.UTF_8),
             stateRoot.toArrayUnsafe());
@@ -227,7 +232,7 @@ public class PersistedWorldStateStorage implements WorldStateStorage {
 
       @Override
       public void putTrieNode(final Bytes location, final Bytes nodeHash, final Bytes value) {
-        trieNodeStorage.put(nodeHash.toArrayUnsafe(), value.toArrayUnsafe());
+        trieNodeStorage.put(location.toArrayUnsafe(), value.toArrayUnsafe());
       }
 
       @Override

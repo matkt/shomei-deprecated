@@ -18,8 +18,8 @@ import net.consensys.shomei.cli.option.JsonRpcOption;
 import net.consensys.shomei.rpc.JsonRpcService;
 import net.consensys.shomei.services.storage.rocksdb.RocksDBSegmentedStorage;
 import net.consensys.shomei.services.storage.rocksdb.configuration.RocksDBConfigurationBuilder;
-import net.consensys.shomei.storage.PersistedWorldStateStorage;
-import net.consensys.shomei.storage.WorldStateStorage;
+import net.consensys.shomei.storage.PersistedWorldStateRepository;
+import net.consensys.shomei.storage.WorldStateRepository;
 import net.consensys.shomei.worldview.ZkEvmWorldStateEntryPoint;
 
 import io.vertx.core.Vertx;
@@ -32,7 +32,7 @@ public class Runner {
 
   private final Vertx vertx;
   private final JsonRpcService jsonRpcService;
-  private final WorldStateStorage worldStateStorage;
+  private final WorldStateRepository worldStateStorage;
 
   public Runner(final DataStorageOption dataStorageOption, JsonRpcOption jsonRpcOption) {
     this.vertx = Vertx.vertx();
@@ -40,7 +40,7 @@ public class Runner {
     //    final InMemoryWorldStateStorage inMemoryWorldStateStorage = new
     // InMemoryWorldStateStorage();
     worldStateStorage =
-        new PersistedWorldStateStorage(
+        new PersistedWorldStateRepository(
             new RocksDBSegmentedStorage(
                 new RocksDBConfigurationBuilder()
                     .databaseDir(dataStorageOption.getDataStoragePath())

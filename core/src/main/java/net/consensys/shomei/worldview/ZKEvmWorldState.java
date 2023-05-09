@@ -13,20 +13,19 @@
 
 package net.consensys.shomei.worldview;
 
-import static net.consensys.shomei.storage.WorldStateStorageProxy.createAccountProxy;
-import static net.consensys.shomei.storage.WorldStateStorageProxy.createStorageProxy;
-import static net.consensys.shomei.trie.ZKTrie.EMPTY_TRIE_ROOT;
+import static net.consensys.shomei.trie.ZKTrie.DEFAULT_TRIE_ROOT;
 import static net.consensys.shomei.util.bytes.MimcSafeBytes.safeUInt256;
 
 import net.consensys.shomei.MutableZkAccount;
 import net.consensys.shomei.ZkAccount;
 import net.consensys.shomei.ZkValue;
-import net.consensys.shomei.storage.WorldStateStorage;
-import net.consensys.shomei.storage.WorldStateStorageProxy;
+import net.consensys.shomei.storage.WorldStateRepository;
 import net.consensys.shomei.trie.ZKTrie;
 import net.consensys.shomei.trie.proof.Trace;
-import net.consensys.shomei.trie.storage.StorageProxy;
-import net.consensys.shomei.trie.storage.StorageProxy.Updater;
+import net.consensys.shomei.trie.storage.AccountTrieRepositoryWrapper;
+import net.consensys.shomei.trie.storage.StorageTrieRepositoryWrapper;
+import net.consensys.shomei.trie.storage.TrieRepository;
+import net.consensys.shomei.trie.storage.TrieRepository.TrieUpdater;
 import net.consensys.shomei.trielog.AccountKey;
 import net.consensys.shomei.trielog.StorageSlotKey;
 
@@ -52,12 +51,12 @@ public class ZKEvmWorldState {
   private long blockNumber;
   private Hash blockHash;
 
-  private final WorldStateStorage zkEvmWorldStateStorage;
+  private final WorldStateRepository zkEvmWorldStateStorage;
 
-  public ZKEvmWorldState(final WorldStateStorage zkEvmWorldStateStorage) {
+  public ZKEvmWorldState(final WorldStateRepository zkEvmWorldStateStorage) {
     this.state =
         new State(
-            zkEvmWorldStateStorage.getWorldStateRootHash().orElse(EMPTY_TRIE_ROOT),
+            zkEvmWorldStateStorage.getWorldStateRootHash().orElse(DEFAULT_TRIE_ROOT),
             new ArrayList<>());
     this.blockNumber = zkEvmWorldStateStorage.getWorldStateBlockNumber().orElse(-1L);
     this.blockHash = zkEvmWorldStateStorage.getWorldStateBlockHash().orElse(Hash.EMPTY);
@@ -65,37 +64,39 @@ public class ZKEvmWorldState {
     this.zkEvmWorldStateStorage = zkEvmWorldStateStorage;
   }
 
-  public void commit(final long blockNumber, final Hash blockHash) {
+  public void commit(final long blockNumber, final Hash blockHash, final boolean ignoreTrace) {
     LOG.atDebug()
         .setMessage("Commit world state for block number {} and block hash {}")
         .addArgument(blockNumber)
         .addArgument(blockHash)
         .log();
     long start = System.currentTimeMillis();
-    final WorldStateStorage.WorldStateUpdater updater =
-        (WorldStateStorage.WorldStateUpdater) zkEvmWorldStateStorage.updater();
-    this.state = generateNewState(updater);
+    final WorldStateRepository.WorldStateUpdater updater =
+        (WorldStateRepository.WorldStateUpdater) zkEvmWorldStateStorage.updater();
+    this.state = generateNewState(updater, ignoreTrace);
     this.blockNumber = blockNumber;
     this.blockHash = blockHash;
 
     updater.setBlockHash(blockHash);
     updater.setBlockNumber(blockNumber);
     updater.saveZkStateRootHash(blockNumber, state.stateRoot);
-    updater.saveTrace(blockNumber, Trace.serialize(state.traces));
 
-    if (!state.traces.isEmpty()) {
-      LOG.atInfo()
-          .setMessage("Generated trace for block {}:{} in {} ms")
-          .addArgument(blockNumber)
-          .addArgument(blockHash)
-          .addArgument(System.currentTimeMillis() - start)
-          .log();
-    } else {
-      LOG.atInfo()
-          .setMessage("Ignore empty trace for block {}:{}")
-          .addArgument(blockNumber)
-          .addArgument(blockHash)
-          .log();
+    if (!ignoreTrace) {
+      updater.saveTrace(blockNumber, Trace.serialize(state.traces));
+      if (!state.traces.isEmpty()) {
+        LOG.atInfo()
+            .setMessage("Generated trace for block {}:{} in {} ms")
+            .addArgument(blockNumber)
+            .addArgument(blockHash)
+            .addArgument(System.currentTimeMillis() - start)
+            .log();
+      } else {
+        LOG.atInfo()
+            .setMessage("Ignore empty trace for block {}:{}")
+            .addArgument(blockNumber)
+            .addArgument(blockHash)
+            .log();
+      }
     }
     // persist
     updater.commit();
@@ -104,15 +105,16 @@ public class ZKEvmWorldState {
 
   record State(Hash stateRoot, List<Trace> traces) {}
 
-  private State generateNewState(final Updater updater) {
+  private State generateNewState(final TrieUpdater updater, final boolean ignoreTrace) {
     final ZKTrie zkAccountTrie =
-        loadAccountTrie(createAccountProxy(zkEvmWorldStateStorage, updater));
-    final List<Trace> traces = updateAccounts(zkAccountTrie, updater);
+        loadAccountTrie(new AccountTrieRepositoryWrapper(zkEvmWorldStateStorage, updater));
+    final List<Trace> traces = updateAccounts(zkAccountTrie, updater, ignoreTrace);
     zkAccountTrie.commit();
     return new State(Hash.wrap(zkAccountTrie.getTopRootHash()), traces);
   }
 
-  private List<Trace> updateAccounts(final ZKTrie zkAccountTrie, final Updater updater) {
+  private List<Trace> updateAccounts(
+      final ZKTrie zkAccountTrie, final TrieUpdater updater, final boolean ignoreTrace) {
     final List<Trace> traces = new ArrayList<>();
     accumulator.getAccountsToUpdate().entrySet().stream()
         .sorted(Map.Entry.comparingByKey())
@@ -120,7 +122,8 @@ public class ZKEvmWorldState {
             (entry) -> {
               final AccountKey accountKey = entry.getKey();
               final ZkValue<ZkAccount> accountValue = entry.getValue();
-              traces.addAll(updateAccount(accountKey, accountValue, zkAccountTrie, updater));
+              traces.addAll(
+                  updateAccount(accountKey, accountValue, zkAccountTrie, updater, ignoreTrace));
             });
     return traces;
   }
@@ -129,20 +132,23 @@ public class ZKEvmWorldState {
       final AccountKey accountKey,
       final ZkValue<ZkAccount> accountValue,
       final ZKTrie zkAccountTrie,
-      final Updater updater) {
+      final TrieUpdater updater,
+      final boolean ignoreTrace) {
     final List<Trace> traces = new ArrayList<>();
 
-    // check read and read zero for rollfoward
-    if (accountValue.isRollforward()) {
-      if (accountValue.isZeroRead() || accountValue.isNonZeroRead()) {
-        // read zero or non zero
-        traces.add(zkAccountTrie.readAndProve(accountKey.accountHash(), accountKey.address()));
-      }
-      // only read if the contract already exist
-      if (accountValue.getPrior() != null) {
-        final long accountLeafIndex =
-            zkAccountTrie.getLeafIndex(accountKey.accountHash()).orElseThrow();
-        traces.addAll(readSlots(accountKey, accountLeafIndex, accountValue, updater));
+    // check read and read zero for rollfoward (if trace don't needed we skip this step)
+    if (!ignoreTrace) {
+      if (accountValue.isRollforward()) {
+        if (accountValue.isZeroRead() || accountValue.isNonZeroRead()) {
+          // read zero or non zero
+          traces.add(zkAccountTrie.readAndProve(accountKey.accountHash(), accountKey.address()));
+        }
+        // only read if the contract already exist
+        if (accountValue.getPrior() != null) {
+          final long accountLeafIndex =
+              zkAccountTrie.getLeafIndex(accountKey.accountHash()).orElseThrow();
+          traces.addAll(readSlots(accountKey, accountLeafIndex, accountValue, updater));
+        }
       }
     }
 
@@ -193,14 +199,14 @@ public class ZKEvmWorldState {
       final AccountKey accountKey,
       final long accountLeafIndex,
       final ZkValue<ZkAccount> accountValue,
-      final Updater updater) {
+      final TrieUpdater updater) {
     final List<Trace> traces = new ArrayList<>();
     final Map<StorageSlotKey, ZkValue<UInt256>> storageToRead =
         accumulator.getStorageToUpdate().get(accountKey);
     if (storageToRead != null) {
       // load the account storage trie
-      final WorldStateStorageProxy storageAdapter =
-          createStorageProxy(accountLeafIndex, zkEvmWorldStateStorage, updater);
+      final StorageTrieRepositoryWrapper storageAdapter =
+          new StorageTrieRepositoryWrapper(accountLeafIndex, zkEvmWorldStateStorage, updater);
       final ZKTrie zkStorageTrie = loadStorageTrie(accountValue, false, storageAdapter);
       storageToRead.entrySet().stream()
           .sorted(Map.Entry.comparingByKey())
@@ -223,14 +229,14 @@ public class ZKEvmWorldState {
       final AccountKey accountKey,
       final long accountLeafIndex,
       final ZkValue<ZkAccount> accountValue,
-      final Updater updater) {
+      final TrieUpdater updater) {
     final List<Trace> traces = new ArrayList<>();
     final Map<StorageSlotKey, ZkValue<UInt256>> storageToUpdate =
         accumulator.getStorageToUpdate().get(accountKey);
     if (storageToUpdate != null) {
       // load the account storage trie
-      final WorldStateStorageProxy storageAdapter =
-          createStorageProxy(accountLeafIndex, zkEvmWorldStateStorage, updater);
+      final StorageTrieRepositoryWrapper storageAdapter =
+          new StorageTrieRepositoryWrapper(accountLeafIndex, zkEvmWorldStateStorage, updater);
       final ZKTrie zkStorageTrie =
           loadStorageTrie(accountValue, accountValue.isCleared(), storageAdapter);
       storageToUpdate.entrySet().stream()
@@ -304,27 +310,27 @@ public class ZKEvmWorldState {
     return accumulator;
   }
 
-  private ZKTrie loadAccountTrie(final StorageProxy storageProxy) {
-    if (state.stateRoot.equals(EMPTY_TRIE_ROOT)) {
-      return ZKTrie.createTrie(storageProxy);
+  private ZKTrie loadAccountTrie(final TrieRepository storage) {
+    if (state.stateRoot.equals(DEFAULT_TRIE_ROOT)) {
+      return ZKTrie.createTrie(storage);
     } else {
-      return ZKTrie.loadTrie(state.stateRoot, new WorldStateStorageProxy(zkEvmWorldStateStorage));
+      return ZKTrie.loadTrie(state.stateRoot, storage);
     }
   }
 
   private ZKTrie loadStorageTrie(
       final ZkValue<ZkAccount> zkAccount,
       final boolean forceNewTrie,
-      final StorageProxy storageProxy) {
+      final TrieRepository storage) {
     if (zkAccount.getPrior() == null // new contract
         || zkAccount
             .getPrior()
             .getStorageRoot()
-            .equals(EMPTY_TRIE_ROOT) // first write in the storage
+            .equals(DEFAULT_TRIE_ROOT) // first write in the storage
         || forceNewTrie) { // recreate contract
-      return ZKTrie.createTrie(storageProxy);
+      return ZKTrie.createTrie(storage);
     } else {
-      return ZKTrie.loadTrie(zkAccount.getPrior().getStorageRoot(), storageProxy);
+      return ZKTrie.loadTrie(zkAccount.getPrior().getStorageRoot(), storage);
     }
   }
 }

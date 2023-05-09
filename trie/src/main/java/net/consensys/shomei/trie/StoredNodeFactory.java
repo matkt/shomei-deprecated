@@ -112,6 +112,11 @@ public class StoredNodeFactory implements NodeFactory<Bytes> {
 
     return nodeLoader
         .getNode(location, hash)
+        .or(
+            () ->
+                ZKTrie.EMPTY_TRIE
+                    .getWorldStateStorage()
+                    .getTrieNode(location, hash)) // if not found in db try to find default nodes
         .map(
             encodedBytes -> {
               final Node<Bytes> node =

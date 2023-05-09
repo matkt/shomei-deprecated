@@ -18,7 +18,7 @@ import static net.consensys.shomei.trielog.TrieLogLayer.nullOrValue;
 import static net.consensys.shomei.util.bytes.MimcSafeBytes.safeByte32;
 
 import net.consensys.shomei.ZkAccount;
-import net.consensys.shomei.storage.WorldStateStorage;
+import net.consensys.shomei.storage.WorldStateRepository;
 import net.consensys.shomei.trie.ZKTrie;
 import net.consensys.shomei.trie.model.FlattenedLeaf;
 import net.consensys.zkevm.HashProvider;
@@ -42,9 +42,9 @@ public class TrieLogLayerConverter {
 
   private static final Logger LOG = LoggerFactory.getLogger(TrieLogLayerConverter.class);
 
-  final WorldStateStorage worldStateStorage;
+  final WorldStateRepository worldStateStorage;
 
-  public TrieLogLayerConverter(final WorldStateStorage worldStateStorage) {
+  public TrieLogLayerConverter(final WorldStateRepository worldStateStorage) {
     this.worldStateStorage = worldStateStorage;
   }
 
@@ -227,7 +227,7 @@ public class TrieLogLayerConverter {
     final Wei balance = Wei.of(in.readUInt256Scalar());
     Hash storageRoot;
     if (in.nextIsNull() || priorAccount.account == null) {
-      storageRoot = ZKTrie.EMPTY_TRIE_ROOT;
+      storageRoot = ZKTrie.DEFAULT_TRIE_ROOT;
       in.skipNext();
     } else {
       final Hash newEvmStorageRoot = Hash.wrap(in.readBytes32());

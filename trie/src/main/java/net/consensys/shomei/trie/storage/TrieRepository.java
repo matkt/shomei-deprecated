@@ -20,7 +20,7 @@ import java.util.Optional;
 
 import org.apache.tuweni.bytes.Bytes;
 
-public interface StorageProxy {
+public interface TrieRepository {
 
   Optional<FlattenedLeaf> getFlatLeaf(final Bytes hkey);
 
@@ -29,9 +29,9 @@ public interface StorageProxy {
   Optional<Bytes> getTrieNode(final Bytes location, final Bytes nodeHash);
 
   /** Returns an updater that can be used to update the storage. */
-  Updater updater();
+  TrieUpdater updater();
 
-  interface Updater {
+  interface TrieUpdater {
 
     void putFlatLeaf(final Bytes key, final FlattenedLeaf value);
 

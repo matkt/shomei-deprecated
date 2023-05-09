@@ -18,7 +18,7 @@ import static com.google.common.collect.Streams.stream;
 import net.consensys.shomei.observer.TrieLogObserver;
 import net.consensys.shomei.rpc.rollup.RollupGetZkEVMStateMerkleProofV0;
 import net.consensys.shomei.rpc.trielog.SendRawTrieLog;
-import net.consensys.shomei.storage.WorldStateStorage;
+import net.consensys.shomei.storage.WorldStateRepository;
 import net.consensys.shomei.trie.json.JsonTraceParser;
 
 import java.util.Arrays;
@@ -81,7 +81,7 @@ public class JsonRpcService extends AbstractVerticle {
       final String rpcHttpHost,
       final Integer rpcHttpPort,
       final TrieLogObserver trieLogObserver,
-      final WorldStateStorage worldStateStorage) {
+      final WorldStateRepository worldStateStorage) {
     this.config = JsonRpcConfiguration.createDefault();
     config.setHost(rpcHttpHost);
     config.setPort(rpcHttpPort);

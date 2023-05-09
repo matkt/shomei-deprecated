@@ -15,7 +15,7 @@ package net.consensys.shomei.worldview;
 
 import net.consensys.shomei.exception.MissingTrieLogException;
 import net.consensys.shomei.observer.TrieLogObserver;
-import net.consensys.shomei.storage.WorldStateStorage;
+import net.consensys.shomei.storage.WorldStateRepository;
 import net.consensys.shomei.trielog.TrieLogLayer;
 import net.consensys.shomei.trielog.TrieLogLayerConverter;
 
@@ -36,17 +36,20 @@ public class ZkEvmWorldStateEntryPoint implements TrieLogObserver {
 
   private static final Logger LOG = LoggerFactory.getLogger(ZkEvmWorldStateEntryPoint.class);
 
+  private static final int INITIAL_SYNC_BLOCK_NUMBER_RANGE = 2500;
+
   private final ZKEvmWorldState currentWorldState;
 
   private final TrieLogLayerConverter trieLogLayerConverter;
 
-  private final WorldStateStorage worldStateStorage;
+  private final WorldStateRepository worldStateStorage;
 
   private final Queue<TrieLogIdentifier> blockQueue = new PriorityBlockingQueue<>();
   private final ExecutorService executor = Executors.newSingleThreadExecutor();
+
   private volatile boolean isProcessing = false;
 
-  public ZkEvmWorldStateEntryPoint(final WorldStateStorage worldStateStorage) {
+  public ZkEvmWorldStateEntryPoint(final WorldStateRepository worldStateStorage) {
     this.worldStateStorage = worldStateStorage;
     this.currentWorldState = new ZKEvmWorldState(worldStateStorage);
     this.trieLogLayerConverter = new TrieLogLayerConverter(worldStateStorage);
@@ -59,16 +62,17 @@ public class ZkEvmWorldStateEntryPoint implements TrieLogObserver {
             .map(RLP::input)
             .map(trieLogLayerConverter::decodeTrieLog);
     if (trieLog.isPresent()) {
-      applyTrieLog(trieLogId.blockNumber(), trieLog.get());
+      applyTrieLog(trieLogId.blockNumber(), trieLogId.isInitialSync(), trieLog.get());
     } else {
       throw new MissingTrieLogException(trieLogId.blockNumber());
     }
   }
 
   @VisibleForTesting
-  public void applyTrieLog(final long newBlockNumber, final TrieLogLayer trieLogLayer) {
+  public void applyTrieLog(
+      final long newBlockNumber, final boolean syncing, final TrieLogLayer trieLogLayer) {
     currentWorldState.getAccumulator().rollForward(trieLogLayer);
-    currentWorldState.commit(newBlockNumber, trieLogLayer.getBlockHash());
+    currentWorldState.commit(newBlockNumber, trieLogLayer.getBlockHash(), syncing);
   }
 
   public Hash getCurrentRootHash() {
@@ -95,11 +99,21 @@ public class ZkEvmWorldStateEntryPoint implements TrieLogObserver {
           if (currentWorldState
               .getBlockHash()
               .equals(Objects.requireNonNull(trieLogId.blockHash()))) {
-            LOG.atInfo()
-                .setMessage("Imported block {} ({})")
-                .addArgument(trieLogId.blockNumber())
-                .addArgument(trieLogId.blockHash())
-                .log();
+            if (trieLogId.isInitialSync()) {
+              if (trieLogId.blockNumber() % INITIAL_SYNC_BLOCK_NUMBER_RANGE == 0) {
+                LOG.atInfo()
+                    .setMessage("Block import progress: {}:{}")
+                    .addArgument(trieLogId.blockNumber())
+                    .addArgument(trieLogId.blockHash())
+                    .log();
+              }
+            } else {
+              LOG.atInfo()
+                  .setMessage("Imported block {} ({})")
+                  .addArgument(trieLogId.blockNumber())
+                  .addArgument(trieLogId.blockHash())
+                  .log();
+            }
           } else {
             LOG.atError()
                 .setMessage("Failed to import block {} ({})")
