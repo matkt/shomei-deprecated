@@ -80,7 +80,7 @@ public class RollingForwardTests {
     ZKEvmWorldState zkEvmWorldState = new ZKEvmWorldState(new InMemoryWorldStateRepository());
     assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(DEFAULT_TRIE_ROOT);
     zkEvmWorldState.getAccumulator().rollForward(trieLogLayer);
-    zkEvmWorldState.commit(0L, null);
+    zkEvmWorldState.commit(0L, null, false);
 
     assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(topRootHash);
     assertThat(JSON_OBJECT_MAPPER.writeValueAsString(zkEvmWorldState.getLastTraces()))
@@ -110,7 +110,7 @@ public class RollingForwardTests {
     ZKEvmWorldState zkEvmWorldState = new ZKEvmWorldState(new InMemoryWorldStateRepository());
     assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(DEFAULT_TRIE_ROOT);
     zkEvmWorldState.getAccumulator().rollForward(trieLogLayer);
-    zkEvmWorldState.commit(0L, null);
+    zkEvmWorldState.commit(0L, null, false);
 
     assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(topRootHash);
     assertThat(JSON_OBJECT_MAPPER.writeValueAsString(zkEvmWorldState.getLastTraces()))
@@ -152,13 +152,13 @@ public class RollingForwardTests {
     ZKEvmWorldState zkEvmWorldState = new ZKEvmWorldState(new InMemoryWorldStateRepository());
     assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(DEFAULT_TRIE_ROOT);
     zkEvmWorldState.getAccumulator().rollForward(trieLogLayer);
-    zkEvmWorldState.commit(0L, null);
+    zkEvmWorldState.commit(0L, null, false);
     assertThat(zkEvmWorldState.getStateRootHash())
         .isEqualTo(
             Hash.fromHexString("11aed727a707f2f1962e399bd4787153ba0e69b7224e8eecf4d1e4e6a8e8dafd"));
 
     zkEvmWorldState.getAccumulator().rollForward(trieLogLayer2);
-    zkEvmWorldState.commit(0L, null);
+    zkEvmWorldState.commit(0L, null, false);
     assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(topRootHash);
     assertThat(JSON_OBJECT_MAPPER.writeValueAsString(zkEvmWorldState.getLastTraces()))
         .isEqualTo(JSON_OBJECT_MAPPER.writeValueAsString(List.of(expectedTrace)));
@@ -193,7 +193,7 @@ public class RollingForwardTests {
     assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(DEFAULT_TRIE_ROOT);
 
     zkEvmWorldState.getAccumulator().rollForward(trieLogLayer);
-    zkEvmWorldState.commit(0L, null);
+    zkEvmWorldState.commit(0L, null, false);
     assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(topRootHash);
     assertThat(JSON_OBJECT_MAPPER.writeValueAsString(zkEvmWorldState.getLastTraces()))
         .isEqualTo(JSON_OBJECT_MAPPER.writeValueAsString(expectedTraces));
@@ -247,7 +247,7 @@ public class RollingForwardTests {
     assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(DEFAULT_TRIE_ROOT);
 
     zkEvmWorldState.getAccumulator().rollForward(trieLogLayer);
-    zkEvmWorldState.commit(0L, null);
+    zkEvmWorldState.commit(0L, null, false);
     assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(topRootHash);
     assertThat(JSON_OBJECT_MAPPER.writeValueAsString(zkEvmWorldState.getLastTraces()))
         .isEqualTo(JSON_OBJECT_MAPPER.writeValueAsString(expectedTraces));
@@ -300,10 +300,10 @@ public class RollingForwardTests {
     ZKEvmWorldState zkEvmWorldState = new ZKEvmWorldState(new InMemoryWorldStateRepository());
     assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(DEFAULT_TRIE_ROOT);
     zkEvmWorldState.getAccumulator().rollForward(trieLogLayer);
-    zkEvmWorldState.commit(0L, null);
+    zkEvmWorldState.commit(0L, null, false);
 
     zkEvmWorldState.getAccumulator().rollForward(trieLogLayer2);
-    zkEvmWorldState.commit(0L, null);
+    zkEvmWorldState.commit(0L, null, false);
     assertThat(JSON_OBJECT_MAPPER.writeValueAsString(zkEvmWorldState.getLastTraces()))
         .isEqualTo(JSON_OBJECT_MAPPER.writeValueAsString(expectedTraces));
   }
@@ -362,7 +362,7 @@ public class RollingForwardTests {
         null,
         slotValue.getOriginalUnsafeValue());
     zkEvmWorldState.getAccumulator().rollForward(trieLogLayer);
-    zkEvmWorldState.commit(0L, null);
+    zkEvmWorldState.commit(0L, null, false);
 
     // delete and recreate the contract in the same batch
     TrieLogLayer trieLogLayer2 = new TrieLogLayer();
@@ -373,7 +373,7 @@ public class RollingForwardTests {
         slotValue.getOriginalUnsafeValue(),
         slotValue.getOriginalUnsafeValue());
     zkEvmWorldState.getAccumulator().rollForward(trieLogLayer2);
-    zkEvmWorldState.commit(0L, null);
+    zkEvmWorldState.commit(0L, null, false);
 
     assertThat(JSON_OBJECT_MAPPER.writeValueAsString(zkEvmWorldState.getLastTraces()))
         .isEqualTo(JSON_OBJECT_MAPPER.writeValueAsString(expectedTraces));
@@ -438,7 +438,7 @@ public class RollingForwardTests {
         null,
         slotValue.getOriginalUnsafeValue());
     zkEvmWorldState.getAccumulator().rollForward(trieLogLayer);
-    zkEvmWorldState.commit(0L, null);
+    zkEvmWorldState.commit(0L, null, false);
 
     // delete and recreate the contract in the same batch
     TrieLogLayer trieLogLayer2 = new TrieLogLayer();
@@ -451,7 +451,7 @@ public class RollingForwardTests {
         newSlotValue.getOriginalUnsafeValue(),
         true);
     zkEvmWorldState.getAccumulator().rollForward(trieLogLayer2);
-    zkEvmWorldState.commit(0L, null);
+    zkEvmWorldState.commit(0L, null, false);
 
     assertThat(JSON_OBJECT_MAPPER.writeValueAsString(zkEvmWorldState.getLastTraces()))
         .isEqualTo(JSON_OBJECT_MAPPER.writeValueAsString(expectedTraces));
@@ -517,7 +517,7 @@ public class RollingForwardTests {
         null,
         slotValue.getOriginalUnsafeValue());
     zkEvmWorldState.getAccumulator().rollForward(trieLogLayer);
-    zkEvmWorldState.commit(0L, null);
+    zkEvmWorldState.commit(0L, null, false);
 
     // delete and recreate the contract in the same batch
     TrieLogLayer trieLogLayer2 = new TrieLogLayer();
@@ -528,7 +528,7 @@ public class RollingForwardTests {
     trieLogLayer2.addStorageChange(
         accountKey, newStorageSlotKey, null, newSlotValue.getOriginalUnsafeValue());
     zkEvmWorldState.getAccumulator().rollForward(trieLogLayer2);
-    zkEvmWorldState.commit(0L, null);
+    zkEvmWorldState.commit(0L, null, false);
 
     assertThat(JSON_OBJECT_MAPPER.writeValueAsString(zkEvmWorldState.getLastTraces()))
         .isEqualTo(JSON_OBJECT_MAPPER.writeValueAsString(expectedTraces));

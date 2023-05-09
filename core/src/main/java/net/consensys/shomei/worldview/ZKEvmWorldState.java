@@ -64,7 +64,7 @@ public class ZKEvmWorldState {
     this.zkEvmWorldStateStorage = zkEvmWorldStateStorage;
   }
 
-  public void commit(final long blockNumber, final Hash blockHash) {
+  public void commit(final long blockNumber, final Hash blockHash, final boolean ignoreTrace) {
     LOG.atDebug()
         .setMessage("Commit world state for block number {} and block hash {}")
         .addArgument(blockNumber)
@@ -73,28 +73,32 @@ public class ZKEvmWorldState {
     long start = System.currentTimeMillis();
     final WorldStateRepository.WorldStateUpdater updater =
         (WorldStateRepository.WorldStateUpdater) zkEvmWorldStateStorage.updater();
-    this.state = generateNewState(updater);
+
+    this.state = generateNewState(updater, ignoreTrace);
+
     this.blockNumber = blockNumber;
     this.blockHash = blockHash;
 
     updater.setBlockHash(blockHash);
     updater.setBlockNumber(blockNumber);
     updater.saveZkStateRootHash(blockNumber, state.stateRoot);
-    updater.saveTrace(blockNumber, Trace.serialize(state.traces));
 
-    if (!state.traces.isEmpty()) {
-      LOG.atInfo()
-          .setMessage("Generated trace for block {}:{} in {} ms")
-          .addArgument(blockNumber)
-          .addArgument(blockHash)
-          .addArgument(System.currentTimeMillis() - start)
-          .log();
-    } else {
-      LOG.atInfo()
-          .setMessage("Ignore empty trace for block {}:{}")
-          .addArgument(blockNumber)
-          .addArgument(blockHash)
-          .log();
+    if (!ignoreTrace) {
+      updater.saveTrace(blockNumber, Trace.serialize(state.traces));
+      if (!state.traces.isEmpty()) {
+        LOG.atInfo()
+            .setMessage("Generated trace for block {}:{} in {} ms")
+            .addArgument(blockNumber)
+            .addArgument(blockHash)
+            .addArgument(System.currentTimeMillis() - start)
+            .log();
+      } else {
+        LOG.atInfo()
+            .setMessage("Ignore empty trace for block {}:{}")
+            .addArgument(blockNumber)
+            .addArgument(blockHash)
+            .log();
+      }
     }
     // persist
     updater.commit();
@@ -103,15 +107,16 @@ public class ZKEvmWorldState {
 
   record State(Hash stateRoot, List<Trace> traces) {}
 
-  private State generateNewState(final TrieUpdater updater) {
+  private State generateNewState(final TrieUpdater updater, final boolean ignoreTrace) {
     final ZKTrie zkAccountTrie =
         loadAccountTrie(new AccountTrieRepositoryWrapper(zkEvmWorldStateStorage, updater));
-    final List<Trace> traces = updateAccounts(zkAccountTrie, updater);
+    final List<Trace> traces = updateAccounts(zkAccountTrie, updater, ignoreTrace);
     zkAccountTrie.commit();
     return new State(Hash.wrap(zkAccountTrie.getTopRootHash()), traces);
   }
 
-  private List<Trace> updateAccounts(final ZKTrie zkAccountTrie, final TrieUpdater updater) {
+  private List<Trace> updateAccounts(
+      final ZKTrie zkAccountTrie, final TrieUpdater updater, final boolean ignoreTrace) {
     final List<Trace> traces = new ArrayList<>();
     accumulator.getAccountsToUpdate().entrySet().stream()
         .sorted(Map.Entry.comparingByKey())
@@ -119,7 +124,8 @@ public class ZKEvmWorldState {
             (entry) -> {
               final AccountKey accountKey = entry.getKey();
               final ZkValue<ZkAccount> accountValue = entry.getValue();
-              traces.addAll(updateAccount(accountKey, accountValue, zkAccountTrie, updater));
+              traces.addAll(
+                  updateAccount(accountKey, accountValue, zkAccountTrie, updater, ignoreTrace));
             });
     return traces;
   }
@@ -128,20 +134,23 @@ public class ZKEvmWorldState {
       final AccountKey accountKey,
       final ZkValue<ZkAccount> accountValue,
       final ZKTrie zkAccountTrie,
-      final TrieUpdater updater) {
+      final TrieUpdater updater,
+      final boolean ignoreTrace) {
     final List<Trace> traces = new ArrayList<>();
 
-    // check read and read zero for rollfoward
-    if (accountValue.isRollforward()) {
-      if (accountValue.isZeroRead() || accountValue.isNonZeroRead()) {
-        // read zero or non zero
-        traces.add(zkAccountTrie.readAndProve(accountKey.accountHash(), accountKey.address()));
-      }
-      // only read if the contract already exist
-      if (accountValue.getPrior() != null) {
-        final long accountLeafIndex =
-            zkAccountTrie.getLeafIndex(accountKey.accountHash()).orElseThrow();
-        traces.addAll(readSlots(accountKey, accountLeafIndex, accountValue, updater));
+    // check read and read zero for rollfoward (if trace don't needed we skip this step)
+    if (!ignoreTrace) {
+      if (accountValue.isRollforward()) {
+        if (accountValue.isZeroRead() || accountValue.isNonZeroRead()) {
+          // read zero or non zero
+          traces.add(zkAccountTrie.readAndProve(accountKey.accountHash(), accountKey.address()));
+        }
+        // only read if the contract already exist
+        if (accountValue.getPrior() != null) {
+          final long accountLeafIndex =
+              zkAccountTrie.getLeafIndex(accountKey.accountHash()).orElseThrow();
+          traces.addAll(readSlots(accountKey, accountLeafIndex, accountValue, updater));
+        }
       }
     }
 
