@@ -2,48 +2,41 @@
 FROM ghcr.io/graalvm/graalvm-ce:ol9-java17
 ARG VERSION="dev"
 
-RUN adduser --home /opt/besu besu && \
-    chown besu:besu /opt/besu && \
-    chmod 0755 /opt/besu
+RUN adduser --home /opt/shomei shomei && \
+    chown shomei:shomei /opt/shomei && \
+    chmod 0755 /opt/shomei
 
-USER besu
-WORKDIR /opt/besu
+USER shomei
+WORKDIR /opt/shomei
 
-COPY --chown=besu:besu besu /opt/besu/
-RUN chmod -R 755 /opt/besu
+COPY --chown=shomei:shomei shomei /opt/shomei/
+RUN chmod -R 755 /opt/shomei
 
 # Expose services ports
-# 8545 HTTP JSON-RPC
-# 8546 WS JSON-RPC
-# 8547 HTTP GraphQL
-# 8550 HTTP ENGINE JSON-RPC
-# 8551 WS ENGINE JSON-RPC
-# 30303 P2P
-EXPOSE 8545 8546 8547 8550 8551 30303
+# 8888 HTTP JSON-RPC
+EXPOSE 8888
 
 # defaults for host interfaces
-ENV BESU_RPC_HTTP_HOST 0.0.0.0
-ENV BESU_RPC_WS_HOST 0.0.0.0
-ENV BESU_GRAPHQL_HTTP_HOST 0.0.0.0
-ENV BESU_PID_PATH "/tmp/pid"
+ENV SHOMEI_RPC_HTTP_HOST 0.0.0.0
+ENV SHOMEI_PID_PATH "/tmp/pid"
 
-ENV OTEL_RESOURCE_ATTRIBUTES="service.name=besu,service.version=$VERSION"
+
+ENV OTEL_RESOURCE_ATTRIBUTES="service.name=shomei,service.version=$VERSION"
 
 ENV OLDPATH="${PATH}"
-ENV PATH="/opt/besu/bin:${OLDPATH}"
+ENV PATH="/opt/shomei/bin:${OLDPATH}"
 
-ENTRYPOINT ["besu"]
+ENTRYPOINT ["shomei"]
 HEALTHCHECK --start-period=5s --interval=5s --timeout=1s --retries=10 CMD bash -c "[ -f /tmp/pid ]"
 
 # Build-time metadata as defined at http://label-schema.org
 ARG BUILD_DATE
 ARG VCS_REF
 LABEL org.label-schema.build-date=$BUILD_DATE \
-      org.label-schema.name="Besu" \
-      org.label-schema.description="Enterprise Ethereum client" \
-      org.label-schema.url="https://besu.hyperledger.org/" \
+      org.label-schema.name="Shomei" \
+      org.label-schema.description="Shomei zkevm state manager " \
       org.label-schema.vcs-ref=$VCS_REF \
-      org.label-schema.vcs-url="https://github.com/hyperledger/besu.git" \
-      org.label-schema.vendor="Hyperledger" \
+      org.label-schema.vcs-url="https://github.com/ConsenSys/shomei.git" \
+      org.label-schema.vendor="ConsenSys" \
       org.label-schema.version=$VERSION \
       org.label-schema.schema-version="1.0"

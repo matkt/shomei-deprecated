@@ -216,6 +216,20 @@ def getCheckedOutGitCommitHash(length = 8) {
     }
 }
 
+distTar {
+    doFirst {
+        delete fileTree(dir: 'build/distributions', include: '*.tar.gz')
+    }
+    compression = Compression.GZIP
+    archiveExtension = 'tar.gz'
+}
+
+distZip {
+    doFirst {
+        delete fileTree(dir: 'build/distributions', include: '*.zip')
+    }
+}
+
 def dockerBuildVersion = project.hasProperty('release.releaseVersion') ? project.property('release.releaseVersion') : "${rootProject.version}"
 def dockerOrgName = project.hasProperty('dockerOrgName') ? project.getProperty("dockerOrgName") : "matkt"
 def dockerArtifactName = project.hasProperty("dockerArtifactName") ? project.getProperty("dockerArtifactName") : "shomei"

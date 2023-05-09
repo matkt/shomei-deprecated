@@ -75,7 +75,6 @@ public class JsonRpcService extends AbstractVerticle {
   private final AtomicInteger activeConnectionsCount = new AtomicInteger();
   private HttpServer httpServer;
   private final HealthService livenessService;
-  private final HealthService readinessService;
 
   public JsonRpcService(
       final String rpcHttpHost,
@@ -93,7 +92,6 @@ public class JsonRpcService extends AbstractVerticle {
             new RollupGetZkEVMStateMerkleProofV0(worldStateStorage)));
     this.maxActiveConnections = config.getMaxActiveConnections();
     this.livenessService = new HealthService(new LivenessCheck());
-    this.readinessService = new HealthService(new LivenessCheck()); // TODO CHANGE
   }
 
   @Override
@@ -203,10 +201,6 @@ public class JsonRpcService extends AbstractVerticle {
         .route(HealthService.LIVENESS_PATH)
         .method(HttpMethod.GET)
         .handler(livenessService::handleRequest);
-    router
-        .route(HealthService.READINESS_PATH)
-        .method(HttpMethod.GET)
-        .handler(readinessService::handleRequest);
     Route mainRoute = router.route("/").method(HttpMethod.POST).produces(APPLICATION_JSON);
     mainRoute
         .handler(HandlerFactory.jsonRpcParser())

@@ -10,6 +10,24 @@ executors:
     environment:
       GRADLE_OPTS: -Dorg.gradle.daemon=false -Dorg.gradle.parallel=true -Dorg.gradle.workers.max=2
 
+  shomei_executor_med: # 2cpu, 4G ram
+    docker:
+      - image: cimg/openjdk:17.0
+    resource_class: medium
+    working_directory: ~/project
+    environment:
+      architecture: "amd64"
+      GRADLE_OPTS: -Dorg.gradle.daemon=false -Dorg.gradle.parallel=true -Dorg.gradle.workers.max=2
+
+  shomei_arm64_executor_med: # 2cpu, 8G ram
+    machine: #https://circleci.com/developer/machine/image/ubuntu-2204
+      image: ubuntu-2204:2022.10.2
+    resource_class: arm.medium
+    working_directory: ~/project
+    environment:
+      architecture: "arm64"
+      GRADLE_OPTS: -Dorg.gradle.daemon=false -Dorg.gradle.parallel=true -Dorg.gradle.workers.max=2
+
 
   xl_machine_executor:
     machine: #https://circleci.com/developer/machine/image/ubuntu-2204
@@ -67,11 +85,85 @@ jobs:
           destination: distributions
           when: always
 
+  buildDocker:
+    executor: shomei_executor_med
+    steps:
+      - prepare
+      - attach_workspace:
+          at: ~/project
+      - setup_remote_docker
+      - run:
+          name: hadoLint_openjdk_17
+          command: |
+            docker run --rm -i hadolint/hadolint < docker/openjdk-17/Dockerfile
+      - run:
+          name: hadoLint_openjdk_17_debug
+          command: |
+            docker run --rm -i hadolint/hadolint < docker/openjdk-17-debug/Dockerfile
+      - run:
+          name: hadoLint_openjdk_latest
+          command: |
+            docker run --rm -i hadolint/hadolint < docker/openjdk-latest/Dockerfile
+      - run:
+          name: hadoLint_graalvm
+          command: |
+            docker run --rm -i hadolint/hadolint < docker/graalvm/Dockerfile
+      - run:
+          name: build image
+          command: |
+            ./gradlew --no-daemon distDocker
+      - run:
+          name: test image
+          command: |
+            mkdir -p docker/reports
+            curl -L https://github.com/aelsabbahy/goss/releases/download/v0.3.9/goss-linux-amd64 -o ./docker/tests/goss-linux-amd64
+            ./gradlew --no-daemon testDocker
+
+  buildArm64Docker:
+    executor: shomei_arm64_executor_med
+    steps:
+      - prepare
+      - attach_workspace:
+          at: ~/project
+      - run:
+          name: hadoLint_openjdk_17
+          command: |
+            docker run --rm -i hadolint/hadolint < docker/openjdk-17/Dockerfile
+      - run:
+          name: hadoLint_openjdk_latest
+          command: |
+            docker run --rm -i hadolint/hadolint < docker/openjdk-latest/Dockerfile
+      - run:
+          name: hadoLint_graalvm
+          command: |
+            docker run --rm -i hadolint/hadolint < docker/graalvm/Dockerfile
+      - run:
+          name: Java_17
+          command: |
+            sudo apt install -q --assume-yes openjdk-17-jre-headless openjdk-17-jdk-headless
+            sudo update-java-alternatives -a
+      - run:
+          name: build image
+          command: |
+            ./gradlew --no-daemon distDocker
+      - run:
+          name: test image
+          command: |
+            mkdir -p docker/reports
+            curl -L https://github.com/aelsabbahy/goss/releases/download/v0.3.9/goss-linux-arm -o ./docker/tests/goss-linux-arm64
+            ./gradlew --no-daemon testDocker
+
 workflows:
   version: 2
   default:
     jobs:
       - assemble
+      - buildDocker:
+          requires:
+            - assemble
+      - buildArm64Docker:
+          requires:
+            - assemble
       - unitTests:
           requires:
             - assemble
