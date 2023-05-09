@@ -30,7 +30,7 @@ public record SendRawTrieLogParameter(
   public SendRawTrieLogParameter(
       @JsonProperty("blockNumber") final Long blockNumber,
       @JsonProperty("blockHash") final Hash blockHash,
-      @JsonProperty("isSync") final boolean isInitialSync,
+      @JsonProperty("syncing") final boolean isInitialSync,
       @JsonProperty("trieLog") final String trieLog) {
     this.blockNumber = blockNumber;
     this.blockHash = blockHash;

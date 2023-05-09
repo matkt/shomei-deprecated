@@ -13,10 +13,12 @@
 
 package net.consensys.shomei.observer;
 
+import java.util.List;
+
 import org.hyperledger.besu.datatypes.Hash;
 
 public interface TrieLogObserver {
-  void onTrieLogAdded(final TrieLogIdentifier trieLogId);
+  void onTrieLogsAdded(final List<TrieLogIdentifier> trieLogIds);
 
   record TrieLogIdentifier(Long blockNumber, Hash blockHash, boolean isInitialSync)
       implements Comparable<TrieLogIdentifier> {

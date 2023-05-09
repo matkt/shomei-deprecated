@@ -19,6 +19,7 @@ import net.consensys.shomei.storage.WorldStateRepository;
 import net.consensys.shomei.trielog.TrieLogLayer;
 import net.consensys.shomei.trielog.TrieLogLayerConverter;
 
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Queue;
@@ -80,9 +81,12 @@ public class ZkEvmWorldStateEntryPoint implements TrieLogObserver {
   }
 
   @Override
-  public synchronized void onTrieLogAdded(final TrieLogIdentifier trieLogId) {
-    LOG.atDebug().setMessage("receive trie log {} ").addArgument(trieLogId).log();
-    blockQueue.offer(trieLogId);
+  public synchronized void onTrieLogsAdded(final List<TrieLogIdentifier> trieLogIds) {
+    trieLogIds.forEach(
+        trieLogIdentifier -> {
+          LOG.atDebug().setMessage("receive trie log {} ").addArgument(trieLogIdentifier).log();
+          blockQueue.offer(trieLogIdentifier);
+        });
     if (!isProcessing) {
       isProcessing = true;
       executor.execute(this::processQueue);
