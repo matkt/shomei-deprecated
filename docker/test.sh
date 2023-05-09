@@ -19,7 +19,7 @@ if [[ $i != 0 ]]; then exit $i; fi
 # Test for normal startup with ports opened
 # we test that things listen on the right interface/port, not what interface the advertise
 GOSS_FILES_PATH=$TEST_PATH/01 \
-bash $TEST_PATH/dgoss run $DOCKER_IMAGE --rpc-http-host="0.0.0.0" \
+bash $TEST_PATH/dgoss run $DOCKER_IMAGE --rpc-http-host="0.0.0.0" --data-path="/opt/shomei/database"\
 > ../reports/01.xml || i=`expr $i + 1`
 
 exit $i

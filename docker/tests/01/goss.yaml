@@ -1,26 +1,19 @@
 ---
 # runtime docker tests
 file:
-  /opt/besu/bin/besu:
+  /opt/shomei/bin/shomei:
     exists: true
     mode: "0755"
-    owner: besu
-    group: besu
+    owner: shomei
+    group: shomei
     filetype: file
     contains: []
-  /opt/besu/database:
+  /opt/shomei/database:
     exists: true
     mode: "0755"
-    owner: besu
-    group: besu
+    owner: shomei
+    group: shomei
     filetype: directory
-    contains: []
-  /opt/besu/key:
-    exists: true
-    mode: "0600"
-    owner: besu
-    group: besu
-    filetype: file
     contains: []
 process:
   java:
