@@ -35,6 +35,7 @@ import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.Wei;
 import org.junit.Test;
 
+// TODO add the location in the tests for consistency
 public class WorldStateStateRootTest {
 
   @Test
@@ -156,7 +157,10 @@ public class WorldStateStateRootTest {
     final MimcSafeBytes<Bytes32> slotKey = createDumFullBytes(14);
     final Hash slotKeyHash = HashProvider.mimc(slotKey);
     final MimcSafeBytes<Bytes32> slotValue = createDumFullBytes(18);
-    account2Storage.putAndProve(slotKeyHash, slotKey, slotValue);
+    account2Storage.putAndProve(
+        slotKeyHash,
+        slotKey,
+        slotValue); // for this test we don't really need to add the address location
     zkAccount2.setStorageRoot(Hash.wrap(account2Storage.getTopRootHash()));
 
     accountStateTrie.putAndProve(

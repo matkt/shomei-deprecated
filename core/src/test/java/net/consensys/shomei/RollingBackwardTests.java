@@ -49,11 +49,13 @@ public class RollingBackwardTests {
     // rollforward and adding an account
     zkEvmWorldState.getAccumulator().rollForward(trieLog);
     zkEvmWorldState.commit(0L, null, false);
+
     assertThat(zkEvmWorldState.getStateRootHash()).isNotEqualTo(DEFAULT_TRIE_ROOT);
 
     // rollbackward and reverting an account
     zkEvmWorldState.getAccumulator().rollBack(trieLog);
     zkEvmWorldState.commit(0L, null, false);
+
     assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(DEFAULT_TRIE_ROOT);
   }
 

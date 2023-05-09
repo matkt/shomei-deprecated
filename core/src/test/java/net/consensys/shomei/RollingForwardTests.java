@@ -37,6 +37,7 @@ import java.util.List;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.tuweni.units.bigints.UInt256;
+import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.Wei;
 import org.junit.Before;
@@ -211,8 +212,10 @@ public class RollingForwardTests {
     MimcSafeBytes<UInt256> slotValue = safeUInt256(UInt256.valueOf(12));
     ZKTrie contractStorageTrie = getContractStorageTrie(contract);
     expectedTraces.add(
-        contractStorageTrie.putAndProve(
-            storageSlotKey.slotHash(), storageSlotKey.slotKey(), slotValue));
+        updateTraceStorageLocation(
+            contract.getAddress(),
+            contractStorageTrie.putAndProve(
+                storageSlotKey.slotHash(), storageSlotKey.slotKey(), slotValue)));
     contract.setStorageRoot(Hash.wrap(contractStorageTrie.getTopRootHash()));
 
     // add contract
@@ -273,7 +276,9 @@ public class RollingForwardTests {
     List<Trace> expectedTraces = new ArrayList<>();
     expectedTraces.add(accountStateTrieOne.readAndProve(contract.getHkey(), contract.getAddress()));
     expectedTraces.add(
-        contractStorageTrie.readAndProve(storageSlotKey.slotHash(), storageSlotKey.slotKey()));
+        updateTraceStorageLocation(
+            contract.getAddress(),
+            contractStorageTrie.readAndProve(storageSlotKey.slotHash(), storageSlotKey.slotKey())));
 
     TrieLogLayer trieLogLayer = new TrieLogLayer();
     final AccountKey accountKey2 =
@@ -323,7 +328,9 @@ public class RollingForwardTests {
     final List<Trace> expectedTraces = new ArrayList<>();
     // read slot before selfdestruct
     expectedTraces.add(
-        contractStorageTrie.readAndProve(storageSlotKey.slotHash(), storageSlotKey.slotKey()));
+        updateTraceStorageLocation(
+            contract.getAddress(),
+            contractStorageTrie.readAndProve(storageSlotKey.slotHash(), storageSlotKey.slotKey())));
 
     // selfdestruct contract
     expectedTraces.add(
@@ -332,8 +339,10 @@ public class RollingForwardTests {
     // recreate contract
     ZKTrie newContractStorageTrie = getContractStorageTrie(contract);
     expectedTraces.add(
-        newContractStorageTrie.putAndProve(
-            storageSlotKey.slotHash(), storageSlotKey.slotKey(), slotValue));
+        updateTraceStorageLocation(
+            contract.getAddress(),
+            newContractStorageTrie.putAndProve(
+                storageSlotKey.slotHash(), storageSlotKey.slotKey(), slotValue)));
     contract.setStorageRoot(Hash.wrap(newContractStorageTrie.getTopRootHash()));
     expectedTraces.add(
         accountStateTrieOne.putAndProve(
@@ -392,7 +401,9 @@ public class RollingForwardTests {
     List<Trace> expectedTraces = new ArrayList<>();
     // read slot before selfdestruct
     expectedTraces.add(
-        contractStorageTrie.readAndProve(storageSlotKey.slotHash(), storageSlotKey.slotKey()));
+        updateTraceStorageLocation(
+            contract.getAddress(),
+            contractStorageTrie.readAndProve(storageSlotKey.slotHash(), storageSlotKey.slotKey())));
     // selfdestruct contract
     expectedTraces.add(
         accountStateTrieOne.removeAndProve(contract.getHkey(), contract.getAddress()));
@@ -402,8 +413,10 @@ public class RollingForwardTests {
     ZKTrie newContractStorageTrie = getContractStorageTrie(updatedContract);
     MimcSafeBytes<UInt256> newSlotValue = safeUInt256(UInt256.valueOf(13));
     expectedTraces.add(
-        newContractStorageTrie.putAndProve(
-            storageSlotKey.slotHash(), storageSlotKey.slotKey(), newSlotValue));
+        updateTraceStorageLocation(
+            contract.getAddress(),
+            newContractStorageTrie.putAndProve(
+                storageSlotKey.slotHash(), storageSlotKey.slotKey(), newSlotValue)));
     updatedContract.setStorageRoot(Hash.wrap(newContractStorageTrie.getTopRootHash()));
     expectedTraces.add(
         accountStateTrieOne.putAndProve(
@@ -466,7 +479,9 @@ public class RollingForwardTests {
     List<Trace> expectedTraces = new ArrayList<>();
     // read slot before selfdestruct
     expectedTraces.add(
-        contractStorageTrie.readAndProve(storageSlotKey.slotHash(), storageSlotKey.slotKey()));
+        updateTraceStorageLocation(
+            contract.getAddress(),
+            contractStorageTrie.readAndProve(storageSlotKey.slotHash(), storageSlotKey.slotKey())));
     // selfdestruct contract
     expectedTraces.add(
         accountStateTrieOne.removeAndProve(contract.getHkey(), contract.getAddress()));
@@ -477,8 +492,10 @@ public class RollingForwardTests {
     StorageSlotKey newStorageSlotKey = new StorageSlotKey(UInt256.valueOf(146));
     MimcSafeBytes<UInt256> newSlotValue = safeUInt256(UInt256.valueOf(13));
     expectedTraces.add(
-        newContractStorageTrie.putAndProve(
-            newStorageSlotKey.slotHash(), newStorageSlotKey.slotKey(), newSlotValue));
+        updateTraceStorageLocation(
+            contract.getAddress(),
+            newContractStorageTrie.putAndProve(
+                newStorageSlotKey.slotHash(), newStorageSlotKey.slotKey(), newSlotValue)));
     updatedContract.setStorageRoot(Hash.wrap(newContractStorageTrie.getTopRootHash()));
     expectedTraces.add(
         accountStateTrieOne.putAndProve(
@@ -516,5 +533,11 @@ public class RollingForwardTests {
     assertThat(JSON_OBJECT_MAPPER.writeValueAsString(zkEvmWorldState.getLastTraces()))
         .isEqualTo(JSON_OBJECT_MAPPER.writeValueAsString(expectedTraces));
     assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(topRootHash);
+  }
+
+  private Trace updateTraceStorageLocation(
+      final MimcSafeBytes<Address> address, final Trace trace) {
+    trace.setLocation(address.getOriginalUnsafeValue());
+    return trace;
   }
 }

@@ -1,5 +1,6 @@
 [
   {
+    "location":"0x",
     "newNextFreeNode":3,
     "oldSubRoot":"0x21bf7e28464bf26302be46623b706eacf89b08134665b8f425d437f13218091b",
     "newSubRoot":"0x15154ecb54514b439ed9cd51078e08e51676c30fc2067d04320ef6b6d263584e",
@@ -155,6 +156,7 @@
     "type":2
   },
   {
+    "location":"0x",
     "newNextFreeNode":4,
     "oldSubRoot":"0x15154ecb54514b439ed9cd51078e08e51676c30fc2067d04320ef6b6d263584e",
     "newSubRoot":"0x2ddb013ab153518f6082fc043e4dcd98c4a05d32d9adcbd024ad404fefc9e375",

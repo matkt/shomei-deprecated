@@ -13,12 +13,23 @@
 
 package net.consensys.shomei.trie.proof;
 
+import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.ethereum.rlp.RLPOutput;
 
 public class EmptyTrace implements Trace {
   @Override
   public int getType() {
     return -1;
+  }
+
+  @Override
+  public Bytes getLocation() {
+    return Bytes.EMPTY;
+  }
+
+  @Override
+  public void setLocation(final Bytes location) {
+    // no op
   }
 
   @Override
