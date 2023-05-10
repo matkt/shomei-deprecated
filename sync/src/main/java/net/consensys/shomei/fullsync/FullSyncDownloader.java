@@ -68,19 +68,20 @@ public class FullSyncDownloader extends AbstractVerticle implements TrieLogObser
     while (!completableFuture.isDone()) {
       while (blockQueue.isEmpty() || !isNextTrieLogAvailable()) {
         try {
-          if (isTooFarFromTheHead()) {
-            // ask for trielog to Besu
-            final long startBlockNumber = zkEvmWorldStateEntryPoint.getCurrentBlockNumber() + 1;
-            final long endBlockNumber = startBlockNumber + INITIAL_SYNC_BLOCK_NUMBER_RANGE;
-            getRawTrieLog
-                .getTrieLog(startBlockNumber, endBlockNumber)
-                .whenComplete(
-                    (trieLogIdentifiers, throwable) -> {
-                      if (throwable == null) {
-                        addTrieLogs(trieLogIdentifiers);
-                      }
-                    });
-          }
+          // ask for trielog to Besu
+          final long missingTrieLogsNumber =  getDistanceFromNextTrieLog()
+                  .filter(dist -> dist<=INITIAL_SYNC_BLOCK_NUMBER_RANGE)
+                  .orElse((long) INITIAL_SYNC_BLOCK_NUMBER_RANGE);
+          final long startBlockNumber = zkEvmWorldStateEntryPoint.getCurrentBlockNumber() + 1;
+          final long endBlockNumber = zkEvmWorldStateEntryPoint.getCurrentBlockNumber() + missingTrieLogsNumber;
+          getRawTrieLog
+                  .getTrieLog(startBlockNumber, endBlockNumber)
+                  .whenComplete(
+                          (trieLogIdentifiers, throwable) -> {
+                            if (throwable == null) {
+                              addTrieLogs(trieLogIdentifiers);
+                            }
+                          });
           wait(TimeUnit.SECONDS.toMillis(30)); // waiting for the next trielog to be retrieved
         } catch (InterruptedException e) {
           throw new RuntimeException(e);
@@ -145,13 +146,13 @@ public class FullSyncDownloader extends AbstractVerticle implements TrieLogObser
   }
 
   public boolean isNextTrieLogAvailable() {
-    return getDistanceFromNextTrieLog() == 1;
+    return getDistanceFromNextTrieLog().orElse(-1L) == 1;
   }
 
-  public long getDistanceFromNextTrieLog() {
+  public Optional<Long> getDistanceFromNextTrieLog() {
     return blockQueue.isEmpty()
-        ? -1
-        : blockQueue.element().blockNumber() - zkEvmWorldStateEntryPoint.getCurrentBlockNumber();
+        ? Optional.empty()
+        : Optional.of(blockQueue.element().blockNumber() - zkEvmWorldStateEntryPoint.getCurrentBlockNumber());
   }
 
   public Optional<Long> getEstimateHeadBlockNumber() {
