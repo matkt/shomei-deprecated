@@ -1,0 +1,35 @@
+
+apply plugin: 'java-library'
+
+tasks.named('jar') {
+    archiveBaseName = 'shomei-sync'
+    manifest {
+        attributes(
+                'Specification-Title': archiveBaseName,
+                'Specification-Version': project.version,
+                'Implementation-Title': archiveBaseName,
+                'Implementation-Version': calculateVersion()
+        )
+    }
+}
+
+dependencies {
+
+
+    implementation project(':core')
+    implementation project(':services:rpc:api')
+
+    implementation 'io.vertx:vertx-core'
+
+    implementation 'org.hyperledger.besu.internal:metrics-core'
+    implementation 'org.hyperledger.besu.internal:pipeline'
+    implementation 'org.hyperledger.besu.internal:tasks'
+
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.1'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.8.1'
+}
+
+
+test {
+    useJUnitPlatform()
+}
