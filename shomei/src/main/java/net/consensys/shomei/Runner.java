@@ -15,7 +15,9 @@ package net.consensys.shomei;
 
 import net.consensys.shomei.cli.option.DataStorageOption;
 import net.consensys.shomei.cli.option.JsonRpcOption;
-import net.consensys.shomei.rpc.JsonRpcService;
+import net.consensys.shomei.fullsync.FullSyncDownloader;
+import net.consensys.shomei.rpc.client.GetRawTrieLogClient;
+import net.consensys.shomei.rpc.server.JsonRpcService;
 import net.consensys.shomei.services.storage.rocksdb.RocksDBSegmentedStorage;
 import net.consensys.shomei.services.storage.rocksdb.configuration.RocksDBConfigurationBuilder;
 import net.consensys.shomei.storage.PersistedWorldStateRepository;
@@ -31,28 +33,36 @@ public class Runner {
   private static final Logger LOG = LoggerFactory.getLogger(Runner.class);
 
   private final Vertx vertx;
+  private final FullSyncDownloader fullSyncDownloader;
   private final JsonRpcService jsonRpcService;
   private final WorldStateRepository worldStateStorage;
 
   public Runner(final DataStorageOption dataStorageOption, JsonRpcOption jsonRpcOption) {
     this.vertx = Vertx.vertx();
 
-    //    final InMemoryWorldStateStorage inMemoryWorldStateStorage = new
-    // InMemoryWorldStateStorage();
     worldStateStorage =
         new PersistedWorldStateRepository(
             new RocksDBSegmentedStorage(
                 new RocksDBConfigurationBuilder()
                     .databaseDir(dataStorageOption.getDataStoragePath())
                     .build()));
+
     final ZkEvmWorldStateEntryPoint zkEvmWorldStateEntryPoint =
         new ZkEvmWorldStateEntryPoint(worldStateStorage);
+
+    final GetRawTrieLogClient getRawTrieLog =
+        new GetRawTrieLogClient(
+            worldStateStorage,
+            jsonRpcOption.getBesuRpcHttpHost(),
+            jsonRpcOption.getBesuRHttpPort());
+
+    fullSyncDownloader = new FullSyncDownloader(zkEvmWorldStateEntryPoint, getRawTrieLog);
 
     this.jsonRpcService =
         new JsonRpcService(
             jsonRpcOption.getRpcHttpHost(),
             jsonRpcOption.getRpcHttpPort(),
-            zkEvmWorldStateEntryPoint,
+            fullSyncDownloader,
             worldStateStorage);
   }
 
@@ -63,6 +73,16 @@ public class Runner {
           if (!res.succeeded()) {
             LOG.atError()
                 .setMessage("Error occurred when starting the JSON RPC service {}")
+                .addArgument(res.cause())
+                .log();
+          }
+        });
+    vertx.deployVerticle(
+        fullSyncDownloader,
+        res -> {
+          if (!res.succeeded()) {
+            LOG.atError()
+                .setMessage("Error occurred when starting the block downloader {}")
                 .addArgument(res.cause())
                 .log();
           }

@@ -11,13 +11,14 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package net.consensys.shomei.rpc.rollup;
+package net.consensys.shomei.rpc.server;
 
-import static net.consensys.shomei.rpc.ShomeiVersion.IMPL_VERSION;
+import static net.consensys.shomei.rpc.server.ShomeiVersion.IMPL_VERSION;
 
-import net.consensys.shomei.rpc.ShomeiRpcMethod;
 import net.consensys.shomei.rpc.error.JsonInvalidVersionMessage;
 import net.consensys.shomei.rpc.error.ShomeiJsonRpcErrorResponse;
+import net.consensys.shomei.rpc.model.RollupGetZkEVMStateMerkleProofV0Response;
+import net.consensys.shomei.rpc.model.RollupGetZkEvmStateV0Parameter;
 import net.consensys.shomei.storage.WorldStateRepository;
 import net.consensys.shomei.trie.ZKTrie;
 import net.consensys.shomei.trie.proof.Trace;

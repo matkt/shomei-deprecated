@@ -32,7 +32,9 @@ public class JsonRpcOption {
   @Spec CommandSpec spec;
 
   public static final String DEFAULT_JSON_RPC_HOST = "127.0.0.1";
-  public static final int DEFAULT_JSON_RPC_PORT = 8888;
+
+  public static final int BESU_DEFAULT_JSON_RPC_PORT = 8545;
+  public static final int SHOMEI_DEFAULT_JSON_RPC_PORT = 8888;
 
   @SuppressWarnings({"FieldCanBeFinal", "FieldMayBeFinal"}) // PicoCLI requires non-final Strings.
   @CommandLine.Option(
@@ -48,7 +50,30 @@ public class JsonRpcOption {
       paramLabel = "<PORT>",
       description = "Port for JSON-RPC HTTP to listen on (default: ${DEFAULT-VALUE})",
       arity = "1")
-  private Integer rpcHttpPort = DEFAULT_JSON_RPC_PORT;
+  private Integer rpcHttpPort = SHOMEI_DEFAULT_JSON_RPC_PORT;
+
+  @SuppressWarnings({"FieldCanBeFinal", "FieldMayBeFinal"}) // PicoCLI requires non-final Strings.
+  @CommandLine.Option(
+      names = {"--besu-rpc-http-host"},
+      paramLabel = "<HOST>",
+      description = "Host for BESU JSON-RPC HTTP (default: ${DEFAULT-VALUE})",
+      arity = "1")
+  private String besuRpcHttpHost = DEFAULT_JSON_RPC_HOST;
+
+  @CommandLine.Option(
+      names = {"--besu-rpc-http-port"},
+      paramLabel = "<PORT>",
+      description = "Port for Besu JSON-RPC HTTP (default: ${DEFAULT-VALUE})",
+      arity = "1")
+  private Integer besuRHttpPort = BESU_DEFAULT_JSON_RPC_PORT;
+
+  public String getBesuRpcHttpHost() {
+    return besuRpcHttpHost;
+  }
+
+  public Integer getBesuRHttpPort() {
+    return besuRHttpPort;
+  }
 
   public String getRpcHttpHost() {
     return rpcHttpHost;

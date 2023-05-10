@@ -11,10 +11,10 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package net.consensys.shomei.rpc.trielog;
+package net.consensys.shomei.rpc.server;
 
 import net.consensys.shomei.observer.TrieLogObserver;
-import net.consensys.shomei.rpc.ShomeiRpcMethod;
+import net.consensys.shomei.rpc.model.SendRawTrieLogParameter;
 import net.consensys.shomei.storage.WorldStateRepository;
 
 import java.util.ArrayList;

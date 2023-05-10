@@ -16,6 +16,7 @@ tasks.named('jar') {
 dependencies {
 
     implementation project(':util')
+    implementation project(':sync')
     implementation project(':core')
     implementation project(':trie')
     implementation project(':services:rpc:api')

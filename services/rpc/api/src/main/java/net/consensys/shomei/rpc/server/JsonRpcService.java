@@ -11,13 +11,11 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package net.consensys.shomei.rpc;
+package net.consensys.shomei.rpc.server;
 
 import static com.google.common.collect.Streams.stream;
 
 import net.consensys.shomei.observer.TrieLogObserver;
-import net.consensys.shomei.rpc.rollup.RollupGetZkEVMStateMerkleProofV0;
-import net.consensys.shomei.rpc.trielog.SendRawTrieLog;
 import net.consensys.shomei.storage.WorldStateRepository;
 import net.consensys.shomei.trie.json.JsonTraceParser;
 

@@ -11,7 +11,7 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package net.consensys.shomei.rpc.trielog;
+package net.consensys.shomei.rpc.model;
 
 import net.consensys.shomei.observer.TrieLogObserver.TrieLogIdentifier;
 

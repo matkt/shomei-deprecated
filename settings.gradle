@@ -15,4 +15,5 @@ findProject(':services:storage:rocksdb')?.name = 'rocksdb'
 include 'config'
 include 'services:rpc:api'
 findProject(':services:rpc:api')?.name = 'api'
+include 'sync'
 

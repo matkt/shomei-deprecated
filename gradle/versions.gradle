@@ -43,6 +43,12 @@ dependencyManagement {
       entry 'rlp'
       entry 'trie'
       entry 'core'
+      entry('metrics-core') {
+        // We include netty-all so omit the separated jars
+        exclude 'io.netty:netty-tcnative-boringssl-static'
+      }
+      entry 'pipeline'
+      entry 'tasks'
     }
 
     dependencySet(group: 'org.hyperledger.besu', version: '23.4.1-SNAPSHOT') {

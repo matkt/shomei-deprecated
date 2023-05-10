@@ -11,7 +11,7 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package net.consensys.shomei.rpc;
+package net.consensys.shomei.rpc.server;
 
 public enum ShomeiRpcMethod {
   STATE_SEND_RAW_TRIE_LOG("state_sendRawTrieLog"),

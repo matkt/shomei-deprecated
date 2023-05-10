@@ -11,7 +11,7 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package net.consensys.shomei.rpc;
+package net.consensys.shomei.rpc.server;
 
 import org.hyperledger.besu.util.platform.PlatformDetector;
 
