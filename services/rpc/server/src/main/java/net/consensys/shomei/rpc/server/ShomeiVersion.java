@@ -11,21 +11,17 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package net.consensys.shomei.observer;
+package net.consensys.shomei.rpc.server;
 
-import java.util.List;
+import org.hyperledger.besu.util.platform.PlatformDetector;
 
-import org.hyperledger.besu.datatypes.Hash;
+public class ShomeiVersion {
 
-public interface TrieLogObserver {
-  void onTrieLogsReceived(final List<TrieLogIdentifier> trieLogIds);
+  public static final String CLIENT_IDENTITY = "shomei";
+  public static final String IMPL_VERSION =
+      ShomeiVersion.class.getPackage().getImplementationVersion();
+  public static final String OS = PlatformDetector.getOS();
+  public static final String VM = PlatformDetector.getVM();
 
-  record TrieLogIdentifier(Long blockNumber, Hash blockHash, boolean isInitialSync)
-      implements Comparable<TrieLogIdentifier> {
-
-    @Override
-    public int compareTo(TrieLogIdentifier other) {
-      return this.blockNumber.compareTo(other.blockNumber);
-    }
-  }
+  public static final String VERSION = CLIENT_IDENTITY + "/" + IMPL_VERSION + "/" + OS + "/" + VM;
 }

@@ -13,26 +13,31 @@ tasks.named('jar') {
 }
 
 dependencies {
-    implementation project(':util')
-    implementation project(':crypto')
 
+    // Hyperledger Besu dependencies
     implementation 'org.hyperledger.besu:besu-datatypes'
-    implementation 'org.hyperledger.besu.internal:trie'
     implementation 'org.hyperledger.besu.internal:algorithms'
     implementation 'org.hyperledger.besu.internal:rlp'
+    implementation 'org.hyperledger.besu.internal:trie'
 
+    // JSON serialization/deserialization library
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+
+    // Google Guava library
     implementation 'com.google.guava:guava'
+
+    // Google Gson library
     implementation 'com.google.code.gson:gson'
 
+    // Apache Tuweni library
     implementation 'org.apache.tuweni:tuweni-bytes'
     implementation 'org.apache.tuweni:tuweni-units'
 
-
-    implementation 'com.fasterxml.jackson.core:jackson-databind'
+    // Project dependencies
+    implementation project(':crypto')
+    implementation project(':util')
 
     testImplementation 'junit:junit'
     testImplementation 'org.assertj:assertj-core'
     testImplementation 'org.junit.jupiter:junit-jupiter'
-
-
 }

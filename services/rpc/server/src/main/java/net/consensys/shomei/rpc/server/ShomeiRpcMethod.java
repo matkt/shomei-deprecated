@@ -11,21 +11,20 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package net.consensys.shomei.observer;
+package net.consensys.shomei.rpc.server;
 
-import java.util.List;
+public enum ShomeiRpcMethod {
+  STATE_SEND_RAW_TRIE_LOG("state_sendRawTrieLog"),
 
-import org.hyperledger.besu.datatypes.Hash;
+  ROLLUP_GET_ZKEVM_STATE_MERKLE_PROOF_V0("rollup_getZkEVMStateMerkleProofV0");
 
-public interface TrieLogObserver {
-  void onTrieLogsReceived(final List<TrieLogIdentifier> trieLogIds);
+  private final String methodName;
 
-  record TrieLogIdentifier(Long blockNumber, Hash blockHash, boolean isInitialSync)
-      implements Comparable<TrieLogIdentifier> {
+  public String getMethodName() {
+    return methodName;
+  }
 
-    @Override
-    public int compareTo(TrieLogIdentifier other) {
-      return this.blockNumber.compareTo(other.blockNumber);
-    }
+  ShomeiRpcMethod(final String methodName) {
+    this.methodName = methodName;
   }
 }

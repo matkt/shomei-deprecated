@@ -64,7 +64,7 @@ public class ZKEvmWorldState {
     this.zkEvmWorldStateStorage = zkEvmWorldStateStorage;
   }
 
-  public void commit(final long blockNumber, final Hash blockHash, final boolean ignoreTrace) {
+  public void commit(final long blockNumber, final Hash blockHash, final boolean generateTrace) {
     LOG.atDebug()
         .setMessage("Commit world state for block number {} and block hash {}")
         .addArgument(blockNumber)
@@ -74,7 +74,7 @@ public class ZKEvmWorldState {
     final WorldStateRepository.WorldStateUpdater updater =
         (WorldStateRepository.WorldStateUpdater) zkEvmWorldStateStorage.updater();
 
-    this.state = generateNewState(updater, ignoreTrace);
+    this.state = generateNewState(updater, generateTrace);
 
     this.blockNumber = blockNumber;
     this.blockHash = blockHash;
@@ -83,7 +83,7 @@ public class ZKEvmWorldState {
     updater.setBlockNumber(blockNumber);
     updater.saveZkStateRootHash(blockNumber, state.stateRoot);
 
-    if (!ignoreTrace) {
+    if (generateTrace) {
       updater.saveTrace(blockNumber, Trace.serialize(state.traces));
       if (!state.traces.isEmpty()) {
         LOG.atInfo()
@@ -107,16 +107,16 @@ public class ZKEvmWorldState {
 
   record State(Hash stateRoot, List<Trace> traces) {}
 
-  private State generateNewState(final TrieUpdater updater, final boolean ignoreTrace) {
+  private State generateNewState(final TrieUpdater updater, final boolean generateTrace) {
     final ZKTrie zkAccountTrie =
         loadAccountTrie(new AccountTrieRepositoryWrapper(zkEvmWorldStateStorage, updater));
-    final List<Trace> traces = updateAccounts(zkAccountTrie, updater, ignoreTrace);
+    final List<Trace> traces = updateAccounts(zkAccountTrie, updater, generateTrace);
     zkAccountTrie.commit();
     return new State(Hash.wrap(zkAccountTrie.getTopRootHash()), traces);
   }
 
   private List<Trace> updateAccounts(
-      final ZKTrie zkAccountTrie, final TrieUpdater updater, final boolean ignoreTrace) {
+      final ZKTrie zkAccountTrie, final TrieUpdater updater, final boolean generateTrace) {
     final List<Trace> traces = new ArrayList<>();
     accumulator.getAccountsToUpdate().entrySet().stream()
         .sorted(Map.Entry.comparingByKey())
@@ -125,7 +125,7 @@ public class ZKEvmWorldState {
               final AccountKey accountKey = entry.getKey();
               final ZkValue<ZkAccount> accountValue = entry.getValue();
               traces.addAll(
-                  updateAccount(accountKey, accountValue, zkAccountTrie, updater, ignoreTrace));
+                  updateAccount(accountKey, accountValue, zkAccountTrie, updater, generateTrace));
             });
     return traces;
   }
@@ -135,11 +135,11 @@ public class ZKEvmWorldState {
       final ZkValue<ZkAccount> accountValue,
       final ZKTrie zkAccountTrie,
       final TrieUpdater updater,
-      final boolean ignoreTrace) {
+      final boolean generateTrace) {
     final List<Trace> traces = new ArrayList<>();
 
     // check read and read zero for rollfoward (if trace don't needed we skip this step)
-    if (!ignoreTrace) {
+    if (generateTrace) {
       if (accountValue.isRollforward()) {
         if (accountValue.isZeroRead() || accountValue.isNonZeroRead()) {
           // read zero or non zero
