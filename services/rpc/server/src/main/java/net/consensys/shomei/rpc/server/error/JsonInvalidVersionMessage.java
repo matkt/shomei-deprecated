@@ -11,7 +11,7 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package net.consensys.shomei.rpc.error;
+package net.consensys.shomei.rpc.server.error;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 

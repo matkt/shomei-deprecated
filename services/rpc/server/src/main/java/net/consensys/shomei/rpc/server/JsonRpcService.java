@@ -16,6 +16,8 @@ package net.consensys.shomei.rpc.server;
 import static com.google.common.collect.Streams.stream;
 
 import net.consensys.shomei.observer.TrieLogObserver;
+import net.consensys.shomei.rpc.server.method.RollupGetZkEVMStateMerkleProofV0;
+import net.consensys.shomei.rpc.server.method.SendRawTrieLog;
 import net.consensys.shomei.storage.WorldStateRepository;
 import net.consensys.shomei.trie.json.JsonTraceParser;
 

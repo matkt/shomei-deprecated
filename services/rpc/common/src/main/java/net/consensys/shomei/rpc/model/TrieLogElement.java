@@ -19,7 +19,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.hyperledger.besu.datatypes.Hash;
 
-public record SendRawTrieLogParameter(
+public record TrieLogElement(
     Long blockNumber, Hash blockHash, boolean isInitialSync, String trieLog) {
 
   public TrieLogIdentifier getTrieLogIdentifier() {
@@ -27,7 +27,7 @@ public record SendRawTrieLogParameter(
   }
 
   @JsonCreator
-  public SendRawTrieLogParameter(
+  public TrieLogElement(
       @JsonProperty("blockNumber") final Long blockNumber,
       @JsonProperty("blockHash") final Hash blockHash,
       @JsonProperty("syncing") final boolean isInitialSync,

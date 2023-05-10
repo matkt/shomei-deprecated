@@ -11,10 +11,11 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package net.consensys.shomei.rpc.server;
+package net.consensys.shomei.rpc.server.method;
 
 import net.consensys.shomei.observer.TrieLogObserver;
-import net.consensys.shomei.rpc.model.SendRawTrieLogParameter;
+import net.consensys.shomei.rpc.model.TrieLogElement;
+import net.consensys.shomei.rpc.server.ShomeiRpcMethod;
 import net.consensys.shomei.storage.WorldStateRepository;
 
 import java.util.ArrayList;
@@ -55,10 +56,8 @@ public class SendRawTrieLog implements JsonRpcMethod {
       IntStream.range(0, requestContext.getRequest().getParamLength())
           .forEach(
               index -> {
-                SendRawTrieLogParameter param =
-                    requestContext
-                        .getRequest()
-                        .getRequiredParameter(index, SendRawTrieLogParameter.class);
+                TrieLogElement param =
+                    requestContext.getRequest().getRequiredParameter(index, TrieLogElement.class);
                 worldStateStorage.saveTrieLog(
                     param.blockNumber(), Bytes.fromHexString(param.trieLog()));
                 trieLogIdentifiers.add(param.getTrieLogIdentifier());

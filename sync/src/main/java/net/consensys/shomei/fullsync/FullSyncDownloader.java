@@ -57,17 +57,13 @@ public class FullSyncDownloader extends AbstractVerticle implements TrieLogObser
 
   @Override
   public void start() {
-    LOG.atInfo()
-            .setMessage("Starting fullsync downloader service")
-            .log();
+    LOG.atInfo().setMessage("Starting fullsync downloader service").log();
     completableFuture = new CompletableFuture<>();
     executor.execute(this::startFullSync);
   }
 
   private synchronized void startFullSync() {
-    LOG.atInfo()
-            .setMessage("Fullsync downloader service started")
-            .log();
+    LOG.atInfo().setMessage("Fullsync downloader service started").log();
     while (!completableFuture.isDone()) {
       while (blockQueue.isEmpty() || !isNextTrieLogAvailable()) {
         try {
@@ -122,9 +118,7 @@ public class FullSyncDownloader extends AbstractVerticle implements TrieLogObser
 
   @Override
   public void stop() throws Exception {
-    LOG.atInfo()
-            .setMessage("Fullsync downloader service stopped")
-            .log();
+    LOG.atInfo().setMessage("Fullsync downloader service stopped").log();
     completableFuture.complete(null);
     super.stop();
   }
@@ -134,7 +128,8 @@ public class FullSyncDownloader extends AbstractVerticle implements TrieLogObser
   }
 
   public boolean isTooFarFromTheHead() {
-    return getEstimateHeadBlockNumber().isEmpty() || getEstimateDistanceFromTheHead() > INITIAL_SYNC_BLOCK_NUMBER_RANGE;
+    return getEstimateHeadBlockNumber().isEmpty()
+        || getEstimateDistanceFromTheHead() > INITIAL_SYNC_BLOCK_NUMBER_RANGE;
   }
 
   public boolean isNextTrieLogAvailable() {

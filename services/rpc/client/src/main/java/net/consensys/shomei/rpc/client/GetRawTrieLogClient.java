@@ -13,10 +13,9 @@
 
 package net.consensys.shomei.rpc.client;
 
-import io.vertx.core.http.HttpMethod;
 import net.consensys.shomei.observer.TrieLogObserver;
-import net.consensys.shomei.rpc.model.SendRawTrieLogParameter;
-import net.consensys.shomei.rpc.server.JsonRpcService;
+import net.consensys.shomei.rpc.client.model.GetRawTrieLogRpcResponse;
+import net.consensys.shomei.rpc.model.TrieLogElement;
 import net.consensys.shomei.storage.WorldStateRepository;
 
 import java.security.NoSuchAlgorithmException;
@@ -27,20 +26,21 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
 
 import io.vertx.core.Vertx;
+import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.client.WebClient;
 import io.vertx.ext.web.client.WebClientOptions;
 import org.apache.tuweni.bytes.Bytes;
-import org.hyperledger.besu.ethereum.api.jsonrpc.internal.JsonRpcRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@SuppressWarnings("UnusedVariable")
 public class GetRawTrieLogClient {
 
   private static final String APPLICATION_JSON = "application/json";
 
-  private static final Logger LOG = LoggerFactory.getLogger(JsonRpcService.class);
+  private static final Logger LOG = LoggerFactory.getLogger(GetRawTrieLogClient.class);
   private static final SecureRandom RANDOM;
 
   static {
@@ -79,44 +79,37 @@ public class GetRawTrieLogClient {
             .put("jsonrpc", "2.0")
             .put("id", requestId)
             .put("method", "shomei_getTrieLogsByRange")
-            .put("params", new JsonArray(List.of(startBlockNumber, endBlockNumber)));
+            .put("params", new JsonArray(List.of("" + startBlockNumber, "" + endBlockNumber)));
 
     // Send the request to the JSON-RPC service
     webClient
         .request(HttpMethod.POST, besuHttpPort, besuHttpHost, "/")
         .putHeader("Content-Type", APPLICATION_JSON)
-            .timeout(TimeUnit.SECONDS.toMillis(30))
+        .timeout(TimeUnit.SECONDS.toMillis(30))
         .sendJsonObject(
             jsonRpcRequest,
             response -> {
-              LOG.atInfo()
-                      .setMessage("response received for getTrieLogsByRange {}")
-                      .addArgument(response.result())
-                      .log();
               if (response.succeeded()) {
-                final JsonRpcRequest responseBody =
-                    response.result().bodyAsJson(JsonRpcRequest.class);
-                if (responseBody.getId().equals(requestId)) {
-                  try {
-                    final List<TrieLogObserver.TrieLogIdentifier> trieLogIdentifiers =
-                        new ArrayList<>();
-                    IntStream.range(0, responseBody.getParamLength())
-                        .forEach(
-                            index -> {
-                              SendRawTrieLogParameter param =
-                                  responseBody.getRequiredParameter(
-                                      index, SendRawTrieLogParameter.class);
-                              worldStateRepository.saveTrieLog(
-                                  param.blockNumber(), Bytes.fromHexString(param.trieLog()));
-                              trieLogIdentifiers.add(param.getTrieLogIdentifier());
-                            });
-                    worldStateRepository.commitTrieLogStorage();
-                    trieLogObserver.onTrieLogsAdded(trieLogIdentifiers);
+                final GetRawTrieLogRpcResponse responseBody =
+                    response.result().bodyAsJson(GetRawTrieLogRpcResponse.class);
+                LOG.atInfo()
+                    .setMessage("response received for getTrieLogsByRange {}")
+                    .addArgument(responseBody)
+                    .log();
 
-                  } catch (RuntimeException e) {
-                    LOG.error("failed to handle new TrieLog {}", e.getMessage());
-                    LOG.debug("exception handling TrieLog", e);
+                try {
+                  final List<TrieLogObserver.TrieLogIdentifier> trieLogIdentifiers = new ArrayList<>();
+                  for (TrieLogElement trieLogElement : responseBody.getResult()) {
+                    worldStateRepository.saveTrieLog(
+                            trieLogElement.blockNumber(), Bytes.fromHexString(trieLogElement.trieLog()));
+                    trieLogIdentifiers.add(trieLogElement.getTrieLogIdentifier());
                   }
+                  worldStateRepository.commitTrieLogStorage();
+                  trieLogObserver.onTrieLogsAdded(trieLogIdentifiers);
+
+                } catch (RuntimeException e) {
+                  LOG.error("failed to handle new TrieLog {}", e.getMessage());
+                  LOG.debug("exception handling TrieLog", e);
                 }
               }
             });

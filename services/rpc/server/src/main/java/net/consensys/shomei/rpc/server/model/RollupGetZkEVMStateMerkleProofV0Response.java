@@ -11,7 +11,7 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package net.consensys.shomei.rpc.model;
+package net.consensys.shomei.rpc.server.model;
 
 import net.consensys.shomei.trie.proof.Trace;
 

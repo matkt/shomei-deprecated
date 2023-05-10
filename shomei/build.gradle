@@ -19,7 +19,9 @@ dependencies {
     implementation project(':sync')
     implementation project(':core')
     implementation project(':trie')
-    implementation project(':services:rpc:api')
+    implementation project(':services:rpc:common')
+    implementation project(':services:rpc:client')
+    implementation project(':services:rpc:server')
     implementation project(':services:storage:rocksdb')
 
     implementation 'io.vertx:vertx-core'
