@@ -11,21 +11,17 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package net.consensys.shomei.observer;
+package net.consensys.shomei.rpc.client;
 
-import java.util.List;
+public enum BesuRpcMethod {
+  BESU_GET_TRIE_LOGS_BY_RANGE("shomei_getTrieLogsByRange");
+  private final String methodName;
 
-import org.hyperledger.besu.datatypes.Hash;
+  public String getMethodName() {
+    return methodName;
+  }
 
-public interface TrieLogObserver {
-  void onTrieLogsReceived(final List<TrieLogIdentifier> trieLogIds);
-
-  record TrieLogIdentifier(Long blockNumber, Hash blockHash, boolean isInitialSync)
-      implements Comparable<TrieLogIdentifier> {
-
-    @Override
-    public int compareTo(TrieLogIdentifier other) {
-      return this.blockNumber.compareTo(other.blockNumber);
-    }
+  BesuRpcMethod(final String methodName) {
+    this.methodName = methodName;
   }
 }

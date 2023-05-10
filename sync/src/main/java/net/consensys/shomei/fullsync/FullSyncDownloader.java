@@ -32,6 +32,7 @@ import io.vertx.core.AbstractVerticle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@SuppressWarnings("FutureReturnValueIgnored")
 public class FullSyncDownloader extends AbstractVerticle implements TrieLogObserver {
 
   private static final Logger LOG = LoggerFactory.getLogger(FullSyncDownloader.class);
@@ -69,7 +70,16 @@ public class FullSyncDownloader extends AbstractVerticle implements TrieLogObser
         try {
           if (isTooFarFromTheHead()) {
             // ask for trielog to Besu
-            getTrieLogsFromBesu();
+            final long startBlockNumber = zkEvmWorldStateEntryPoint.getCurrentBlockNumber() + 1;
+            final long endBlockNumber = startBlockNumber + INITIAL_SYNC_BLOCK_NUMBER_RANGE;
+            getRawTrieLog
+                .getTrieLog(startBlockNumber, endBlockNumber)
+                .whenComplete(
+                    (trieLogIdentifiers, throwable) -> {
+                      if (throwable == null) {
+                        addTrieLogs(trieLogIdentifiers);
+                      }
+                    });
           }
           wait(TimeUnit.SECONDS.toMillis(30)); // waiting for the next trielog to be retrieved
         } catch (InterruptedException e) {
@@ -79,11 +89,13 @@ public class FullSyncDownloader extends AbstractVerticle implements TrieLogObser
       if (isNextTrieLogAvailable()) {
         final TrieLogObserver.TrieLogIdentifier trieLogId = blockQueue.poll();
         try {
-          zkEvmWorldStateEntryPoint.importBlock(Objects.requireNonNull(trieLogId));
+          final boolean tooFarFromTheHead = isTooFarFromTheHead();
+          zkEvmWorldStateEntryPoint.importBlock(
+              Objects.requireNonNull(trieLogId), !tooFarFromTheHead);
           if (zkEvmWorldStateEntryPoint
               .getCurrentBlockHash()
               .equals(Objects.requireNonNull(trieLogId.blockHash()))) {
-            if (isTooFarFromTheHead()) {
+            if (tooFarFromTheHead) {
               if (trieLogId.blockNumber() % INITIAL_SYNC_BLOCK_NUMBER_RANGE == 0) {
                 LOG.atInfo()
                     .setMessage("Block import progress: {}:{}")
@@ -147,25 +159,24 @@ public class FullSyncDownloader extends AbstractVerticle implements TrieLogObser
   }
 
   @Override
-  public synchronized void onTrieLogsAdded(
+  public synchronized void onTrieLogsReceived(
       final List<TrieLogObserver.TrieLogIdentifier> trieLogIds) {
+    // we can estimate head number when besu is pushing trielog
     estimateHeadBlockNumber =
         trieLogIds.stream()
             .max(Comparator.comparingLong(TrieLogIdentifier::blockNumber))
             .map(TrieLogIdentifier::blockNumber);
-    if (getEstimateDistanceFromTheHead() < INITIAL_SYNC_BLOCK_NUMBER_RANGE) {
-      trieLogIds.forEach(
-          trieLogIdentifier -> {
-            LOG.atDebug().setMessage("received trie log {} ").addArgument(trieLogIdentifier).log();
-            blockQueue.offer(trieLogIdentifier);
-            notifyAll();
-          });
+    if (!isTooFarFromTheHead()) { // not save trielog sent by besu if we are too far from head
+      addTrieLogs(trieLogIds);
     }
   }
 
-  private void getTrieLogsFromBesu() {
-    final long startBlockNumber = zkEvmWorldStateEntryPoint.getCurrentBlockNumber() + 1;
-    final long endBlockNumber = startBlockNumber + INITIAL_SYNC_BLOCK_NUMBER_RANGE;
-    getRawTrieLog.getTrieLog(startBlockNumber, endBlockNumber, this);
+  public synchronized void addTrieLogs(final List<TrieLogObserver.TrieLogIdentifier> trieLogIds) {
+    trieLogIds.forEach(
+        trieLogIdentifier -> {
+          LOG.atDebug().setMessage("received trie log {} ").addArgument(trieLogIdentifier).log();
+          blockQueue.offer(trieLogIdentifier);
+          notifyAll();
+        });
   }
 }

@@ -14,6 +14,7 @@
 package net.consensys.shomei.rpc.client;
 
 import net.consensys.shomei.observer.TrieLogObserver;
+import net.consensys.shomei.rpc.client.model.GetRawTrieLogRpcRequest;
 import net.consensys.shomei.rpc.client.model.GetRawTrieLogRpcResponse;
 import net.consensys.shomei.rpc.model.TrieLogElement;
 import net.consensys.shomei.storage.WorldStateRepository;
@@ -22,13 +23,11 @@ import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.IntStream;
 
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpMethod;
-import io.vertx.core.json.JsonArray;
-import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.client.WebClient;
 import io.vertx.ext.web.client.WebClientOptions;
 import org.apache.tuweni.bytes.Bytes;
@@ -69,49 +68,52 @@ public class GetRawTrieLogClient {
     this.besuHttpPort = besuHttpPort;
   }
 
-  public void getTrieLog(
-      final long startBlockNumber,
-      final long endBlockNumber,
-      final TrieLogObserver trieLogObserver) {
-    final int requestId = RANDOM.nextInt();
-    JsonObject jsonRpcRequest =
-        new JsonObject()
-            .put("jsonrpc", "2.0")
-            .put("id", requestId)
-            .put("method", "shomei_getTrieLogsByRange")
-            .put("params", new JsonArray(List.of("" + startBlockNumber, "" + endBlockNumber)));
+  public CompletableFuture<List<TrieLogObserver.TrieLogIdentifier>> getTrieLog(
+      final long startBlockNumber, final long endBlockNumber) {
 
+    final CompletableFuture<List<TrieLogObserver.TrieLogIdentifier>> completableFuture =
+        new CompletableFuture<>();
+    final int requestId = RANDOM.nextInt();
+    final GetRawTrieLogRpcRequest jsonRpcRequest =
+        new GetRawTrieLogRpcRequest(requestId, new Object[] {startBlockNumber, endBlockNumber});
     // Send the request to the JSON-RPC service
     webClient
         .request(HttpMethod.POST, besuHttpPort, besuHttpHost, "/")
         .putHeader("Content-Type", APPLICATION_JSON)
         .timeout(TimeUnit.SECONDS.toMillis(30))
-        .sendJsonObject(
+        .sendJson(
             jsonRpcRequest,
             response -> {
               if (response.succeeded()) {
                 final GetRawTrieLogRpcResponse responseBody =
                     response.result().bodyAsJson(GetRawTrieLogRpcResponse.class);
-                LOG.atInfo()
+                LOG.atDebug()
                     .setMessage("response received for getTrieLogsByRange {}")
                     .addArgument(responseBody)
                     .log();
 
                 try {
-                  final List<TrieLogObserver.TrieLogIdentifier> trieLogIdentifiers = new ArrayList<>();
+                  final List<TrieLogObserver.TrieLogIdentifier> trieLogIdentifiers =
+                      new ArrayList<>();
                   for (TrieLogElement trieLogElement : responseBody.getResult()) {
                     worldStateRepository.saveTrieLog(
-                            trieLogElement.blockNumber(), Bytes.fromHexString(trieLogElement.trieLog()));
+                        trieLogElement.blockNumber(),
+                        Bytes.fromHexString(trieLogElement.trieLog()));
                     trieLogIdentifiers.add(trieLogElement.getTrieLogIdentifier());
                   }
                   worldStateRepository.commitTrieLogStorage();
-                  trieLogObserver.onTrieLogsAdded(trieLogIdentifiers);
+                  completableFuture.complete(trieLogIdentifiers);
 
                 } catch (RuntimeException e) {
                   LOG.error("failed to handle new TrieLog {}", e.getMessage());
                   LOG.debug("exception handling TrieLog", e);
+                  completableFuture.completeExceptionally(e);
                 }
+              } else {
+                completableFuture.completeExceptionally(null);
               }
             });
+
+    return completableFuture;
   }
 }

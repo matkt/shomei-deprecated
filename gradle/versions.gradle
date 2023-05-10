@@ -1,14 +1,16 @@
 dependencyManagement {
   dependencies {
-
-    dependency 'info.picocli:picocli:4.7.1'
-
+    // Apache
     dependencySet(group: 'org.apache.logging.log4j', version: '2.20.0') {
       entry 'log4j-api'
       entry 'log4j-core'
       entry 'log4j-slf4j2-impl'
     }
 
+    // Commons
+    dependency 'org.apache.commons:commons-lang3:3.12.0'
+
+    // Error Prone
     dependencySet(group: 'com.google.errorprone', version: '2.18.0') {
       entry 'error_prone_annotation'
       entry 'error_prone_check_api'
@@ -17,25 +19,15 @@ dependencyManagement {
     }
     dependency 'tech.pegasys.tools.epchecks:errorprone-checks:1.1.1'
 
-    dependency 'org.apache.commons:commons-lang3:3.12.0'
-
-    dependency 'org.slf4j:slf4j-api:2.0.6'
-
-    dependencySet(group: 'io.vertx', version: '4.2.7') {
-      entry 'vertx-auth-jwt'
-      entry 'vertx-codegen'
-      entry 'vertx-core'
-      entry 'vertx-junit5'
-      entry 'vertx-unit'
-      entry 'vertx-web'
-      entry 'vertx-web-client'
-      entry 'vertx-auth-jwt'
-    }
-
+    // Guava
     dependency 'com.google.guava:guava:31.1-jre'
 
-    dependency 'com.google.code.gson:gson:2.10.1'
-
+    // Hyperledger Besu
+    dependencySet(group: 'org.hyperledger.besu', version: '23.4.1-SNAPSHOT') {
+      entry 'besu-datatypes'
+      entry 'evm'
+      entry 'plugin-api'
+    }
     dependencySet(group: 'org.hyperledger.besu.internal', version: '23.4.1-SNAPSHOT') {
       entry 'api'
       entry 'util'
@@ -50,33 +42,53 @@ dependencyManagement {
       entry 'pipeline'
       entry 'tasks'
     }
+    dependency 'org.hyperledger.besu:mimc:0.7.2-SNAPSHOT'
 
-    dependencySet(group: 'org.hyperledger.besu', version: '23.4.1-SNAPSHOT') {
-      entry 'besu-datatypes'
-      entry 'evm'
-      entry 'plugin-api'
-    }
-
+    // Jackson
     dependencySet(group:'com.fasterxml.jackson.core', version:'2.14.2') {
       entry 'jackson-databind'
     }
 
-    dependency 'org.hyperledger.besu:mimc:0.7.2-SNAPSHOT'
+    // JNA
     dependency 'net.java.dev.jna:jna:5.13.0'
 
+    // JUnit
+    dependency 'junit:junit:4.13.2'
+    dependency 'org.assertj:assertj-core:3.24.2'
+    dependency 'org.junit.jupiter:junit-jupiter:5.8.2'
 
+    // OpenTelemetry
+    dependency 'io.opentelemetry:opentelemetry-api:1.19.0'
 
+    // Picocli
+    dependency 'info.picocli:picocli:4.7.1'
+
+    // RocksDB
+    dependency 'org.rocksdb:rocksdbjni:8.0.0'
+
+    // SLF4J
+    dependency 'org.slf4j:slf4j-api:2.0.6'
+
+    // Tuweni
     dependencySet(group: 'org.apache.tuweni', version: '2.3.1') {
       entry 'tuweni-units'
       entry 'tuweni-bytes'
     }
-    dependency 'org.rocksdb:rocksdbjni:8.0.0'
 
-    dependency 'io.opentelemetry:opentelemetry-api:1.19.0'
+    // Vert.x
+    dependencySet(group: 'io.vertx', version: '4.2.7') {
+      entry 'vertx-auth-jwt'
+      entry 'vertx-codegen'
+      entry 'vertx-core'
+      entry 'vertx-junit5'
+      entry 'vertx-unit'
+      entry 'vertx-web'
+      entry 'vertx-web-client'
+      entry 'vertx-auth-jwt'
+    }
 
-    dependency 'junit:junit:4.13.2'
-    dependency 'org.assertj:assertj-core:3.24.2'
-    dependency 'org.junit.jupiter:junit-jupiter:5.8.2'
+    // Other
+    dependency 'com.google.code.gson:gson:2.10.1'
 
   }
 }

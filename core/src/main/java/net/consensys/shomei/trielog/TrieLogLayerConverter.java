@@ -54,6 +54,7 @@ public class TrieLogLayerConverter {
 
     input.enterList();
     trieLogLayer.setBlockHash(Hash.wrap(input.readBytes32()));
+    trieLogLayer.setBlockNumber(input.readLongScalar());
 
     while (!input.isEndOfCurrentList()) {
       input.enterList();

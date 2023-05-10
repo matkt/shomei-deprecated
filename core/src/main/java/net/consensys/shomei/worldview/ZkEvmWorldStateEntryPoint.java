@@ -39,14 +39,15 @@ public class ZkEvmWorldStateEntryPoint {
     this.trieLogLayerConverter = new TrieLogLayerConverter(worldStateStorage);
   }
 
-  public void importBlock(final TrieLogIdentifier trieLogId) throws MissingTrieLogException {
+  public void importBlock(final TrieLogIdentifier trieLogId, final boolean generateTrace)
+      throws MissingTrieLogException {
     Optional<TrieLogLayer> trieLog =
         worldStateStorage
             .getTrieLog(trieLogId.blockNumber())
             .map(RLP::input)
             .map(trieLogLayerConverter::decodeTrieLog);
     if (trieLog.isPresent()) {
-      applyTrieLog(trieLogId.blockNumber(), trieLogId.isInitialSync(), trieLog.get());
+      applyTrieLog(trieLogId.blockNumber(), generateTrace, trieLog.get());
     } else {
       throw new MissingTrieLogException(trieLogId.blockNumber());
     }
@@ -54,9 +55,9 @@ public class ZkEvmWorldStateEntryPoint {
 
   @VisibleForTesting
   public void applyTrieLog(
-      final long newBlockNumber, final boolean syncing, final TrieLogLayer trieLogLayer) {
+      final long newBlockNumber, final boolean generateTrace, final TrieLogLayer trieLogLayer) {
     currentWorldState.getAccumulator().rollForward(trieLogLayer);
-    currentWorldState.commit(newBlockNumber, trieLogLayer.getBlockHash(), syncing);
+    currentWorldState.commit(newBlockNumber, trieLogLayer.getBlockHash(), generateTrace);
   }
 
   public Hash getCurrentRootHash() {

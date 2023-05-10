@@ -11,21 +11,17 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package net.consensys.shomei.observer;
+package net.consensys.shomei.rpc.client.model;
 
-import java.util.List;
+import net.consensys.shomei.rpc.client.BesuRpcMethod;
 
-import org.hyperledger.besu.datatypes.Hash;
+import org.hyperledger.besu.ethereum.api.jsonrpc.internal.JsonRpcRequest;
+import org.hyperledger.besu.ethereum.api.jsonrpc.internal.JsonRpcRequestId;
 
-public interface TrieLogObserver {
-  void onTrieLogsReceived(final List<TrieLogIdentifier> trieLogIds);
+public class GetRawTrieLogRpcRequest extends JsonRpcRequest {
 
-  record TrieLogIdentifier(Long blockNumber, Hash blockHash, boolean isInitialSync)
-      implements Comparable<TrieLogIdentifier> {
-
-    @Override
-    public int compareTo(TrieLogIdentifier other) {
-      return this.blockNumber.compareTo(other.blockNumber);
-    }
+  public GetRawTrieLogRpcRequest(final long requestId, final Object[] params) {
+    super("2.0", BesuRpcMethod.BESU_GET_TRIE_LOGS_BY_RANGE.getMethodName(), params);
+    setId(new JsonRpcRequestId(requestId));
   }
 }

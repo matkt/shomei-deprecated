@@ -43,6 +43,8 @@ import org.hyperledger.besu.ethereum.rlp.RLPInput;
 public class TrieLogLayer {
 
   private Hash blockHash;
+
+  private long blockNumber;
   private final Map<AccountKey, ZkValue<ZkAccount>> accounts;
   private final Map<AccountKey, Map<StorageSlotKey, ZkValue<UInt256>>> storages;
 
@@ -65,6 +67,14 @@ public class TrieLogLayer {
   public void setBlockHash(final Hash blockHash) {
     checkState(!frozen, "Layer is Frozen");
     this.blockHash = blockHash;
+  }
+
+  public long getBlockNumber() {
+    return blockNumber;
+  }
+
+  public void setBlockNumber(final long blockNumber) {
+    this.blockNumber = blockNumber;
   }
 
   public void addAccountChange(
