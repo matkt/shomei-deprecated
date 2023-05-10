@@ -69,19 +69,21 @@ public class FullSyncDownloader extends AbstractVerticle implements TrieLogObser
       while (blockQueue.isEmpty() || !isNextTrieLogAvailable()) {
         try {
           // ask for trielog to Besu
-          final long missingTrieLogsNumber =  getDistanceFromNextTrieLog()
-                  .filter(dist -> dist<=INITIAL_SYNC_BLOCK_NUMBER_RANGE)
+          final long missingTrieLogsNumber =
+              getDistanceFromNextTrieLog()
+                  .filter(dist -> dist <= INITIAL_SYNC_BLOCK_NUMBER_RANGE)
                   .orElse((long) INITIAL_SYNC_BLOCK_NUMBER_RANGE);
           final long startBlockNumber = zkEvmWorldStateEntryPoint.getCurrentBlockNumber() + 1;
-          final long endBlockNumber = zkEvmWorldStateEntryPoint.getCurrentBlockNumber() + missingTrieLogsNumber;
+          final long endBlockNumber =
+              zkEvmWorldStateEntryPoint.getCurrentBlockNumber() + missingTrieLogsNumber;
           getRawTrieLog
-                  .getTrieLog(startBlockNumber, endBlockNumber)
-                  .whenComplete(
-                          (trieLogIdentifiers, throwable) -> {
-                            if (throwable == null) {
-                              addTrieLogs(trieLogIdentifiers);
-                            }
-                          });
+              .getTrieLog(startBlockNumber, endBlockNumber)
+              .whenComplete(
+                  (trieLogIdentifiers, throwable) -> {
+                    if (throwable == null) {
+                      addTrieLogs(trieLogIdentifiers);
+                    }
+                  });
           wait(TimeUnit.SECONDS.toMillis(30)); // waiting for the next trielog to be retrieved
         } catch (InterruptedException e) {
           throw new RuntimeException(e);
@@ -152,7 +154,8 @@ public class FullSyncDownloader extends AbstractVerticle implements TrieLogObser
   public Optional<Long> getDistanceFromNextTrieLog() {
     return blockQueue.isEmpty()
         ? Optional.empty()
-        : Optional.of(blockQueue.element().blockNumber() - zkEvmWorldStateEntryPoint.getCurrentBlockNumber());
+        : Optional.of(
+            blockQueue.element().blockNumber() - zkEvmWorldStateEntryPoint.getCurrentBlockNumber());
   }
 
   public Optional<Long> getEstimateHeadBlockNumber() {
