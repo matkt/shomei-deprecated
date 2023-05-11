@@ -1,6 +1,10 @@
 name: CI
 
-on: [push, pull_request]
+on:
+  push:
+    branches:
+      - main
+  pull_request:
 
 jobs:
   assemble:
@@ -142,6 +146,7 @@ jobs:
 
   publishDocker:
     needs: build
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     env:
       architecture: "amd64"
@@ -161,6 +166,7 @@ jobs:
 
   publishDockerArm64:
     needs: build
+    if: github.event_name == 'push'
     runs-on: [ ARM64, Linux, self-hosted ]
     env:
       architecture: "arm64"
