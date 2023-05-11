@@ -175,5 +175,5 @@ jobs:
           distribution: 'adopt'
       - name: Publish Docker Image
         run: |
-          docker login --username "${{ secrets.DOCKER_USER_RW }}" --password "${{ secrets.DOCKER_PASSWORD_RW }}"
+          echo "${{ secrets.DOCKER_PAT }}" | docker login --username "${{ secrets.DOCKER_USERNAME }}" --password-stdin
           ./gradlew --no-daemon dockerUpload
