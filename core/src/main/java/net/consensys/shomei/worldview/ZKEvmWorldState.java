@@ -46,7 +46,7 @@ public class ZKEvmWorldState {
 
   private final ZkEvmWorldStateUpdateAccumulator accumulator;
 
-  private State state;
+  private Hash stateRoot;
 
   private long blockNumber;
   private Hash blockHash;
@@ -54,10 +54,7 @@ public class ZKEvmWorldState {
   private final WorldStateRepository zkEvmWorldStateStorage;
 
   public ZKEvmWorldState(final WorldStateRepository zkEvmWorldStateStorage) {
-    this.state =
-        new State(
-            zkEvmWorldStateStorage.getWorldStateRootHash().orElse(DEFAULT_TRIE_ROOT),
-            new ArrayList<>());
+    this.stateRoot = zkEvmWorldStateStorage.getWorldStateRootHash().orElse(DEFAULT_TRIE_ROOT);
     this.blockNumber = zkEvmWorldStateStorage.getWorldStateBlockNumber().orElse(-1L);
     this.blockHash = zkEvmWorldStateStorage.getWorldStateBlockHash().orElse(Hash.EMPTY);
     this.accumulator = new ZkEvmWorldStateUpdateAccumulator();
@@ -74,8 +71,9 @@ public class ZKEvmWorldState {
     final WorldStateRepository.WorldStateUpdater updater =
         (WorldStateRepository.WorldStateUpdater) zkEvmWorldStateStorage.updater();
 
-    this.state = generateNewState(updater, generateTrace);
+    final State state = generateNewState(updater, generateTrace);
 
+    this.stateRoot = state.stateRoot();
     this.blockNumber = blockNumber;
     this.blockHash = blockHash;
 
@@ -304,7 +302,7 @@ public class ZKEvmWorldState {
   }
 
   public Hash getStateRootHash() {
-    return state.stateRoot;
+    return stateRoot;
   }
 
   public long getBlockNumber() {
@@ -315,20 +313,16 @@ public class ZKEvmWorldState {
     return blockHash;
   }
 
-  public List<Trace> getLastTraces() {
-    return state.traces;
-  }
-
   @VisibleForTesting
   public ZkEvmWorldStateUpdateAccumulator getAccumulator() {
     return accumulator;
   }
 
   private ZKTrie loadAccountTrie(final TrieRepository storage) {
-    if (state.stateRoot.equals(DEFAULT_TRIE_ROOT)) {
+    if (stateRoot.equals(DEFAULT_TRIE_ROOT)) {
       return ZKTrie.createTrie(storage);
     } else {
-      return ZKTrie.loadTrie(state.stateRoot, storage);
+      return ZKTrie.loadTrie(stateRoot, storage);
     }
   }
 

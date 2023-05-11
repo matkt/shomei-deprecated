@@ -163,7 +163,7 @@ public class ZKTrie {
         .flatMap(this::get);
   }
 
-  public Trace readAndProve(final Hash hkey, final Bytes key) {
+  public Trace readAndProve(final Hash hkey, final MimcSafeBytes<? extends Bytes> key) {
     // GET the openings HKEY-,  hash(k) , HKEY+
     final Range nearestKeys = worldStateStorage.getNearestKeys(hkey);
     // CHECK if hash(k) exist
@@ -183,7 +183,7 @@ public class ZKTrie {
       final GetAndProve rightData = state.getAndProve(rightLeafPath);
 
       return readZeroTrace
-          .withKey(key)
+          .withKey(key.getOriginalUnsafeValue())
           .withNextFreeNode(pathResolver.getNextFreeLeafNodeIndex())
           .withLeftLeaf(leftData.nodeValue().map(LeafOpening::readFrom).orElseThrow())
           .withRightLeaf(rightData.nodeValue().map(LeafOpening::readFrom).orElseThrow())
@@ -204,7 +204,7 @@ public class ZKTrie {
       final GetAndProve data = state.getAndProve(leafPath);
 
       return readTrace
-          .withKey(key)
+          .withKey(key.getOriginalUnsafeValue())
           .withNextFreeNode(pathResolver.getNextFreeLeafNodeIndex())
           .withValue(currentFlatLeafValue.leafValue())
           .withLeaf(data.nodeValue().map(LeafOpening::readFrom).orElseThrow())
@@ -278,7 +278,7 @@ public class ZKTrie {
       pathResolver.incrementNextFreeLeafNodeIndex();
 
       return insertionTrace
-          .withKey(key)
+          .withKey(key.getOriginalUnsafeValue())
           .withValue(newValue.getOriginalUnsafeValue())
           .withPriorLeftLeaf(priorLeftLeaf)
           .withPriorRightLeaf(priorRightLeaf)
@@ -312,7 +312,7 @@ public class ZKTrie {
           state.putAndProve(leafPathToUpdate, newUpdatedLeaf.getEncodesBytes());
 
       return updateTrace
-          .withKey(key)
+          .withKey(key.getOriginalUnsafeValue())
           .withOldValue(currentFlatLeafValue.leafValue())
           .withNewValue(newValue.getOriginalUnsafeValue())
           .withPriorUpdatedLeaf(priorUpdatedLeaf)
@@ -323,7 +323,7 @@ public class ZKTrie {
     }
   }
 
-  public Trace removeAndProve(final Hash hkey, final Bytes key) {
+  public Trace removeAndProve(final Hash hkey, final MimcSafeBytes<? extends Bytes> key) {
     checkArgument(hkey.size() == Bytes32.SIZE);
 
     // GET the openings HKEY-,  hash(k) , HKEY+
@@ -367,7 +367,7 @@ public class ZKTrie {
           state.putAndProve(rightLeafPath, newRightLeaf.getEncodesBytes());
 
       return deleteTrace
-          .withKey(key)
+          .withKey(key.getOriginalUnsafeValue())
           .withPriorLeftLeaf(priorLeftLeaf)
           .withPriorDeletedLeaf(priorDeletedLeaf)
           .withPriorRightLeaf(priorRightLeaf)

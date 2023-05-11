@@ -40,6 +40,7 @@ import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.Wei;
+import org.hyperledger.besu.ethereum.rlp.RLP;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -77,13 +78,19 @@ public class RollingForwardTests {
     trieLogLayer.addAccountChange(account.getAddress(), null, account);
     trieLogLayer.addAccountChange(missingAccount.getAddress(), null, null);
 
-    ZKEvmWorldState zkEvmWorldState = new ZKEvmWorldState(new InMemoryWorldStateRepository());
+    InMemoryWorldStateRepository inMemoryWorldStateRepository = new InMemoryWorldStateRepository();
+    ZKEvmWorldState zkEvmWorldState = new ZKEvmWorldState(inMemoryWorldStateRepository);
     assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(DEFAULT_TRIE_ROOT);
     zkEvmWorldState.getAccumulator().rollForward(trieLogLayer);
     zkEvmWorldState.commit(0L, null, true);
 
     assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(topRootHash);
-    assertThat(JSON_OBJECT_MAPPER.writeValueAsString(zkEvmWorldState.getLastTraces()))
+    assertThat(
+            JSON_OBJECT_MAPPER.writeValueAsString(
+                inMemoryWorldStateRepository
+                    .getTrace(0)
+                    .map(bytes -> Trace.deserialize(RLP.input(bytes)))
+                    .orElseThrow()))
         .isEqualTo(JSON_OBJECT_MAPPER.writeValueAsString(expectedTraces));
   }
 
@@ -107,13 +114,19 @@ public class RollingForwardTests {
     TrieLogLayer trieLogLayer = new TrieLogLayer();
     trieLogLayer.addAccountChange(account.getAddress(), null, account);
 
-    ZKEvmWorldState zkEvmWorldState = new ZKEvmWorldState(new InMemoryWorldStateRepository());
+    InMemoryWorldStateRepository inMemoryWorldStateRepository = new InMemoryWorldStateRepository();
+    ZKEvmWorldState zkEvmWorldState = new ZKEvmWorldState(inMemoryWorldStateRepository);
     assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(DEFAULT_TRIE_ROOT);
     zkEvmWorldState.getAccumulator().rollForward(trieLogLayer);
     zkEvmWorldState.commit(0L, null, true);
 
     assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(topRootHash);
-    assertThat(JSON_OBJECT_MAPPER.writeValueAsString(zkEvmWorldState.getLastTraces()))
+    assertThat(
+            JSON_OBJECT_MAPPER.writeValueAsString(
+                inMemoryWorldStateRepository
+                    .getTrace(0)
+                    .map(bytes -> Trace.deserialize(RLP.input(bytes)))
+                    .orElseThrow()))
         .isEqualTo(JSON_OBJECT_MAPPER.writeValueAsString(List.of(expectedTrace)));
   }
 
@@ -149,7 +162,8 @@ public class RollingForwardTests {
     TrieLogLayer trieLogLayer2 = new TrieLogLayer();
     trieLogLayer2.addAccountChange(account.getAddress(), account, accountUpdated);
 
-    ZKEvmWorldState zkEvmWorldState = new ZKEvmWorldState(new InMemoryWorldStateRepository());
+    InMemoryWorldStateRepository inMemoryWorldStateRepository = new InMemoryWorldStateRepository();
+    ZKEvmWorldState zkEvmWorldState = new ZKEvmWorldState(inMemoryWorldStateRepository);
     assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(DEFAULT_TRIE_ROOT);
     zkEvmWorldState.getAccumulator().rollForward(trieLogLayer);
     zkEvmWorldState.commit(0L, null, true);
@@ -160,7 +174,12 @@ public class RollingForwardTests {
     zkEvmWorldState.getAccumulator().rollForward(trieLogLayer2);
     zkEvmWorldState.commit(0L, null, true);
     assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(topRootHash);
-    assertThat(JSON_OBJECT_MAPPER.writeValueAsString(zkEvmWorldState.getLastTraces()))
+    assertThat(
+            JSON_OBJECT_MAPPER.writeValueAsString(
+                inMemoryWorldStateRepository
+                    .getTrace(0)
+                    .map(bytes -> Trace.deserialize(RLP.input(bytes)))
+                    .orElseThrow()))
         .isEqualTo(JSON_OBJECT_MAPPER.writeValueAsString(List.of(expectedTrace)));
   }
 
@@ -189,13 +208,19 @@ public class RollingForwardTests {
     trieLogLayer.addAccountChange(secondAccount.getAddress(), null, secondAccount);
     trieLogLayer.addAccountChange(account.getAddress(), null, account);
 
-    ZKEvmWorldState zkEvmWorldState = new ZKEvmWorldState(new InMemoryWorldStateRepository());
+    InMemoryWorldStateRepository inMemoryWorldStateRepository = new InMemoryWorldStateRepository();
+    ZKEvmWorldState zkEvmWorldState = new ZKEvmWorldState(inMemoryWorldStateRepository);
     assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(DEFAULT_TRIE_ROOT);
 
     zkEvmWorldState.getAccumulator().rollForward(trieLogLayer);
     zkEvmWorldState.commit(0L, null, true);
     assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(topRootHash);
-    assertThat(JSON_OBJECT_MAPPER.writeValueAsString(zkEvmWorldState.getLastTraces()))
+    assertThat(
+            JSON_OBJECT_MAPPER.writeValueAsString(
+                inMemoryWorldStateRepository
+                    .getTrace(0)
+                    .map(bytes -> Trace.deserialize(RLP.input(bytes)))
+                    .orElseThrow()))
         .isEqualTo(JSON_OBJECT_MAPPER.writeValueAsString(expectedTraces));
   }
 
@@ -243,13 +268,19 @@ public class RollingForwardTests {
         null,
         slotValue.getOriginalUnsafeValue());
 
-    ZKEvmWorldState zkEvmWorldState = new ZKEvmWorldState(new InMemoryWorldStateRepository());
+    InMemoryWorldStateRepository inMemoryWorldStateRepository = new InMemoryWorldStateRepository();
+    ZKEvmWorldState zkEvmWorldState = new ZKEvmWorldState(inMemoryWorldStateRepository);
     assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(DEFAULT_TRIE_ROOT);
 
     zkEvmWorldState.getAccumulator().rollForward(trieLogLayer);
     zkEvmWorldState.commit(0L, null, true);
     assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(topRootHash);
-    assertThat(JSON_OBJECT_MAPPER.writeValueAsString(zkEvmWorldState.getLastTraces()))
+    assertThat(
+            JSON_OBJECT_MAPPER.writeValueAsString(
+                inMemoryWorldStateRepository
+                    .getTrace(0)
+                    .map(bytes -> Trace.deserialize(RLP.input(bytes)))
+                    .orElseThrow()))
         .isEqualTo(JSON_OBJECT_MAPPER.writeValueAsString(expectedTraces));
   }
 
@@ -297,14 +328,20 @@ public class RollingForwardTests {
         slotValue.getOriginalUnsafeValue(),
         slotValue.getOriginalUnsafeValue());
 
-    ZKEvmWorldState zkEvmWorldState = new ZKEvmWorldState(new InMemoryWorldStateRepository());
+    InMemoryWorldStateRepository inMemoryWorldStateRepository = new InMemoryWorldStateRepository();
+    ZKEvmWorldState zkEvmWorldState = new ZKEvmWorldState(inMemoryWorldStateRepository);
     assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(DEFAULT_TRIE_ROOT);
     zkEvmWorldState.getAccumulator().rollForward(trieLogLayer);
     zkEvmWorldState.commit(0L, null, true);
 
     zkEvmWorldState.getAccumulator().rollForward(trieLogLayer2);
     zkEvmWorldState.commit(0L, null, true);
-    assertThat(JSON_OBJECT_MAPPER.writeValueAsString(zkEvmWorldState.getLastTraces()))
+    assertThat(
+            JSON_OBJECT_MAPPER.writeValueAsString(
+                inMemoryWorldStateRepository
+                    .getTrace(0)
+                    .map(bytes -> Trace.deserialize(RLP.input(bytes)))
+                    .orElseThrow()))
         .isEqualTo(JSON_OBJECT_MAPPER.writeValueAsString(expectedTraces));
   }
 
@@ -350,7 +387,8 @@ public class RollingForwardTests {
 
     Hash topRootHash = Hash.wrap(accountStateTrieOne.getTopRootHash());
 
-    ZKEvmWorldState zkEvmWorldState = new ZKEvmWorldState(new InMemoryWorldStateRepository());
+    InMemoryWorldStateRepository inMemoryWorldStateRepository = new InMemoryWorldStateRepository();
+    ZKEvmWorldState zkEvmWorldState = new ZKEvmWorldState(inMemoryWorldStateRepository);
     assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(DEFAULT_TRIE_ROOT);
 
     // create account with the rolling
@@ -375,7 +413,12 @@ public class RollingForwardTests {
     zkEvmWorldState.getAccumulator().rollForward(trieLogLayer2);
     zkEvmWorldState.commit(0L, null, true);
 
-    assertThat(JSON_OBJECT_MAPPER.writeValueAsString(zkEvmWorldState.getLastTraces()))
+    assertThat(
+            JSON_OBJECT_MAPPER.writeValueAsString(
+                inMemoryWorldStateRepository
+                    .getTrace(0)
+                    .map(bytes -> Trace.deserialize(RLP.input(bytes)))
+                    .orElseThrow()))
         .isEqualTo(JSON_OBJECT_MAPPER.writeValueAsString(expectedTraces));
     assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(topRootHash);
   }
@@ -426,7 +469,8 @@ public class RollingForwardTests {
 
     Hash topRootHash = Hash.wrap(accountStateTrieOne.getTopRootHash());
 
-    ZKEvmWorldState zkEvmWorldState = new ZKEvmWorldState(new InMemoryWorldStateRepository());
+    InMemoryWorldStateRepository inMemoryWorldStateRepository = new InMemoryWorldStateRepository();
+    ZKEvmWorldState zkEvmWorldState = new ZKEvmWorldState(inMemoryWorldStateRepository);
     assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(DEFAULT_TRIE_ROOT);
 
     // create account with the rolling
@@ -453,7 +497,12 @@ public class RollingForwardTests {
     zkEvmWorldState.getAccumulator().rollForward(trieLogLayer2);
     zkEvmWorldState.commit(0L, null, true);
 
-    assertThat(JSON_OBJECT_MAPPER.writeValueAsString(zkEvmWorldState.getLastTraces()))
+    assertThat(
+            JSON_OBJECT_MAPPER.writeValueAsString(
+                inMemoryWorldStateRepository
+                    .getTrace(0)
+                    .map(bytes -> Trace.deserialize(RLP.input(bytes)))
+                    .orElseThrow()))
         .isEqualTo(JSON_OBJECT_MAPPER.writeValueAsString(expectedTraces));
     assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(topRootHash);
   }
@@ -505,7 +554,8 @@ public class RollingForwardTests {
 
     Hash topRootHash = Hash.wrap(accountStateTrieOne.getTopRootHash());
 
-    ZKEvmWorldState zkEvmWorldState = new ZKEvmWorldState(new InMemoryWorldStateRepository());
+    InMemoryWorldStateRepository inMemoryWorldStateRepository = new InMemoryWorldStateRepository();
+    ZKEvmWorldState zkEvmWorldState = new ZKEvmWorldState(inMemoryWorldStateRepository);
     assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(DEFAULT_TRIE_ROOT);
 
     // create account with the rolling
@@ -530,7 +580,12 @@ public class RollingForwardTests {
     zkEvmWorldState.getAccumulator().rollForward(trieLogLayer2);
     zkEvmWorldState.commit(0L, null, true);
 
-    assertThat(JSON_OBJECT_MAPPER.writeValueAsString(zkEvmWorldState.getLastTraces()))
+    assertThat(
+            JSON_OBJECT_MAPPER.writeValueAsString(
+                inMemoryWorldStateRepository
+                    .getTrace(0)
+                    .map(bytes -> Trace.deserialize(RLP.input(bytes)))
+                    .orElseThrow()))
         .isEqualTo(JSON_OBJECT_MAPPER.writeValueAsString(expectedTraces));
     assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(topRootHash);
   }
