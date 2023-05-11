@@ -110,7 +110,8 @@ public class GetRawTrieLogClient {
                   completableFuture.completeExceptionally(e);
                 }
               } else {
-                completableFuture.completeExceptionally(null);
+                completableFuture.completeExceptionally(
+                    new RuntimeException("cannot retrieve trielog from besu " + response.result()));
               }
             });
 
