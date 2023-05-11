@@ -57,13 +57,13 @@ public class WorldstateProofTest {
   @Test
   public void testTraceReadZero() throws IOException {
 
-    final Bytes key = createDumDigest(36);
+    final Bytes32 key = createDumDigest(36);
     final Hash hkey = HashProvider.mimc(key);
 
     ZKTrie accountStateTrie =
         ZKTrie.createTrie(new AccountTrieRepositoryWrapper(new InMemoryWorldStateRepository()));
 
-    Trace trace = accountStateTrie.readAndProve(hkey, key);
+    Trace trace = accountStateTrie.readAndProve(hkey, MimcSafeBytes.safeByte32(key));
 
     assertThat(JSON_OBJECT_MAPPER.writeValueAsString(trace))
         .isEqualToIgnoringWhitespace(getResources("testTraceReadZero.json"));
