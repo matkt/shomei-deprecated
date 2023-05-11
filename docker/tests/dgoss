@@ -28,6 +28,7 @@ cleanup() {
 setup_container(){
     info "Setting up test dir"
     cp "${GOSS_PATH}" "$tmp_dir/goss"
+    info "goss executable: $(file $tmp_dir/goss)"
     chmod 755 "$tmp_dir/goss"
     [[ -e "${GOSS_FILES_PATH}/goss.yaml" ]] && cp "${GOSS_FILES_PATH}/goss.yaml" "$tmp_dir"
     [[ -e "${GOSS_FILES_PATH}/goss_wait.yaml" ]] && cp "${GOSS_FILES_PATH}/goss_wait.yaml" "$tmp_dir"
