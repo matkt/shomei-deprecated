@@ -129,6 +129,7 @@ jobs:
         with:
           java-version: '17'
           distribution: 'adopt'
+          architecture: aarch64
       - name: Check Dockerfile syntax
         run: |
           docker run --rm -i hadolint/hadolint < docker/openjdk-17/Dockerfile
@@ -179,6 +180,7 @@ jobs:
         with:
           java-version: '17'
           distribution: 'adopt'
+          architecture: aarch64
       - name: Publish Docker Image
         run: |
           echo "${{ secrets.DOCKER_PAT }}" | docker login --username "${{ secrets.DOCKER_USERNAME }}" --password-stdin
