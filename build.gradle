@@ -308,12 +308,13 @@ task testDocker {
     }
 
     doLast {
+        def architecture = System.getenv('architecture')
         for (def variant in dockerVariants) {
             exec {
                 def image = project.hasProperty('release.releaseVersion') ? "${dockerImageName}:" + project.property('release.releaseVersion') : "${dockerImageName}:${project.version}"
                 workingDir "${projectDir}/docker/${variant}"
                 executable "sh"
-                args "-c", "bash ../test.sh ${image}-${variant}"
+                args "-c", "architecture=${architecture} bash ../test.sh ${image}-${variant}"
             }
         }
     }

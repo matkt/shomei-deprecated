@@ -21,6 +21,7 @@ COPY --chown=shomei:shomei shomei /opt/shomei/
 EXPOSE 5005 8888
 
 # defaults for host interfaces
+ENV SHOMEI_RPC_HTTP_HOST 0.0.0.0
 ENV SHOMEI_JMX_HOST 0.0.0.0
 ENV SHOMEI_PID_PATH "/tmp/pid"
 
