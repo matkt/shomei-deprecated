@@ -156,8 +156,8 @@ jobs:
           distribution: 'adopt'
       - name: Publish Docker Image
         run: |
-          docker login --username "${{ secrets.DOCKER_USER_RW }}" --password "${{ secrets.DOCKER_PASSWORD_RW }}"
-          ./gradlew --no-daemon "-Pbranch=${CIRCLE_BRANCH}" dockerUpload
+          echo "${{ secrets.DOCKER_PAT }}" | docker login --username "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+          ./gradlew --no-daemon dockerUpload
 
   publishDockerArm64:
     needs: build
@@ -176,4 +176,4 @@ jobs:
       - name: Publish Docker Image
         run: |
           docker login --username "${{ secrets.DOCKER_USER_RW }}" --password "${{ secrets.DOCKER_PASSWORD_RW }}"
-          ./gradlew --no-daemon "-Pbranch=${CIRCLE_BRANCH}" dockerUpload
+          ./gradlew --no-daemon dockerUpload
