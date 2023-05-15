@@ -1,0 +1,20 @@
+---
+# runtime docker tests
+file:
+  /opt/shomei/bin/shomei:
+    exists: true
+    mode: "0755"
+    owner: shomei
+    group: shomei
+    filetype: file
+    contains: []
+  /opt/shomei/database:
+    exists: true
+    mode: "0755"
+    owner: shomei
+    group: shomei
+    filetype: directory
+    contains: []
+process:
+  java:
+    running: true
