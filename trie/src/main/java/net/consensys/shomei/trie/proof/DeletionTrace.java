@@ -106,6 +106,10 @@ public class DeletionTrace implements Trace {
     return leftProof;
   }
 
+  public Bytes getDeletedValue() {
+    return deletedValue;
+  }
+
   public Proof getDeletedProof() {
     return deletedProof;
   }
