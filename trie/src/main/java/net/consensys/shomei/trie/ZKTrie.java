@@ -349,8 +349,8 @@ public class ZKTrie {
           state.putAndProve(leftLeafPath, newLeftLeaf.getEncodesBytes());
 
       // REMOVE hash(k)
-      final Bytes leafPathToDelete =
-          pathResolver.getLeafPath(nearestKeys.getCenterNodeValue().orElseThrow().leafIndex());
+      final FlattenedLeaf currentFlatLeafValue = nearestKeys.getCenterNodeValue().orElseThrow();
+      final Bytes leafPathToDelete = pathResolver.getLeafPath(currentFlatLeafValue.leafIndex());
       final LeafOpening priorDeletedLeaf =
           get(leafPathToDelete).map(LeafOpening::readFrom).orElseThrow();
       updater.removeFlatLeafValue(hkey);
@@ -368,6 +368,7 @@ public class ZKTrie {
 
       return deleteTrace
           .withKey(key.getOriginalUnsafeValue())
+          .withDeletedValue(currentFlatLeafValue.leafValue())
           .withPriorLeftLeaf(priorLeftLeaf)
           .withPriorDeletedLeaf(priorDeletedLeaf)
           .withPriorRightLeaf(priorRightLeaf)

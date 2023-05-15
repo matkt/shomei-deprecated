@@ -29,6 +29,7 @@ public final class DeletionTraceBuilder {
   private Proof deletedProof;
   private Proof rightProof;
   private Bytes key;
+  private Bytes deletedValue;
   private LeafOpening priorLeftLeaf;
   private LeafOpening priorDeletedLeaf;
   private LeafOpening priorRightLeaf;
@@ -46,6 +47,11 @@ public final class DeletionTraceBuilder {
 
   public DeletionTraceBuilder withNewNextFreeNode(long newNextFreeNode) {
     this.newNextFreeNode = newNextFreeNode;
+    return this;
+  }
+
+  public DeletionTraceBuilder withDeletedValue(Bytes deletedValue) {
+    this.deletedValue = deletedValue;
     return this;
   }
 
@@ -104,6 +110,7 @@ public final class DeletionTraceBuilder {
         deletedProof,
         rightProof,
         key,
+        deletedValue,
         priorLeftLeaf,
         priorDeletedLeaf,
         priorRightLeaf);
