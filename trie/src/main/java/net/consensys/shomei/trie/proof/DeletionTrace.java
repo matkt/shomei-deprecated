@@ -27,8 +27,11 @@ public class DeletionTrace implements Trace {
   private Bytes location;
 
   private long newNextFreeNode;
+
   public Node<Bytes> oldSubRoot;
   public Node<Bytes> newSubRoot;
+
+  private Bytes deletedValue;
 
   // `New` correspond to the inserted leaf
   public Proof leftProof; // HKEY -
@@ -50,6 +53,7 @@ public class DeletionTrace implements Trace {
       final Proof deletedProof,
       final Proof rightProof,
       final Bytes key,
+      final Bytes deletedValue,
       final LeafOpening priorLeftLeaf,
       final LeafOpening priorDeletedLeaf,
       final LeafOpening priorRightLeaf) {
@@ -61,6 +65,7 @@ public class DeletionTrace implements Trace {
     this.deletedProof = deletedProof;
     this.rightProof = rightProof;
     this.key = key;
+    this.deletedValue = deletedValue;
     this.priorLeftLeaf = priorLeftLeaf;
     this.priorDeletedLeaf = priorDeletedLeaf;
     this.priorRightLeaf = priorRightLeaf;
@@ -142,6 +147,7 @@ public class DeletionTrace implements Trace {
     final Proof deletedProof = Proof.readFrom(in);
     final Proof rightProof = Proof.readFrom(in);
     final Bytes key = in.readBytes();
+    final Bytes deletedValue = in.readBytes();
     final LeafOpening priorLeftLeaf = LeafOpening.readFrom(in.readBytes());
     final LeafOpening priorDeletedLeaf = LeafOpening.readFrom(in.readBytes());
     final LeafOpening priorRightLeaf = LeafOpening.readFrom(in.readBytes());
@@ -155,6 +161,7 @@ public class DeletionTrace implements Trace {
         deletedProof,
         rightProof,
         key,
+        deletedValue,
         priorLeftLeaf,
         priorDeletedLeaf,
         priorRightLeaf);
@@ -171,6 +178,7 @@ public class DeletionTrace implements Trace {
     deletedProof.writeTo(out);
     rightProof.writeTo(out);
     out.writeBytes(key);
+    out.writeBytes(deletedValue);
     out.writeBytes(priorLeftLeaf.getEncodesBytes());
     out.writeBytes(priorDeletedLeaf.getEncodesBytes());
     out.writeBytes(priorRightLeaf.getEncodesBytes());
