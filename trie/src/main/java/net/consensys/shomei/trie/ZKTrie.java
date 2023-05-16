@@ -44,6 +44,11 @@ import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.ethereum.trie.Node;
 import org.hyperledger.besu.ethereum.trie.NodeUpdater;
 
+/**
+ * The ZKTrie class represents a zero-knowledge Merkle trie. It provides methods for storing,
+ * retrieving, and manipulating data in the trie. The ZKTrie implements the Trie interface and uses
+ * a Merkle tree structure for efficient storage and retrieval.
+ */
 public class ZKTrie {
 
   public static final ZKTrie EMPTY_TRIE = generateEmptyTrie();
@@ -63,6 +68,13 @@ public class ZKTrie {
     return worldStateStorage;
   }
 
+  /**
+   * Creates a new ZK trie.
+   *
+   * @param rootHash the root hash of the trie
+   * @param worldStateStorage the storage used to store the trie
+   * @return the created ZK trie
+   */
   private ZKTrie(final Bytes32 rootHash, final TrieRepository worldStateStorage) {
     this.worldStateStorage = worldStateStorage;
     this.updater = worldStateStorage.updater();

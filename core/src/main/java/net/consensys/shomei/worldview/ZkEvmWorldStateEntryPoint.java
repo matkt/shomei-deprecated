@@ -25,6 +25,10 @@ import com.google.common.annotations.VisibleForTesting;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.ethereum.rlp.RLP;
 
+/**
+ * This class is the entry point for the ZK EVM world state. It is responsible for importing the
+ * trie log and updating the world state.
+ */
 public class ZkEvmWorldStateEntryPoint {
 
   private final ZKEvmWorldState currentWorldState;
@@ -39,6 +43,13 @@ public class ZkEvmWorldStateEntryPoint {
     this.trieLogLayerConverter = new TrieLogLayerConverter(worldStateStorage);
   }
 
+  /**
+   * Import the trie log for the given block number.
+   *
+   * @param trieLogId the trie log identifier
+   * @param generateTrace whether to generate the trace
+   * @throws MissingTrieLogException if the trie log is not found
+   */
   public void importBlock(final TrieLogIdentifier trieLogId, final boolean generateTrace)
       throws MissingTrieLogException {
     Optional<TrieLogLayer> trieLog =

@@ -28,6 +28,11 @@ import org.hyperledger.besu.ethereum.trie.patricia.BranchNode;
 import org.hyperledger.besu.ethereum.trie.patricia.ExtensionNode;
 import org.hyperledger.besu.ethereum.trie.patricia.LeafNode;
 
+/**
+ * A visitor that removes a node from the trie and collects the proof.
+ *
+ * @param <V> the type of the value stored in the trie.
+ */
 public class RemoveVisitor<V> implements PathNodeVisitor<V> {
 
   private final List<Node<V>> proof = new ArrayList<>();

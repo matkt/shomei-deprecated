@@ -32,6 +32,11 @@ import io.vertx.core.AbstractVerticle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * The FullSyncDownloader class is responsible for downloading data during a full synchronization
+ * process. It retrieves trie logs and associated data from a remote Besu node, stores them and
+ * import them.
+ */
 @SuppressWarnings("FutureReturnValueIgnored")
 public class FullSyncDownloader extends AbstractVerticle implements TrieLogObserver {
 

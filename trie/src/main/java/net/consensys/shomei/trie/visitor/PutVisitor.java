@@ -28,6 +28,11 @@ import org.hyperledger.besu.ethereum.trie.patricia.BranchNode;
 import org.hyperledger.besu.ethereum.trie.patricia.ExtensionNode;
 import org.hyperledger.besu.ethereum.trie.patricia.LeafNode;
 
+/**
+ * This visitor is used to put a value in the trie. It returns the updated node and the proof
+ *
+ * @param <V> the type of the value stored in the trie.
+ */
 public class PutVisitor<V> implements PathNodeVisitor<V> {
   private final NodeFactory<V> nodeFactory;
   private final V value;

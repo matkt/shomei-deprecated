@@ -35,6 +35,7 @@ import services.storage.KeyValueStorage;
 import services.storage.KeyValueStorage.KeyValuePair;
 import services.storage.KeyValueStorageTransaction;
 
+/** Persisted implementation of {@link WorldStateRepository}. */
 public class PersistedWorldStateRepository implements WorldStateRepository {
 
   record UpdateableStorage(

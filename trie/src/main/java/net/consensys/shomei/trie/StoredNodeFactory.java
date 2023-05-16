@@ -39,6 +39,12 @@ import org.hyperledger.besu.ethereum.trie.NodeLoader;
 import org.hyperledger.besu.ethereum.trie.NullNode;
 import org.hyperledger.besu.ethereum.trie.StoredNode;
 
+/**
+ * The StoredNodeFactory class is responsible for creating and managing stored nodes in a stored
+ * sparse Merkle trie. It provides methods for creating new stored nodes and retrieving existing
+ * stored nodes by their location/hash. The StoredNodeFactory is used by the StoredSparseMerkleTrie
+ * to manage the lifecycle of stored nodes.
+ */
 public class StoredNodeFactory implements NodeFactory<Bytes> {
 
   @SuppressWarnings("rawtypes")

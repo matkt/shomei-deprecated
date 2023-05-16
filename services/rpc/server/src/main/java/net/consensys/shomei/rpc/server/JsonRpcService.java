@@ -64,6 +64,11 @@ import org.hyperledger.besu.util.ExceptionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * The JsonRpcService class is responsible for handling JSON-RPC requests and processing them. It
+ * provides methods for handling various JSON-RPC methods and generating appropriate JSON-RPC
+ * responses.
+ */
 public class JsonRpcService extends AbstractVerticle {
 
   private static final Logger LOG = LoggerFactory.getLogger(JsonRpcService.class);

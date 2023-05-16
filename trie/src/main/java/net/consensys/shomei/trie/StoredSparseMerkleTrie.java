@@ -32,7 +32,12 @@ import org.hyperledger.besu.ethereum.trie.NodeLoader;
 import org.hyperledger.besu.ethereum.trie.NodeUpdater;
 import org.hyperledger.besu.ethereum.trie.StoredNode;
 
-/** A {@link StoredSparseMerkleTrie} that persists trie nodes to a key/value store. */
+/**
+ * The StoredSparseMerkleTrie class represents a stored sparse Merkle trie. It provides methods for
+ * storing, retrieving, and manipulating data in the trie, and it leverages storage to optimize
+ * memory usage by storing only the modified nodes. The StoredSparseMerkleTrie implements the Trie
+ * interface and uses a sparse Merkle tree structure.
+ */
 public class StoredSparseMerkleTrie {
 
   protected final NodeFactory<Bytes> nodeFactory;
