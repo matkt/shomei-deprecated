@@ -49,7 +49,17 @@ public class PutVisitor<V> implements PathNodeVisitor<V> {
     final byte childIndex = path.get(0);
     final Node<V> updatedChild = branchNode.child(childIndex).accept(this, path.slice(1));
     final Node<V> sibling = branchNode.child((byte) (childIndex ^ 1));
-    if (!(sibling instanceof NextFreeNode<V>)) { // not add the nextFreeNode in the proof
+    if (!(sibling instanceof NextFreeNode<V>)) {
+      /*
+       *         o
+       *        / \
+       *       o   o (L1)
+       *       / \
+       *  (L2)o  x
+       *
+       * (L1), (L2), and (L3) represent the nodes that are part of the proof for the second leaf x.
+       * it's why we are adding the sibling to the proof. (we removed the next free node from the proof because we want only the subtrie that contains the key)
+       */
       proof.add(sibling);
     }
     return branchNode.replaceChild(childIndex, updatedChild);

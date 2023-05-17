@@ -110,6 +110,8 @@ public class GetRawTrieLogClient {
                   completableFuture.completeExceptionally(e);
                 }
               } else {
+                LOG.trace(
+                    "failed to retrieve trie log from besu {}", response.cause().getMessage());
                 completableFuture.completeExceptionally(
                     new RuntimeException("cannot retrieve trielog from besu " + response.result()));
               }
