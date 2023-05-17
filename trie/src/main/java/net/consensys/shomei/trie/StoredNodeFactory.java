@@ -129,6 +129,22 @@ public class StoredNodeFactory implements NodeFactory<Bytes> {
   public Optional<Node<Bytes>> retrieve(final Bytes location, final Bytes32 hash)
       throws MerkleTrieException {
 
+    /*
+     * Fill the nodes of the sparse Merkle trie by storing values by hash in the database to avoid
+     * duplicating all the nodes during initialization and to have only one instance per level.
+     * Later, we use location-based optimization for pruning.
+     *
+     * When constructing a sparse Merkle trie, it is efficient to first store the hashed values
+     * in a database instead of duplicating all the nodes. By storing the values hashed, we can
+     * reduce storage consumption and avoid unnecessary duplication of identical values in the trie.
+     *
+     * Additionally, after initializing the trie, we can optimize pruning by using a
+     * location-based approach.
+     *
+     * By combining the storage of hashed values during initialization and location-based
+     * optimization for pruning, we can achieve an efficient and compact representation of the
+     * sparse Merkle trie.
+     */
     return nodeLoader
         .getNode(location, hash)
         .or(

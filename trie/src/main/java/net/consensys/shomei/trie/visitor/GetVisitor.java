@@ -61,13 +61,6 @@ public class GetVisitor<V> implements PathNodeVisitor<V> {
     return children;
   }
 
-  /**
-   * o / \ (L1) o o (L3) / \ (L2) o o
-   *
-   * @param leafNode
-   * @param path
-   * @return
-   */
   @Override
   public Node<V> visit(final LeafNode<V> leafNode, final Bytes path) {
     return leafNode;
