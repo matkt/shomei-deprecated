@@ -50,7 +50,7 @@ public class RemoveVisitor<V> implements PathNodeVisitor<V> {
        *       / \
        *  (L2)o  x
        *
-       * (L1), (L2), and (L3) represent the nodes that are part of the proof for the second leaf x.
+       * (L1) and (L3) represent the nodes that are part of the proof for the second leaf x.
        * it's why we are adding the sibling to the proof. (we removed the next free node from the proof because we want only the subtrie that contains the key)
        */
       proof.add(sibling);

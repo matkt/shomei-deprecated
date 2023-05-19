@@ -25,7 +25,6 @@ import java.util.Queue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 import io.vertx.core.AbstractVerticle;
@@ -45,7 +44,8 @@ public class FullSyncDownloader extends AbstractVerticle implements TrieLogObser
 
   private final ExecutorService executor = Executors.newSingleThreadExecutor();
 
-  private final Queue<TrieLogIdentifier> blockQueue = new PriorityBlockingQueue<>();
+  private final Queue<TrieLogIdentifier> blockQueue =
+      new EvictingPriorityBlockingQueue<>(INITIAL_SYNC_BLOCK_NUMBER_RANGE * 2);
 
   private final ZkEvmWorldStateEntryPoint zkEvmWorldStateEntryPoint;
 
