@@ -44,6 +44,11 @@ import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.ethereum.trie.Node;
 import org.hyperledger.besu.ethereum.trie.NodeUpdater;
 
+/**
+ * The ZKTrie class represents a zero-knowledge Merkle trie. It provides methods for storing,
+ * retrieving, and manipulating data in the trie. The ZKTrie implements the Trie interface and uses
+ * a Merkle tree structure for efficient storage and retrieval.
+ */
 public class ZKTrie {
 
   public static final ZKTrie EMPTY_TRIE = generateEmptyTrie();
@@ -63,6 +68,13 @@ public class ZKTrie {
     return worldStateStorage;
   }
 
+  /**
+   * Creates a new ZK trie.
+   *
+   * @param rootHash the root hash of the trie
+   * @param worldStateStorage the storage used to store the trie
+   * @return the created ZK trie
+   */
   private ZKTrie(final Bytes32 rootHash, final TrieRepository worldStateStorage) {
     this.worldStateStorage = worldStateStorage;
     this.updater = worldStateStorage.updater();
@@ -76,7 +88,12 @@ public class ZKTrie {
           @Override
           public Optional<Bytes> getTrieNode(final Bytes location, final Bytes nodeHash) {
             return Optional.ofNullable(super.getTrieNodeStorage().get(nodeHash));
-            // the first nodes are saved by hash in order to not have to fill all the trie during
+            // In a sparse Merkle trie, the hash value of a parent node is computed based on the
+            // hashes of its children nodes.
+            // so the hash value of a parent node at each level will be the same as long as its
+            // children remain unchanged.
+            // this ensures the consistency of the hash values within each level.
+            // for that nodes are saved by hash in order to not have to fill all the trie during
             // the init step
           }
 
@@ -98,6 +115,20 @@ public class ZKTrie {
     return new ZKTrie(rootHash, worldStateStorage);
   }
 
+  /**
+   * Fills the sparse Merkle trie by creating a single node on each level with two children per
+   * level. Each level is filled with branch nodes, except for the bottom level with empty leaf
+   * nodes.
+   *
+   * <p>This approach simplifies the population process by creating a balanced trie structure with a
+   * fixed number of nodes on each level. Each level (except the bottom level) has two children,
+   * which are empty branch nodes. The bottom level has empty leaf nodes.
+   *
+   * <p>Algorithm: 1. Start with an empty trie. 2. Create leaf nodes at the bottom level. 3. For
+   * each level of the trie (starting from the bottom level and moving upwards): - Create a parent
+   * node with the leaf/branch nodes of the current level as children. - Insert the parent node into
+   * the trie.
+   */
   private static Node<Bytes> initWorldState(final NodeUpdater nodeUpdater) {
     // if empty we need to fill the sparse trie with zero leaves
     final StoredNodeFactory nodeFactory =

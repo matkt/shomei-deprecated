@@ -20,6 +20,12 @@ import org.hyperledger.besu.ethereum.trie.NodeUpdater;
 import org.hyperledger.besu.ethereum.trie.NullNode;
 import org.hyperledger.besu.ethereum.trie.patricia.ExtensionNode;
 
+/**
+ * CommitVisitor is a visitor that stores nodes in the database. It is used to commit a trie to the
+ * storage.
+ *
+ * @param <V> the type of values stored in the trie.
+ */
 public class CommitVisitor<V> extends org.hyperledger.besu.ethereum.trie.CommitVisitor<V> {
   public CommitVisitor(final NodeUpdater nodeUpdater) {
     super(nodeUpdater);

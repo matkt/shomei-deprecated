@@ -23,6 +23,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Hash;
 
+/** In memory implementation of {@link WorldStateRepository}. */
 public class InMemoryWorldStateRepository extends InMemoryRepository
     implements WorldStateRepository, WorldStateRepository.WorldStateUpdater {
 

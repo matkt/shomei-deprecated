@@ -21,6 +21,10 @@ import java.util.Optional;
 import com.google.common.primitives.Longs;
 import org.apache.tuweni.bytes.Bytes;
 
+/**
+ * This class serves as a wrapper for the StorageTrieRepositoryWrapper, providing additional
+ * functionality and abstraction for interacting with the storage trie data.
+ */
 public class StorageTrieRepositoryWrapper implements TrieRepository {
 
   private final Bytes accountPath;

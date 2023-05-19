@@ -19,6 +19,10 @@ import java.util.Optional;
 
 import org.apache.tuweni.bytes.Bytes;
 
+/**
+ * This class serves as a wrapper for the AccountTrieRepository, providing additional functionality
+ * and abstraction for interacting with the account trie data.
+ */
 public class AccountTrieRepositoryWrapper implements TrieRepository {
 
   private final TrieRepository trieStorage;

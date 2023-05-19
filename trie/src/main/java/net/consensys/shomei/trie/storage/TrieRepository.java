@@ -20,17 +20,41 @@ import java.util.Optional;
 
 import org.apache.tuweni.bytes.Bytes;
 
+/**
+ * The TrieRepository class is responsible for managing the storage and retrieval of trie data. It
+ * provides an interface for interacting with the underlying trie data structure.
+ */
 public interface TrieRepository {
 
+  /**
+   * Returns the leaf value for the given key.
+   *
+   * @param hkey the key.
+   * @return the leaf value for the given key.
+   */
   Optional<FlattenedLeaf> getFlatLeaf(final Bytes hkey);
 
+  /**
+   * Returns the nearest keys to the given key.
+   *
+   * @param hkey the key.
+   * @return the nearest keys to the given key.
+   */
   Range getNearestKeys(final Bytes hkey);
 
+  /**
+   * Returns the trie node for the given location and node hash.
+   *
+   * @param location the location of the node.
+   * @param nodeHash the hash of the node.
+   * @return the trie node for the given location and node hash.
+   */
   Optional<Bytes> getTrieNode(final Bytes location, final Bytes nodeHash);
 
   /** Returns an updater that can be used to update the storage. */
   TrieUpdater updater();
 
+  /** Interface for a trie updater. */
   interface TrieUpdater {
 
     void putFlatLeaf(final Bytes key, final FlattenedLeaf value);

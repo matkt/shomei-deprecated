@@ -13,8 +13,10 @@
 
 package net.consensys.shomei.exception;
 
+/** Exception thrown when a trie log is missing. */
 public class MissingTrieLogException extends Exception {
 
+  /** The block number of the missing trie log. */
   private final long blockNumber;
 
   public MissingTrieLogException(final long blockNumber) {
@@ -22,6 +24,11 @@ public class MissingTrieLogException extends Exception {
     this.blockNumber = blockNumber;
   }
 
+  /**
+   * Returns the block number of the missing trie log.
+   *
+   * @return the block number of the missing trie log
+   */
   public long getBlockNumber() {
     return blockNumber;
   }

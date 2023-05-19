@@ -21,21 +21,57 @@ import java.util.Optional;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Hash;
 
+/**
+ * The WorldStateRepository class is responsible for managing the world state of a blockchain. It
+ * provides methods for accessing and modifying the state of accounts and storage in the world
+ * state.
+ */
 public interface WorldStateRepository extends TrieRepository {
+
+  /** key identifier of the block hash of the current world state. */
   byte[] WORLD_BLOCK_HASH_KEY = "blockHash".getBytes(StandardCharsets.UTF_8);
 
+  /** key identifier of the block number of the current world state. */
   byte[] WORLD_BLOCK_NUMBER_KEY = "blockNumber".getBytes(StandardCharsets.UTF_8);
 
   Optional<Long> getWorldStateBlockNumber();
 
+  /**
+   * Returns the block hash of the current world state.
+   *
+   * @return the block hash of the current world state.
+   */
   Optional<Hash> getWorldStateBlockHash();
 
+  /**
+   * Returns the zk state root of the given block number.
+   *
+   * @param blockNumber the block number.
+   * @return the zk state root of the given block number.
+   */
   Optional<Hash> getZkStateRootHash(long blockNumber);
 
+  /**
+   * Returns the zk state root of the current world state.
+   *
+   * @return the zk state root of the current world state.
+   */
   Optional<Hash> getWorldStateRootHash();
 
+  /**
+   * Returns the trie log of the given block number.
+   *
+   * @param blockNumber the block number.
+   * @return the trie log of the given block number.
+   */
   Optional<Bytes> getTrieLog(final long blockNumber);
 
+  /**
+   * Returns the trace of the given block number.
+   *
+   * @param blockNumber the block number.
+   * @return the trace of the given block number.
+   */
   Optional<Bytes> getTrace(final long blockNumber);
 
   WorldStateRepository saveTrieLog(final long blockNumber, final Bytes rawTrieLogLayer);
@@ -46,6 +82,7 @@ public interface WorldStateRepository extends TrieRepository {
     // no-op
   }
 
+  /** Updater for the world state repository. */
   interface WorldStateUpdater extends TrieUpdater {
 
     void setBlockHash(final Hash blockHash);

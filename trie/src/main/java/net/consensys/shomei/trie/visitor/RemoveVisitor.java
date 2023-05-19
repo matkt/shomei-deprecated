@@ -28,6 +28,11 @@ import org.hyperledger.besu.ethereum.trie.patricia.BranchNode;
 import org.hyperledger.besu.ethereum.trie.patricia.ExtensionNode;
 import org.hyperledger.besu.ethereum.trie.patricia.LeafNode;
 
+/**
+ * A visitor that removes a node from the trie and collects the proof.
+ *
+ * @param <V> the type of the value stored in the trie.
+ */
 public class RemoveVisitor<V> implements PathNodeVisitor<V> {
 
   private final List<Node<V>> proof = new ArrayList<>();
@@ -37,7 +42,17 @@ public class RemoveVisitor<V> implements PathNodeVisitor<V> {
     final byte childIndex = path.get(0);
     final Node<V> updatedChild = branchNode.child(childIndex).accept(this, path.slice(1));
     final Node<V> sibling = branchNode.child((byte) (childIndex ^ 1));
-    if (!(sibling instanceof NextFreeNode<V>)) { // not add the nextFreeNode in the proof
+    if (!(sibling instanceof NextFreeNode<V>)) {
+      /*
+       *         o
+       *        / \
+       *       o   o (L1)
+       *       / \
+       *  (L2)o  x
+       *
+       * (L1) and (L3) represent the nodes that are part of the proof for the second leaf x.
+       * it's why we are adding the sibling to the proof. (we removed the next free node from the proof because we want only the subtrie that contains the key)
+       */
       proof.add(sibling);
     }
     return branchNode.replaceChild(childIndex, updatedChild);

@@ -40,6 +40,12 @@ import org.hyperledger.besu.datatypes.Hash;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * ZKEvmWorldState is a mutable world state that is backed by a ZKTrie. It is responsible for
+ * tracking changes to the world state and persisting them to the storage.
+ *
+ * <p>It is also responsible for tracking the current root hash of the world state.
+ */
 public class ZKEvmWorldState {
 
   private static final Logger LOG = LoggerFactory.getLogger(ZKEvmWorldState.class);

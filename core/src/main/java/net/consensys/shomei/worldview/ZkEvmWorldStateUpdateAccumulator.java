@@ -25,6 +25,11 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.tuweni.units.bigints.UInt256;
 
+/**
+ * The ZkEvmWorldStateUpdateAccumulator class is responsible for accumulating updates to the EVM
+ * world state in a zero-knowledge-friendly manner. It tracks the changes made to account states and
+ * storage values within the EVM world state.
+ */
 public class ZkEvmWorldStateUpdateAccumulator {
 
   private final Map<AccountKey, ZkValue<ZkAccount>> accountsToUpdate = new ConcurrentHashMap<>();

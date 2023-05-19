@@ -32,7 +32,12 @@ import org.hyperledger.besu.ethereum.trie.NodeLoader;
 import org.hyperledger.besu.ethereum.trie.NodeUpdater;
 import org.hyperledger.besu.ethereum.trie.StoredNode;
 
-/** A {@link StoredSparseMerkleTrie} that persists trie nodes to a key/value store. */
+/**
+ * The StoredSparseMerkleTrie class represents a stored sparse Merkle trie. It provides methods for
+ * storing, retrieving, and manipulating data in the trie, and it leverages storage to optimize
+ * memory usage by storing only the modified nodes. The StoredSparseMerkleTrie implements the Trie
+ * interface and uses a sparse Merkle tree structure.
+ */
 public class StoredSparseMerkleTrie {
 
   protected final NodeFactory<Bytes> nodeFactory;
@@ -63,6 +68,12 @@ public class StoredSparseMerkleTrie {
 
   record GetAndProve(Optional<Bytes> nodeValue, List<Node<Bytes>> proof) {}
 
+  /**
+   * The `getAndProve` method retrieves the value associated with the given key in the sparse Merkle
+   * trie and generates a proof of existence for the key-value pair.
+   *
+   * @param path The path for which to retrieve the value and generate a proof.
+   */
   public GetAndProve getAndProve(final Bytes path) {
     checkNotNull(path);
     final GetVisitor<Bytes> getVisitor = getGetVisitor();
@@ -76,6 +87,10 @@ public class StoredSparseMerkleTrie {
     this.root = root.accept(getPutVisitor(value), path);
   }
 
+  /**
+   * The `putAndProve` method inserts or updates a key-value pair in the sparse Merkle trie and
+   * generates a proof of inclusion for the updated state.
+   */
   public List<Node<Bytes>> putAndProve(final Bytes path, final Bytes value) {
     checkNotNull(path);
     checkNotNull(value);
@@ -84,6 +99,10 @@ public class StoredSparseMerkleTrie {
     return putVisitor.getProof();
   }
 
+  /**
+   * The `removeAndProve` method removes a key-value pair from the sparse Merkle trie and generates
+   * a proof of exclusion for the removed state.
+   */
   public List<Node<Bytes>> removeAndProve(final Bytes path) {
     checkNotNull(path);
     final RemoveVisitor<Bytes> removeVisitor = getRemoveVisitor();

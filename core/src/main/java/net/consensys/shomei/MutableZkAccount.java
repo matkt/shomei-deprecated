@@ -21,6 +21,7 @@ import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.Wei;
 
+/** A MutableZkAccount is a mutable representation of an Ethereum account in the ZkEvm world. */
 public class MutableZkAccount extends ZkAccount {
 
   public MutableZkAccount(

@@ -25,13 +25,17 @@ import java.util.Queue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 import io.vertx.core.AbstractVerticle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * The FullSyncDownloader class is responsible for downloading data during a full synchronization
+ * process. It retrieves trie logs and associated data from a remote Besu node, stores them and
+ * import them.
+ */
 @SuppressWarnings("FutureReturnValueIgnored")
 public class FullSyncDownloader extends AbstractVerticle implements TrieLogObserver {
 
@@ -40,7 +44,8 @@ public class FullSyncDownloader extends AbstractVerticle implements TrieLogObser
 
   private final ExecutorService executor = Executors.newSingleThreadExecutor();
 
-  private final Queue<TrieLogIdentifier> blockQueue = new PriorityBlockingQueue<>();
+  private final Queue<TrieLogIdentifier> blockQueue =
+      new EvictingPriorityBlockingQueue<>(INITIAL_SYNC_BLOCK_NUMBER_RANGE * 2);
 
   private final ZkEvmWorldStateEntryPoint zkEvmWorldStateEntryPoint;
 
@@ -89,45 +94,49 @@ public class FullSyncDownloader extends AbstractVerticle implements TrieLogObser
           throw new RuntimeException(e);
         }
       }
-      if (isNextTrieLogAvailable()) {
-        final TrieLogObserver.TrieLogIdentifier trieLogId = blockQueue.poll();
-        try {
-          final boolean tooFarFromTheHead = isTooFarFromTheHead();
-          zkEvmWorldStateEntryPoint.importBlock(
-              Objects.requireNonNull(trieLogId), !tooFarFromTheHead);
-          if (zkEvmWorldStateEntryPoint
-              .getCurrentBlockHash()
-              .equals(Objects.requireNonNull(trieLogId.blockHash()))) {
-            if (tooFarFromTheHead) {
-              if (trieLogId.blockNumber() % INITIAL_SYNC_BLOCK_NUMBER_RANGE == 0) {
-                LOG.atInfo()
-                    .setMessage("Block import progress: {}:{}")
-                    .addArgument(trieLogId.blockNumber())
-                    .addArgument(trieLogId.blockHash())
-                    .log();
-              }
-            } else {
+      importTrieLog();
+    }
+  }
+
+  public void importTrieLog() {
+    if (isNextTrieLogAvailable()) {
+      final TrieLogObserver.TrieLogIdentifier trieLogId = blockQueue.poll();
+      try {
+        final boolean tooFarFromTheHead = isTooFarFromTheHead();
+        zkEvmWorldStateEntryPoint.importBlock(
+            Objects.requireNonNull(trieLogId), !tooFarFromTheHead);
+        if (zkEvmWorldStateEntryPoint
+            .getCurrentBlockHash()
+            .equals(Objects.requireNonNull(trieLogId.blockHash()))) {
+          if (tooFarFromTheHead) {
+            if (trieLogId.blockNumber() % INITIAL_SYNC_BLOCK_NUMBER_RANGE == 0) {
               LOG.atInfo()
-                  .setMessage("Imported block {} ({})")
+                  .setMessage("Block import progress: {}:{}")
                   .addArgument(trieLogId.blockNumber())
                   .addArgument(trieLogId.blockHash())
                   .log();
             }
           } else {
-            throw new RuntimeException(
-                "failed to import block %d".formatted(trieLogId.blockNumber()));
+            LOG.atInfo()
+                .setMessage("Imported block {} ({})")
+                .addArgument(trieLogId.blockNumber())
+                .addArgument(trieLogId.blockHash())
+                .log();
           }
-        } catch (Exception e) {
-          LOG.atError()
-              .setMessage("Exception during import block {} ({}) : {}")
-              .addArgument(trieLogId.blockNumber())
-              .addArgument(trieLogId.blockHash())
-              .addArgument(e.getMessage())
-              .log();
+        } else {
+          throw new RuntimeException(
+              "failed to import block %d".formatted(trieLogId.blockNumber()));
         }
-      } else if (!blockQueue.isEmpty()) {
-        blockQueue.remove(); // remove deprecated trielog
+      } catch (Exception e) {
+        LOG.atError()
+            .setMessage("Exception during import block {} ({}) : {}")
+            .addArgument(trieLogId.blockNumber())
+            .addArgument(trieLogId.blockHash())
+            .addArgument(e.getMessage())
+            .log();
       }
+    } else if (!blockQueue.isEmpty()) {
+      blockQueue.remove(); // remove deprecated trielog
     }
   }
 

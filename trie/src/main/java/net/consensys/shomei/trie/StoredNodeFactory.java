@@ -39,12 +39,18 @@ import org.hyperledger.besu.ethereum.trie.NodeLoader;
 import org.hyperledger.besu.ethereum.trie.NullNode;
 import org.hyperledger.besu.ethereum.trie.StoredNode;
 
+/**
+ * The StoredNodeFactory class is responsible for creating and managing stored nodes in a stored
+ * sparse Merkle trie. It provides methods for creating new stored nodes and retrieving existing
+ * stored nodes by their location/hash. The StoredNodeFactory is used by the StoredSparseMerkleTrie
+ * to manage the lifecycle of stored nodes.
+ */
 public class StoredNodeFactory implements NodeFactory<Bytes> {
 
   @SuppressWarnings("rawtypes")
   public static final NullNode NULL_NODE = NullNode.instance();
 
-  @SuppressWarnings("rawtypes")
+  // The number of children in a branch node. max 2 for the sparse merkle trie.
   private static final int NB_CHILD = 2;
 
   private final NodeLoader nodeLoader;
@@ -56,6 +62,19 @@ public class StoredNodeFactory implements NodeFactory<Bytes> {
     this.valueSerializer = valueSerializer;
   }
 
+  /**
+   * The `createExtension` method is used to create an extension node in the sparse Merkle trie.
+   *
+   * <p>In this implementation, creating an extension node is not supported, and invoking this
+   * method will throw an `UnsupportedOperationException`. The sparse Merkle trie does not allow the
+   * creation of extension nodes, as it follows a representation where only leaf and branch nodes
+   * are used.
+   *
+   * @param path The path representing the extension node.
+   * @param child The child node that will be attached to the extension node.
+   * @throws UnsupportedOperationException when attempting to create an extension node in the sparse
+   *     Merkle trie.
+   */
   @Override
   public Node<Bytes> createExtension(final Bytes path, final Node<Bytes> child) {
     throw new UnsupportedOperationException("cannot create extension in the sparse merkle trie");
@@ -110,6 +129,22 @@ public class StoredNodeFactory implements NodeFactory<Bytes> {
   public Optional<Node<Bytes>> retrieve(final Bytes location, final Bytes32 hash)
       throws MerkleTrieException {
 
+    /*
+     * Fill the nodes of the sparse Merkle trie by storing values by hash in the database to avoid
+     * duplicating all the nodes during initialization and to have only one instance per level.
+     * Later, we use location-based optimization for pruning.
+     *
+     * When constructing a sparse Merkle trie, it is efficient to first store the hashed values
+     * in a database instead of duplicating all the nodes. By storing the values hashed, we can
+     * reduce storage consumption and avoid unnecessary duplication of identical values in the trie.
+     *
+     * Additionally, after initializing the trie, we can optimize pruning by using a
+     * location-based approach.
+     *
+     * By combining the storage of hashed values during initialization and location-based
+     * optimization for pruning, we can achieve an efficient and compact representation of the
+     * sparse Merkle trie.
+     */
     return nodeLoader
         .getNode(location, hash)
         .or(
@@ -118,13 +153,9 @@ public class StoredNodeFactory implements NodeFactory<Bytes> {
                     .getWorldStateStorage()
                     .getTrieNode(location, hash)) // if not found in db try to find default nodes
         .map(
-            encodedBytes -> {
-              final Node<Bytes> node =
-                  decode(
-                      location, encodedBytes, () -> format("Invalid RLP value for hash %s", hash));
-
-              return node;
-            });
+            encodedBytes ->
+                decode(
+                    location, encodedBytes, () -> format("Invalid RLP value for hash %s", hash)));
   }
 
   private Node<Bytes> decode(
