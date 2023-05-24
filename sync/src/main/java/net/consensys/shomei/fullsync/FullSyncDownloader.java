@@ -21,7 +21,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Queue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -44,7 +43,7 @@ public class FullSyncDownloader extends AbstractVerticle implements TrieLogObser
 
   private final ExecutorService executor = Executors.newSingleThreadExecutor();
 
-  private final Queue<TrieLogIdentifier> blockQueue =
+  private final EvictingPriorityBlockingQueue<TrieLogIdentifier> blockQueue =
       new EvictingPriorityBlockingQueue<>(INITIAL_SYNC_BLOCK_NUMBER_RANGE * 2);
 
   private final ZkEvmWorldStateEntryPoint zkEvmWorldStateEntryPoint;
@@ -68,32 +67,10 @@ public class FullSyncDownloader extends AbstractVerticle implements TrieLogObser
     executor.execute(this::startFullSync);
   }
 
-  private synchronized void startFullSync() {
+  private void startFullSync() {
     LOG.atInfo().setMessage("Fullsync downloader service started").log();
     while (!completableFuture.isDone()) {
-      while (blockQueue.isEmpty() || !isNextTrieLogAvailable()) {
-        try {
-          // ask for trielog to Besu
-          final long missingTrieLogsNumber =
-              getDistanceFromNextTrieLog()
-                  .filter(dist -> dist <= INITIAL_SYNC_BLOCK_NUMBER_RANGE)
-                  .orElse((long) INITIAL_SYNC_BLOCK_NUMBER_RANGE);
-          final long startBlockNumber = zkEvmWorldStateEntryPoint.getCurrentBlockNumber() + 1;
-          final long endBlockNumber =
-              zkEvmWorldStateEntryPoint.getCurrentBlockNumber() + missingTrieLogsNumber;
-          getRawTrieLog
-              .getTrieLog(startBlockNumber, endBlockNumber)
-              .whenComplete(
-                  (trieLogIdentifiers, throwable) -> {
-                    if (throwable == null) {
-                      addTrieLogs(trieLogIdentifiers);
-                    }
-                  });
-          wait(TimeUnit.SECONDS.toMillis(30)); // waiting for the next trielog to be retrieved
-        } catch (InterruptedException e) {
-          throw new RuntimeException(e);
-        }
-      }
+      waitingNewElementAvailable();
       importTrieLog();
     }
   }
@@ -147,19 +124,41 @@ public class FullSyncDownloader extends AbstractVerticle implements TrieLogObser
     super.stop();
   }
 
+  /**
+   * Estimates the distance between the local head of a Shomei and the head of the network thanks to
+   * the last trielog received from Besu.
+   *
+   * @return The estimated distance.
+   */
   public long getEstimateDistanceFromTheHead() {
     return estimateHeadBlockNumber.orElse(-1L) - zkEvmWorldStateEntryPoint.getCurrentBlockNumber();
   }
 
+  /**
+   * Checks if the current local head of shomei is too far from the head of the network
+   *
+   * @return `true` if the current block is too far from the head, `false` otherwise.
+   */
   public boolean isTooFarFromTheHead() {
     return getEstimateHeadBlockNumber().isEmpty()
         || getEstimateDistanceFromTheHead() > INITIAL_SYNC_BLOCK_NUMBER_RANGE;
   }
 
+  /**
+   * Checks if the trie log for the next block is available in the database.
+   *
+   * @return `true` if the trie log for the next block is available, `false` otherwise.
+   */
   public boolean isNextTrieLogAvailable() {
     return getDistanceFromNextTrieLog().orElse(-1L) == 1;
   }
 
+  /**
+   * Calculates the distance from the current local head to the next available trie log available.
+   *
+   * @return An optional value representing the distance in block numbers. If the next trie log
+   *     block is not available, the optional value will be empty.
+   */
   public Optional<Long> getDistanceFromNextTrieLog() {
     return blockQueue.isEmpty()
         ? Optional.empty()
@@ -172,8 +171,7 @@ public class FullSyncDownloader extends AbstractVerticle implements TrieLogObser
   }
 
   @Override
-  public synchronized void onTrieLogsReceived(
-      final List<TrieLogObserver.TrieLogIdentifier> trieLogIds) {
+  public void onTrieLogsReceived(final List<TrieLogObserver.TrieLogIdentifier> trieLogIds) {
     // we can estimate head number when besu is pushing trielog
     estimateHeadBlockNumber =
         trieLogIds.stream()
@@ -184,12 +182,66 @@ public class FullSyncDownloader extends AbstractVerticle implements TrieLogObser
     }
   }
 
-  public synchronized void addTrieLogs(final List<TrieLogObserver.TrieLogIdentifier> trieLogIds) {
+  public void addTrieLogs(final List<TrieLogObserver.TrieLogIdentifier> trieLogIds) {
     trieLogIds.forEach(
         trieLogIdentifier -> {
           LOG.atDebug().setMessage("received trie log {} ").addArgument(trieLogIdentifier).log();
           blockQueue.offer(trieLogIdentifier);
-          notifyAll();
         });
+    notifyNewElementAvailable(); // notify the waiting thread that new trielog is available
+  }
+
+  /**
+   * Checks if the trie log for the next block is available. If the trie log is not available, it
+   * indicates that some trie logs are missing. In such cases, the component will calculate the
+   * distance between the nearest available trie log and the current local head of Shomei. This
+   * distance represents the number of trie logs that need to be retrieved to complete the missing
+   * range.
+   *
+   * <p>If Besu returns the trie logs, they are immediately imported. Otherwise, the component waits
+   * for 30 seconds before retrying to check for the trie log availability.
+   *
+   * <p>For example, suppose we have the trie log for block 6, and our current local head is block
+   * 3. We can determine that trie logs 4 and 5 are missing. In this case, we will immediately
+   * request trie logs 4 and 5 from Besu to import them along with trie log 6.
+   *
+   * <p>It's important to note that this scenario occurs when the client detects missing trie logs
+   * and attempts to retrieve them. However, Besu can also voluntarily send trie logs, and if it
+   * sends the trie log for the next block, Shomei stops waiting and instantly imports that trie
+   * log.
+   */
+  private void waitingNewElementAvailable() {
+    while (blockQueue.isEmpty() || !isNextTrieLogAvailable()) {
+      try {
+        // ask for trielog to Besu
+        final long missingTrieLogsNumber =
+            getDistanceFromNextTrieLog()
+                .filter(dist -> dist <= INITIAL_SYNC_BLOCK_NUMBER_RANGE)
+                .orElse((long) INITIAL_SYNC_BLOCK_NUMBER_RANGE);
+        final long startBlockNumber = zkEvmWorldStateEntryPoint.getCurrentBlockNumber() + 1;
+        final long endBlockNumber =
+            zkEvmWorldStateEntryPoint.getCurrentBlockNumber() + missingTrieLogsNumber;
+        getRawTrieLog
+            .getTrieLog(startBlockNumber, endBlockNumber)
+            .whenComplete(
+                (trieLogIdentifiers, throwable) -> {
+                  if (throwable == null) {
+                    addTrieLogs(trieLogIdentifiers);
+                  }
+                });
+        synchronized (blockQueue) {
+          blockQueue.wait(
+              TimeUnit.SECONDS.toMillis(30)); // waiting for the next trielog to be retrieved
+        }
+      } catch (InterruptedException e) {
+        throw new RuntimeException(e);
+      }
+    }
+  }
+
+  private void notifyNewElementAvailable() {
+    synchronized (blockQueue) {
+      blockQueue.notifyAll();
+    }
   }
 }
