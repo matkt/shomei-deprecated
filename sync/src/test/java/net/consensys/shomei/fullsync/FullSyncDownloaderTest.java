@@ -14,14 +14,18 @@
 package net.consensys.shomei.fullsync;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.when;
 
 import net.consensys.shomei.observer.TrieLogObserver.TrieLogIdentifier;
 import net.consensys.shomei.rpc.client.GetRawTrieLogClient;
 import net.consensys.shomei.worldview.ZkEvmWorldStateEntryPoint;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 import org.hyperledger.besu.datatypes.Hash;
 import org.junit.Test;
@@ -41,7 +45,9 @@ public class FullSyncDownloaderTest {
   public void testNotTriggerImportWhenTrieLogMissing() throws Exception {
     final FullSyncDownloader fullSyncDownloader =
         new FullSyncDownloader(zkEvmWorldStateEntryPoint, getRawTrieLogClient);
-    fullSyncDownloader.importTrieLog();
+    when(getRawTrieLogClient.getTrieLog(anyLong(), anyLong()))
+        .thenReturn(CompletableFuture.completedFuture(new ArrayList<>()));
+    fullSyncDownloader.importBlock();
     Mockito.verify(zkEvmWorldStateEntryPoint, Mockito.never())
         .importBlock(Mockito.any(TrieLogIdentifier.class), Mockito.anyBoolean());
   }
@@ -51,7 +57,7 @@ public class FullSyncDownloaderTest {
     final FullSyncDownloader fullSyncDownloader =
         new FullSyncDownloader(zkEvmWorldStateEntryPoint, getRawTrieLogClient);
     fullSyncDownloader.onTrieLogsReceived(List.of(new TrieLogIdentifier(1L, Hash.EMPTY, true)));
-    fullSyncDownloader.importTrieLog();
+    fullSyncDownloader.importBlock();
     Mockito.verify(zkEvmWorldStateEntryPoint, times(1))
         .importBlock(Mockito.any(TrieLogIdentifier.class), Mockito.anyBoolean());
   }
@@ -61,7 +67,7 @@ public class FullSyncDownloaderTest {
     final FullSyncDownloader fullSyncDownloader =
         new FullSyncDownloader(zkEvmWorldStateEntryPoint, getRawTrieLogClient);
     fullSyncDownloader.onTrieLogsReceived(List.of(new TrieLogIdentifier(0L, Hash.EMPTY, true)));
-    fullSyncDownloader.importTrieLog();
+    fullSyncDownloader.importBlock();
     Mockito.verify(zkEvmWorldStateEntryPoint, never())
         .importBlock(Mockito.any(TrieLogIdentifier.class), Mockito.anyBoolean());
   }
@@ -71,7 +77,7 @@ public class FullSyncDownloaderTest {
     final FullSyncDownloader fullSyncDownloader =
         new FullSyncDownloader(zkEvmWorldStateEntryPoint, getRawTrieLogClient);
     fullSyncDownloader.onTrieLogsReceived(List.of(new TrieLogIdentifier(500L, Hash.EMPTY, true)));
-    fullSyncDownloader.importTrieLog();
+    fullSyncDownloader.importBlock();
     Mockito.verify(zkEvmWorldStateEntryPoint, never())
         .importBlock(Mockito.any(TrieLogIdentifier.class), Mockito.anyBoolean());
   }
@@ -94,28 +100,6 @@ public class FullSyncDownloaderTest {
     assertThat(fullSyncDownloader.isTooFarFromTheHead()).isTrue();
     fullSyncDownloader.onTrieLogsReceived(List.of(new TrieLogIdentifier(500L, Hash.EMPTY, true)));
     assertThat(fullSyncDownloader.isTooFarFromTheHead()).isFalse();
-  }
-
-  @Test
-  public void isNextTrieLogAvailable() {
-    final FullSyncDownloader fullSyncDownloader =
-        new FullSyncDownloader(zkEvmWorldStateEntryPoint, getRawTrieLogClient);
-    assertThat(fullSyncDownloader.isNextTrieLogAvailable()).isFalse();
-    fullSyncDownloader.onTrieLogsReceived(List.of(new TrieLogIdentifier(2L, Hash.EMPTY, true)));
-    assertThat(fullSyncDownloader.isNextTrieLogAvailable()).isFalse();
-    fullSyncDownloader.onTrieLogsReceived(List.of(new TrieLogIdentifier(1L, Hash.EMPTY, true)));
-    assertThat(fullSyncDownloader.isNextTrieLogAvailable()).isTrue();
-  }
-
-  @Test
-  public void getDistanceFromNextTrieLog() {
-    final FullSyncDownloader fullSyncDownloader =
-        new FullSyncDownloader(zkEvmWorldStateEntryPoint, getRawTrieLogClient);
-    assertThat(fullSyncDownloader.getDistanceFromNextTrieLog()).isEmpty();
-    fullSyncDownloader.onTrieLogsReceived(List.of(new TrieLogIdentifier(2L, Hash.EMPTY, true)));
-    assertThat(fullSyncDownloader.getDistanceFromNextTrieLog()).contains(2L);
-    fullSyncDownloader.onTrieLogsReceived(List.of(new TrieLogIdentifier(1L, Hash.EMPTY, true)));
-    assertThat(fullSyncDownloader.getDistanceFromNextTrieLog()).contains(1L);
   }
 
   @Test
