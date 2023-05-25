@@ -13,13 +13,14 @@
 
 package net.consensys.shomei.fullsync;
 
+import java.util.Comparator;
 import java.util.concurrent.PriorityBlockingQueue;
 
 public class EvictingPriorityBlockingQueue<E> extends PriorityBlockingQueue<E> {
   private final int maxCapacity;
 
-  public EvictingPriorityBlockingQueue(int capacity) {
-    super(capacity);
+  public EvictingPriorityBlockingQueue(int capacity, final Comparator<? super E> comparator) {
+    super(capacity, comparator);
     this.maxCapacity = capacity;
   }
 

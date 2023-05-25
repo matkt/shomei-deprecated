@@ -44,7 +44,9 @@ public class FullSyncDownloader extends AbstractVerticle implements TrieLogObser
   private final ExecutorService executor = Executors.newSingleThreadExecutor();
 
   private final EvictingPriorityBlockingQueue<TrieLogIdentifier> blockQueue =
-      new EvictingPriorityBlockingQueue<>(INITIAL_SYNC_BLOCK_NUMBER_RANGE * 2);
+      new EvictingPriorityBlockingQueue<>(
+          INITIAL_SYNC_BLOCK_NUMBER_RANGE * 2,
+          Comparator.comparing(TrieLogIdentifier::blockNumber));
 
   private final ZkEvmWorldStateEntryPoint zkEvmWorldStateEntryPoint;
 
