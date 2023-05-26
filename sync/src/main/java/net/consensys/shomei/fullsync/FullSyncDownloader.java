@@ -162,8 +162,10 @@ public class FullSyncDownloader extends AbstractVerticle implements TrieLogObser
           LOG.atDebug().setMessage("received trie log {} ").addArgument(trieLogIdentifier).log();
           blockQueue.offer(trieLogIdentifier);
         });
-    blockQueue
-        .notifyNewElementAvailable(); // notify the waiting thread that new trielog is available
+    if (trieLogIds.size() > 0) {
+      blockQueue
+          .notifyNewElementAvailable(); // notify the waiting thread that new trielog is available
+    }
   }
 
   /**
