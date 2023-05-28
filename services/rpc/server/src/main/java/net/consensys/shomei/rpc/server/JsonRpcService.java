@@ -16,6 +16,7 @@ package net.consensys.shomei.rpc.server;
 import static com.google.common.collect.Streams.stream;
 
 import net.consensys.shomei.observer.TrieLogObserver;
+import net.consensys.shomei.rpc.server.method.RollupGetZkEVMBlockNumber;
 import net.consensys.shomei.rpc.server.method.RollupGetZkEVMStateMerkleProofV0;
 import net.consensys.shomei.rpc.server.method.SendRawTrieLog;
 import net.consensys.shomei.storage.WorldStateRepository;
@@ -94,6 +95,7 @@ public class JsonRpcService extends AbstractVerticle {
         mapOf(
             new AdminChangeLogLevel(),
             new SendRawTrieLog(trieLogObserver, worldStateStorage),
+            new RollupGetZkEVMBlockNumber(worldStateStorage),
             new RollupGetZkEVMStateMerkleProofV0(worldStateStorage)));
     this.maxActiveConnections = config.getMaxActiveConnections();
     this.livenessService = new HealthService(new LivenessCheck());
