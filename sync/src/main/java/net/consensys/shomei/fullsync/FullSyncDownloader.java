@@ -63,13 +63,22 @@ public class FullSyncDownloader extends AbstractVerticle implements TrieLogObser
             this::findMissingTrieLogFromBesu);
   }
 
+  public FullSyncDownloader(
+      final TrieLogBlockingQueue blockQueue,
+      final ZkEvmWorldStateEntryPoint zkEvmWorldStateEntryPoint,
+      final GetRawTrieLogClient getRawTrieLog) {
+    this.blockQueue = blockQueue;
+    this.zkEvmWorldStateEntryPoint = zkEvmWorldStateEntryPoint;
+    this.getRawTrieLog = getRawTrieLog;
+  }
+
   @Override
   public void start() {
     LOG.atInfo().setMessage("Starting fullsync downloader service").log();
     importBlockTask.execute(this::startFullSync);
   }
 
-  private void startFullSync() {
+  public void startFullSync() {
     LOG.atInfo().setMessage("Fullsync downloader service started").log();
     completableFuture = new CompletableFuture<>();
     while (!completableFuture.isDone() && blockQueue.waitForNewElement()) {
@@ -79,37 +88,41 @@ public class FullSyncDownloader extends AbstractVerticle implements TrieLogObser
 
   public void importBlock() {
     final TrieLogObserver.TrieLogIdentifier trieLogId = blockQueue.poll();
-    try {
-      final boolean tooFarFromTheHead = isTooFarFromTheHead();
-      zkEvmWorldStateEntryPoint.importBlock(Objects.requireNonNull(trieLogId), !tooFarFromTheHead);
-      if (zkEvmWorldStateEntryPoint
-          .getCurrentBlockHash()
-          .equals(Objects.requireNonNull(trieLogId.blockHash()))) {
-        if (tooFarFromTheHead) {
-          if (trieLogId.blockNumber() % INITIAL_SYNC_BLOCK_NUMBER_RANGE == 0) {
+    if (trieLogId != null) {
+      try {
+        final boolean tooFarFromTheHead = isTooFarFromTheHead();
+        zkEvmWorldStateEntryPoint.importBlock(
+            Objects.requireNonNull(trieLogId), !tooFarFromTheHead);
+        if (zkEvmWorldStateEntryPoint
+            .getCurrentBlockHash()
+            .equals(Objects.requireNonNull(trieLogId.blockHash()))) {
+          if (tooFarFromTheHead) {
+            if (trieLogId.blockNumber() % INITIAL_SYNC_BLOCK_NUMBER_RANGE == 0) {
+              LOG.atInfo()
+                  .setMessage("Block import progress: {}:{}")
+                  .addArgument(trieLogId.blockNumber())
+                  .addArgument(trieLogId.blockHash())
+                  .log();
+            }
+          } else {
             LOG.atInfo()
-                .setMessage("Block import progress: {}:{}")
+                .setMessage("Imported block {} ({})")
                 .addArgument(trieLogId.blockNumber())
                 .addArgument(trieLogId.blockHash())
                 .log();
           }
         } else {
-          LOG.atInfo()
-              .setMessage("Imported block {} ({})")
-              .addArgument(trieLogId.blockNumber())
-              .addArgument(trieLogId.blockHash())
-              .log();
+          throw new RuntimeException(
+              "failed to import block %d".formatted(trieLogId.blockNumber()));
         }
-      } else {
-        throw new RuntimeException("failed to import block %d".formatted(trieLogId.blockNumber()));
+      } catch (Exception e) {
+        LOG.atError()
+            .setMessage("Exception during import block {} ({}) : {}")
+            .addArgument(trieLogId.blockNumber())
+            .addArgument(trieLogId.blockHash())
+            .addArgument(e.getMessage())
+            .log();
       }
-    } catch (Exception e) {
-      LOG.atError()
-          .setMessage("Exception during import block {} ({}) : {}")
-          .addArgument(trieLogId.blockNumber())
-          .addArgument(trieLogId.blockHash())
-          .addArgument(e.getMessage())
-          .log();
     }
   }
 

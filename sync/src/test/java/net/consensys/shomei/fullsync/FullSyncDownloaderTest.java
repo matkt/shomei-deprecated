@@ -13,21 +13,21 @@
 
 package net.consensys.shomei.fullsync;
 
+import static net.consensys.shomei.fullsync.TrieLogBlockingQueue.INITIAL_SYNC_BLOCK_NUMBER_RANGE;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.when;
 
 import net.consensys.shomei.observer.TrieLogObserver.TrieLogIdentifier;
 import net.consensys.shomei.rpc.client.GetRawTrieLogClient;
 import net.consensys.shomei.worldview.ZkEvmWorldStateEntryPoint;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 
 import org.hyperledger.besu.datatypes.Hash;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
@@ -37,55 +37,63 @@ import org.mockito.junit.MockitoJUnitRunner;
 @RunWith(MockitoJUnitRunner.class)
 public class FullSyncDownloaderTest {
 
-  @Mock GetRawTrieLogClient getRawTrieLogClient;
-
   @Mock ZkEvmWorldStateEntryPoint zkEvmWorldStateEntryPoint;
+
+  FullSyncDownloader fullSyncDownloader;
+
+  @Before
+  public void setup() {
+    TrieLogBlockingQueue blockingQueue =
+        spy(
+            new TrieLogBlockingQueue(
+                INITIAL_SYNC_BLOCK_NUMBER_RANGE * 2,
+                zkEvmWorldStateEntryPoint::getCurrentBlockNumber,
+                aLong -> {
+                  try {
+                    fullSyncDownloader.stop(); // force stop the downloader
+                  } catch (Exception e) {
+                    throw new RuntimeException(e);
+                  }
+                }));
+    fullSyncDownloader =
+        new FullSyncDownloader(
+            blockingQueue, zkEvmWorldStateEntryPoint, Mockito.mock(GetRawTrieLogClient.class));
+    doThrow(new RuntimeException()).when(blockingQueue).startWaiting();
+  }
 
   @Test
   public void testNotTriggerImportWhenTrieLogMissing() throws Exception {
-    final FullSyncDownloader fullSyncDownloader =
-        new FullSyncDownloader(zkEvmWorldStateEntryPoint, getRawTrieLogClient);
-    when(getRawTrieLogClient.getTrieLog(anyLong(), anyLong()))
-        .thenReturn(CompletableFuture.completedFuture(new ArrayList<>()));
-    fullSyncDownloader.importBlock();
+    fullSyncDownloader.startFullSync();
     Mockito.verify(zkEvmWorldStateEntryPoint, Mockito.never())
         .importBlock(Mockito.any(TrieLogIdentifier.class), Mockito.anyBoolean());
   }
 
   @Test
   public void testTriggerImportWhenTrieLogAvailableFromTrieLogShipping() throws Exception {
-    final FullSyncDownloader fullSyncDownloader =
-        new FullSyncDownloader(zkEvmWorldStateEntryPoint, getRawTrieLogClient);
     fullSyncDownloader.onTrieLogsReceived(List.of(new TrieLogIdentifier(1L, Hash.EMPTY, true)));
-    fullSyncDownloader.importBlock();
+    fullSyncDownloader.startFullSync();
     Mockito.verify(zkEvmWorldStateEntryPoint, times(1))
         .importBlock(Mockito.any(TrieLogIdentifier.class), Mockito.anyBoolean());
   }
 
   @Test
   public void testNotTriggerImportWhenTrieLogAvailableButAlreadyImported() throws Exception {
-    final FullSyncDownloader fullSyncDownloader =
-        new FullSyncDownloader(zkEvmWorldStateEntryPoint, getRawTrieLogClient);
     fullSyncDownloader.onTrieLogsReceived(List.of(new TrieLogIdentifier(0L, Hash.EMPTY, true)));
-    fullSyncDownloader.importBlock();
+    fullSyncDownloader.startFullSync();
     Mockito.verify(zkEvmWorldStateEntryPoint, never())
         .importBlock(Mockito.any(TrieLogIdentifier.class), Mockito.anyBoolean());
   }
 
   @Test
   public void testNotTriggerImportWhenTrieLogTooFarFromHead() throws Exception {
-    final FullSyncDownloader fullSyncDownloader =
-        new FullSyncDownloader(zkEvmWorldStateEntryPoint, getRawTrieLogClient);
     fullSyncDownloader.onTrieLogsReceived(List.of(new TrieLogIdentifier(500L, Hash.EMPTY, true)));
-    fullSyncDownloader.importBlock();
+    fullSyncDownloader.startFullSync();
     Mockito.verify(zkEvmWorldStateEntryPoint, never())
         .importBlock(Mockito.any(TrieLogIdentifier.class), Mockito.anyBoolean());
   }
 
   @Test
   public void testGetEstimateDistanceFromTheHead() {
-    final FullSyncDownloader fullSyncDownloader =
-        new FullSyncDownloader(zkEvmWorldStateEntryPoint, getRawTrieLogClient);
     assertThat(fullSyncDownloader.getEstimateDistanceFromTheHead()).isEqualTo(-1);
     fullSyncDownloader.onTrieLogsReceived(List.of(new TrieLogIdentifier(500L, Hash.EMPTY, true)));
     assertThat(fullSyncDownloader.getEstimateDistanceFromTheHead()).isEqualTo(500L);
@@ -93,8 +101,6 @@ public class FullSyncDownloaderTest {
 
   @Test
   public void testIsTooFarFromTheHead() {
-    final FullSyncDownloader fullSyncDownloader =
-        new FullSyncDownloader(zkEvmWorldStateEntryPoint, getRawTrieLogClient);
     assertThat(fullSyncDownloader.isTooFarFromTheHead()).isTrue();
     fullSyncDownloader.onTrieLogsReceived(List.of(new TrieLogIdentifier(501L, Hash.EMPTY, true)));
     assertThat(fullSyncDownloader.isTooFarFromTheHead()).isTrue();
@@ -104,8 +110,6 @@ public class FullSyncDownloaderTest {
 
   @Test
   public void getEstimateHeadBlockNumber() {
-    final FullSyncDownloader fullSyncDownloader =
-        new FullSyncDownloader(zkEvmWorldStateEntryPoint, getRawTrieLogClient);
     assertThat(fullSyncDownloader.getEstimateHeadBlockNumber()).isEmpty();
     fullSyncDownloader.onTrieLogsReceived(List.of(new TrieLogIdentifier(1L, Hash.EMPTY, true)));
     assertThat(fullSyncDownloader.getEstimateHeadBlockNumber()).contains(1L);
@@ -115,8 +119,6 @@ public class FullSyncDownloaderTest {
 
   @Test
   public void onTrieLogsReceivedUpdateEstimateHead() {
-    final FullSyncDownloader fullSyncDownloader =
-        new FullSyncDownloader(zkEvmWorldStateEntryPoint, getRawTrieLogClient);
     assertThat(fullSyncDownloader.getEstimateHeadBlockNumber()).isEmpty();
     fullSyncDownloader.onTrieLogsReceived(List.of(new TrieLogIdentifier(1L, Hash.EMPTY, true)));
     assertThat(fullSyncDownloader.getEstimateHeadBlockNumber()).contains(1L);

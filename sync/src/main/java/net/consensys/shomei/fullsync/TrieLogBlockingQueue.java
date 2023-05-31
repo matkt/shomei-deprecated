@@ -69,13 +69,22 @@ public class TrieLogBlockingQueue extends PriorityBlockingQueue<TrieLogObserver.
         }
         if (distance > 1) {
           onTrieLogMissing.accept(distance);
-          wait(TimeUnit.SECONDS.toMillis(5));
+          startWaiting();
         }
-      } catch (InterruptedException e) {
+      } catch (RuntimeException e) {
         return false;
       }
     } while (distance != 1);
     return true;
+  }
+
+  @SuppressWarnings("WaitNotInLoop")
+  public synchronized void startWaiting() {
+    try {
+      wait(TimeUnit.SECONDS.toMillis(5));
+    } catch (InterruptedException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   public synchronized void notifyNewElementAvailable() {
