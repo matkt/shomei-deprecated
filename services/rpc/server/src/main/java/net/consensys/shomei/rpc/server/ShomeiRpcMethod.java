@@ -16,6 +16,8 @@ package net.consensys.shomei.rpc.server;
 public enum ShomeiRpcMethod {
   STATE_SEND_RAW_TRIE_LOG("state_sendRawTrieLog"),
 
+  ROLLUP_GET_ZKEVM_BLOCK_NUMBER("rollup_getZkEVMBlockNumber"),
+
   ROLLUP_GET_ZKEVM_STATE_MERKLE_PROOF_V0("rollup_getZkEVMStateMerkleProofV0");
 
   private final String methodName;
