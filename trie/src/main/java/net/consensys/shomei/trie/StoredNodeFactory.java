@@ -39,28 +39,42 @@ import org.hyperledger.besu.ethereum.trie.NodeLoader;
 import org.hyperledger.besu.ethereum.trie.NullNode;
 import org.hyperledger.besu.ethereum.trie.StoredNode;
 
-@SuppressWarnings("unused")
+/**
+ * The StoredNodeFactory class is responsible for creating and managing stored nodes in a stored
+ * sparse Merkle trie. It provides methods for creating new stored nodes and retrieving existing
+ * stored nodes by their location/hash. The StoredNodeFactory is used by the StoredSparseMerkleTrie
+ * to manage the lifecycle of stored nodes.
+ */
 public class StoredNodeFactory implements NodeFactory<Bytes> {
 
   @SuppressWarnings("rawtypes")
   public static final NullNode NULL_NODE = NullNode.instance();
 
-  @SuppressWarnings("rawtypes")
+  // The number of children in a branch node. max 2 for the sparse merkle trie.
   private static final int NB_CHILD = 2;
 
   private final NodeLoader nodeLoader;
   private final Function<Bytes, Bytes> valueSerializer;
-  private final Function<Bytes, Bytes> valueDeserializer;
 
   public StoredNodeFactory(
-      final NodeLoader nodeLoader,
-      final Function<Bytes, Bytes> valueSerializer,
-      final Function<Bytes, Bytes> valueDeserializer) {
+      final NodeLoader nodeLoader, final Function<Bytes, Bytes> valueSerializer) {
     this.nodeLoader = nodeLoader;
     this.valueSerializer = valueSerializer;
-    this.valueDeserializer = valueDeserializer;
   }
 
+  /**
+   * The `createExtension` method is used to create an extension node in the sparse Merkle trie.
+   *
+   * <p>In this implementation, creating an extension node is not supported, and invoking this
+   * method will throw an `UnsupportedOperationException`. The sparse Merkle trie does not allow the
+   * creation of extension nodes, as it follows a representation where only leaf and branch nodes
+   * are used.
+   *
+   * @param path The path representing the extension node.
+   * @param child The child node that will be attached to the extension node.
+   * @throws UnsupportedOperationException when attempting to create an extension node in the sparse
+   *     Merkle trie.
+   */
   @Override
   public Node<Bytes> createExtension(final Bytes path, final Node<Bytes> child) {
     throw new UnsupportedOperationException("cannot create extension in the sparse merkle trie");
@@ -111,25 +125,37 @@ public class StoredNodeFactory implements NodeFactory<Bytes> {
     return node;
   }
 
-  @SuppressWarnings("unchecked")
   @Override
   public Optional<Node<Bytes>> retrieve(final Bytes location, final Bytes32 hash)
       throws MerkleTrieException {
 
+    /*
+     * Fill the nodes of the sparse Merkle trie by storing values by hash in the database to avoid
+     * duplicating all the nodes during initialization and to have only one instance per level.
+     * Later, we use location-based optimization for pruning.
+     *
+     * When constructing a sparse Merkle trie, it is efficient to first store the hashed values
+     * in a database instead of duplicating all the nodes. By storing the values hashed, we can
+     * reduce storage consumption and avoid unnecessary duplication of identical values in the trie.
+     *
+     * Additionally, after initializing the trie, we can optimize pruning by using a
+     * location-based approach.
+     *
+     * By combining the storage of hashed values during initialization and location-based
+     * optimization for pruning, we can achieve an efficient and compact representation of the
+     * sparse Merkle trie.
+     */
     return nodeLoader
         .getNode(location, hash)
+        .or(
+            () ->
+                ZKTrie.EMPTY_TRIE
+                    .getWorldStateStorage()
+                    .getTrieNode(location, hash)) // if not found in db try to find default nodes
         .map(
-            encodedBytes -> {
-              final Node<Bytes> node =
-                  decode(
-                      location, encodedBytes, () -> format("Invalid RLP value for hash %s", hash));
-
-              return node;
-            });
-  }
-
-  public Node<Bytes> decode(final Bytes location, final Bytes rlp) {
-    return decode(location, rlp, () -> String.format("Failed to decode value %s", rlp.toString()));
+            encodedBytes ->
+                decode(
+                    location, encodedBytes, () -> format("Invalid RLP value for hash %s", hash)));
   }
 
   private Node<Bytes> decode(
@@ -143,21 +169,20 @@ public class StoredNodeFactory implements NodeFactory<Bytes> {
     switch (type) {
       case 1 -> {
         if (location.isEmpty()) {
-          return decodeRoot(input, errMessage);
+          return decodeRoot(input);
         }
-        return decodeBranch(location, input, errMessage);
+        return decodeBranch(location, input);
       }
       case 2 -> {
-        return decodeLeaf(location, input, errMessage);
+        return decodeLeaf(input);
       }
       default -> throw new MerkleTrieException(
           errMessage.get() + format(": invalid node %s", type));
     }
   }
 
-  protected BranchNode<Bytes> decodeRoot(final Bytes input, final Supplier<String> errMessage) {
+  protected BranchNode<Bytes> decodeRoot(final Bytes input) {
     final ArrayList<Node<Bytes>> children = new ArrayList<>(NB_CHILD);
-    final int nbChilds = input.size() / Hash.SIZE;
     final Bytes32 nextFreeNode = Bytes32.wrap(input.slice(0, Bytes32.SIZE));
     children.add(
         new NextFreeNode<>(
@@ -165,14 +190,12 @@ public class StoredNodeFactory implements NodeFactory<Bytes> {
             nextFreeNode,
             this,
             valueSerializer));
-    final Bytes32 childHash = Bytes32.wrap(input.slice(1 * Bytes32.SIZE, Hash.SIZE));
+    final Bytes32 childHash = Bytes32.wrap(input.slice(Bytes32.SIZE, Hash.SIZE));
     children.add(new StoredNode<>(this, Bytes.concatenate(Bytes.of((byte) 1)), childHash));
     return new BranchNode<>(Bytes.EMPTY, children, Optional.empty(), this, valueSerializer);
   }
 
-  @SuppressWarnings("unchecked")
-  protected BranchNode<Bytes> decodeBranch(
-      final Bytes location, final Bytes input, final Supplier<String> errMessage) {
+  protected BranchNode<Bytes> decodeBranch(final Bytes location, final Bytes input) {
     final ArrayList<Node<Bytes>> children = new ArrayList<>(NB_CHILD);
     final int nbChilds = input.size() / Hash.SIZE;
     for (int i = 0; i < nbChilds; i++) {
@@ -186,8 +209,7 @@ public class StoredNodeFactory implements NodeFactory<Bytes> {
     return new BranchNode<>(location, children, Optional.empty(), this, valueSerializer);
   }
 
-  protected Node<Bytes> decodeLeaf(
-      final Bytes location, final Bytes input, final Supplier<String> errMessage) {
+  protected Node<Bytes> decodeLeaf(final Bytes input) {
     if (input.equals(Bytes32.ZERO)) {
       return EmptyLeafNode.instance();
     } else {

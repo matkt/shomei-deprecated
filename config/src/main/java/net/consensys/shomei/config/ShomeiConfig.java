@@ -26,5 +26,4 @@ public class ShomeiConfig {
   public Path getStoragePath() {
     return storagePath.get();
   }
-  ;
 }

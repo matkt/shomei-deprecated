@@ -1,5 +1,5 @@
 /*
- * Copyright ConsenSys Software Inc., 2022
+ * Copyright ConsenSys Software Inc., 2023
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
  * the License. You may obtain a copy of the License at
@@ -13,8 +13,11 @@
 
 package net.consensys.shomei.cli;
 
+import net.consensys.shomei.Runner;
 import net.consensys.shomei.cli.error.ExecutionExceptionHandler;
 import net.consensys.shomei.cli.error.ParameterExceptionHandler;
+import net.consensys.shomei.cli.option.DataStorageOption;
+import net.consensys.shomei.cli.option.JsonRpcOption;
 import net.consensys.shomei.cli.option.LoggingLevelOption;
 import net.consensys.shomei.util.logging.LoggingConfiguration;
 
@@ -25,7 +28,6 @@ import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Mixin;
 
-@SuppressWarnings("unused")
 @Command(
     name = "shomei",
     subcommands = {
@@ -33,32 +35,30 @@ import picocli.CommandLine.Mixin;
     },
     showDefaultValues = true,
     abbreviateSynopsis = true,
-    description = "Run the Shomei zkevm state manager",
+    description = "Run the Shomei linea state manager",
     mixinStandardHelpOptions = true,
     versionProvider = PicoCliVersionProvider.class,
     synopsisHeading = "%n",
     descriptionHeading = "%n@|bold Description:|@%n%n",
     optionListHeading = "%n@|bold Options:|@%n",
     footerHeading = "%n",
-    footer = "Shomei zkevm state manager is licensed under the Apache License 2.0")
+    footer = "Shomei linea state manager is licensed under the Apache License 2.0")
 public class StateManagerCommand implements Runnable {
 
   private static final Logger LOG = LoggerFactory.getLogger(StateManagerCommand.class);
 
-  public static final String LOG_FILE_PREFIX = VersionProvider.CLIENT_IDENTITY;
-
-  private CommandLine commandLine;
-
-  private Runnable init;
+  @Mixin(name = "Data storage configuration")
+  private final DataStorageOption dataStorageOption = DataStorageOption.create();
 
   @Mixin(name = "Logging level")
   private final LoggingLevelOption loggingLevelOption = LoggingLevelOption.create();
 
-  public StateManagerCommand(final Runnable init) {
-    this.init = init;
-  }
+  @Mixin(name = "JSON RPC configuration")
+  private final JsonRpcOption jsonRpcOption = JsonRpcOption.create();
 
-  public int parse(final CommandLine.IExecutionStrategy resultHandler, final String... args) {
+  public StateManagerCommand() {}
+
+  public int parse(final String... args) {
     return new CommandLine(this)
         .setCaseInsensitiveEnumValuesAllowed(true)
         .setParameterExceptionHandler(
@@ -76,13 +76,37 @@ public class StateManagerCommand implements Runnable {
     }
   }
 
+  public LoggingLevelOption getLoggingLevelOption() {
+    return loggingLevelOption;
+  }
+
+  public JsonRpcOption getJsonRpcOption() {
+    return jsonRpcOption;
+  }
+
   @Override
   public void run() {
     try {
       configureLogging();
-      init.run();
+      final Runner runner = new Runner(dataStorageOption, jsonRpcOption);
+      addShutdownHook(runner);
+      runner.start();
     } catch (final Exception e) {
-      throw new CommandLine.ParameterException(this.commandLine, e.getMessage(), e);
+      throw new CommandLine.ParameterException(new CommandLine(this), e.getMessage(), e);
     }
+  }
+
+  private static void addShutdownHook(final Runner runner) {
+    Runtime.getRuntime()
+        .addShutdownHook(
+            new Thread(
+                () -> {
+                  try {
+                    runner.stop();
+                  } catch (final Exception e) {
+                    LOG.error("Failed to stop Shomei");
+                  }
+                },
+                "Command-Shutdown-Hook"));
   }
 }

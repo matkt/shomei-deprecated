@@ -13,9 +13,27 @@
 
 package net.consensys.shomei.observer;
 
+import java.util.List;
+
 import org.hyperledger.besu.datatypes.Hash;
 
+/** An observer that is notified when trie logs are received. */
 public interface TrieLogObserver {
 
-  void onTrieLogAdded(final Hash blockHash);
+  /**
+   * Called when trie logs are received.
+   *
+   * @param trieLogIds the trie log identifiers
+   */
+  void onTrieLogsReceived(final List<TrieLogIdentifier> trieLogIds);
+
+  /** A trie log identifier. */
+  record TrieLogIdentifier(Long blockNumber, Hash blockHash, boolean isInitialSync)
+      implements Comparable<TrieLogIdentifier> {
+
+    @Override
+    public int compareTo(TrieLogIdentifier other) {
+      return this.blockNumber.compareTo(other.blockNumber);
+    }
+  }
 }

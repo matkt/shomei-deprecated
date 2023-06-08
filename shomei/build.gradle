@@ -16,9 +16,13 @@ tasks.named('jar') {
 dependencies {
 
     implementation project(':util')
+    implementation project(':sync')
     implementation project(':core')
     implementation project(':trie')
-    implementation project(':services:rpc:api')
+    implementation project(':services:rpc:common')
+    implementation project(':services:rpc:client')
+    implementation project(':services:rpc:server')
+    implementation project(':services:storage:rocksdb')
 
     implementation 'io.vertx:vertx-core'
     implementation 'io.vertx:vertx-unit'
@@ -33,8 +37,6 @@ dependencies {
 
     implementation 'info.picocli:picocli'
 
-    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.1'
-    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.8.1'
 }
 
 

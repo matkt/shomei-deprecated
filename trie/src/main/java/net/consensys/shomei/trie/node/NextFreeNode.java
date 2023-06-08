@@ -24,6 +24,10 @@ import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.ethereum.trie.NodeFactory;
 
+/**
+ * The NextFreeNode class represents the next free node in a stored sparse Merkle trie. It keeps
+ * track of the index of the next available free node.
+ */
 public class NextFreeNode<V> extends org.hyperledger.besu.ethereum.trie.patricia.LeafNode<V> {
 
   private SoftReference<Bytes32> hash;

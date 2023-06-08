@@ -17,9 +17,12 @@ import static net.consensys.shomei.util.bytes.MimcSafeBytes.safeByte32;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import net.consensys.shomei.trielog.AccountKey;
+import net.consensys.shomei.util.bytes.MimcSafeBytes;
 import net.consensys.zkevm.HashProvider;
 
+import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
+import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.Wei;
@@ -43,5 +46,27 @@ public class ZkAccountTest {
         .isEqualTo(
             Bytes32.fromHexString(
                 "19be98b429f6e00b8eff84a8aa617d2982421d5cde049c3e2a9b5a30a554a307"));
+  }
+
+  @Test
+  public void testEncodedBytesSerialization() {
+    AccountKey accountKey =
+        new AccountKey(Address.fromHexString("0x742d35Cc6634C0532925a3b844Bc454e4438f44e"));
+    UInt256 nonce = UInt256.valueOf(42);
+    Wei balance = Wei.fromHexString("0x56bc75e2d63100000");
+    Hash storageRoot = Hash.wrap(Bytes32.random());
+    Hash mimcCodeHash = Hash.wrap(Bytes32.random());
+    MimcSafeBytes<Bytes32> keccakCodeHash = safeByte32(Bytes32.random());
+    UInt256 codeSize = UInt256.valueOf(100);
+
+    ZkAccount originalAccount =
+        new ZkAccount(
+            accountKey, nonce, balance, storageRoot, mimcCodeHash, keccakCodeHash, codeSize);
+
+    MimcSafeBytes<Bytes> encodedBytes = originalAccount.getEncodedBytes();
+    ZkAccount deserializedAccount =
+        ZkAccount.fromEncodedBytes(accountKey, encodedBytes.getOriginalUnsafeValue());
+
+    assertThat(deserializedAccount).isEqualToComparingFieldByField(originalAccount);
   }
 }

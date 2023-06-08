@@ -18,8 +18,19 @@ import net.consensys.shomei.trie.node.LeafType;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.MutableBytes;
 
+/**
+ * The PathGenerator class provides utility methods for generating paths in a stored sparse Merkle
+ * trie. It includes methods for converting bytes to a leaf path representation.
+ */
 public class PathGenerator {
 
+  /**
+   * Converts the given bytes to a leaf path representation with the specified leaf type.
+   *
+   * @param bytes the bytes to convert to a leaf path
+   * @param leafType the type of the leaf node
+   * @return the leaf path representation of the bytes
+   */
   public static Bytes bytesToLeafPath(final Bytes bytes, final LeafType leafType) {
     MutableBytes path = MutableBytes.create(bytes.size() * 2 + 1);
     int j = 0;

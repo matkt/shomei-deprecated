@@ -16,10 +16,15 @@ package net.consensys.shomei.trie.proof;
 import net.consensys.shomei.trie.model.LeafOpening;
 
 import org.apache.tuweni.bytes.Bytes;
+import org.hyperledger.besu.datatypes.Hash;
+import org.hyperledger.besu.ethereum.rlp.RLPInput;
+import org.hyperledger.besu.ethereum.rlp.RLPOutput;
 import org.hyperledger.besu.ethereum.trie.Node;
+import org.hyperledger.besu.ethereum.trie.StoredNode;
 
 public class ReadZeroTrace implements Trace {
 
+  private Bytes location;
   private long nextFreeNode;
   public Node<Bytes> subRoot;
 
@@ -27,68 +32,105 @@ public class ReadZeroTrace implements Trace {
 
   public LeafOpening rightLeaf;
 
-  public Proof proofLeft; // HKEY -
-  public Proof proofRight; // HKEY +
+  public Proof leftProof; // HKEY -
+  public Proof rightProof; // HKEY +
 
   public Bytes key;
 
-  public ReadZeroTrace(final Node<Bytes> subRoot) {
+  public ReadZeroTrace(
+      final Bytes location,
+      final long nextFreeNode,
+      final Node<Bytes> subRoot,
+      final LeafOpening leftLeaf,
+      final LeafOpening rightLeaf,
+      final Proof leftProof,
+      final Proof rightProof,
+      final Bytes key) {
+    this.location = location;
+    this.nextFreeNode = nextFreeNode;
     this.subRoot = subRoot;
+    this.leftLeaf = leftLeaf;
+    this.rightLeaf = rightLeaf;
+    this.leftProof = leftProof;
+    this.rightProof = rightProof;
+    this.key = key;
+  }
+
+  @Override
+  public Bytes getLocation() {
+    return location;
+  }
+
+  @Override
+  public void setLocation(final Bytes location) {
+    this.location = location;
   }
 
   public long getNextFreeNode() {
     return nextFreeNode;
   }
 
-  public void setNextFreeNode(final long nextFreeNode) {
-    this.nextFreeNode = nextFreeNode;
-  }
-
   public Node<Bytes> getSubRoot() {
     return subRoot;
-  }
-
-  public void setSubRoot(final Node<Bytes> subRoot) {
-    this.subRoot = subRoot;
   }
 
   public LeafOpening getLeftLeaf() {
     return leftLeaf;
   }
 
-  public void setLeftLeaf(final LeafOpening leftLeaf) {
-    this.leftLeaf = leftLeaf;
-  }
-
   public LeafOpening getRightLeaf() {
     return rightLeaf;
   }
 
-  public void setRightLeaf(final LeafOpening rightLeaf) {
-    this.rightLeaf = rightLeaf;
+  public Proof getLeftProof() {
+    return leftProof;
   }
 
-  public Proof getProofLeft() {
-    return proofLeft;
-  }
-
-  public void setProofLeft(final Proof proofLeft) {
-    this.proofLeft = proofLeft;
-  }
-
-  public Proof getProofRight() {
-    return proofRight;
-  }
-
-  public void setProofRight(final Proof proofRight) {
-    this.proofRight = proofRight;
+  public Proof getRightProof() {
+    return rightProof;
   }
 
   public Bytes getKey() {
     return key;
   }
 
-  public void setKey(final Bytes key) {
-    this.key = key;
+  @Override
+  public int getType() {
+    return READ_ZERO_TRACE_CODE;
+  }
+
+  public static ReadZeroTrace readFrom(final RLPInput in) {
+    in.enterList();
+    final Bytes location;
+    if (in.nextIsNull()) {
+      location = Bytes.EMPTY;
+      in.skipNext();
+    } else {
+      location = in.readBytes();
+    }
+    final long newNextFreeNode = in.readLongScalar();
+    final Node<Bytes> subRoot = new StoredNode<>(null, null, Hash.wrap(in.readBytes32()));
+    final LeafOpening leftLeaf = LeafOpening.readFrom(in.readBytes());
+    final LeafOpening rightLeaf = LeafOpening.readFrom(in.readBytes());
+    final Proof leftProof = Proof.readFrom(in);
+    final Proof rightProof = Proof.readFrom(in);
+    final Bytes key = in.readBytes();
+    in.leaveList();
+    return new ReadZeroTrace(
+        location, newNextFreeNode, subRoot, leftLeaf, rightLeaf, leftProof, rightProof, key);
+  }
+
+  @Override
+  public void writeTo(final RLPOutput out) {
+    out.startList();
+    out.writeBytes(location);
+    out.writeLongScalar(nextFreeNode);
+    out.writeBytes(subRoot.getHash());
+    out.writeBytes(leftLeaf.getEncodesBytes());
+    out.writeBytes(rightLeaf.getEncodesBytes());
+    leftProof.writeTo(out);
+    rightProof.writeTo(out);
+    out.writeBytes(key);
+    out.endList();
   }
 }

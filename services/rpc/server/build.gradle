@@ -1,0 +1,62 @@
+
+apply plugin: 'java-library'
+
+tasks.named('jar') {
+    archiveBaseName = 'shomei-rpc-server'
+    manifest {
+        attributes(
+                'Specification-Title': archiveBaseName,
+                'Specification-Version': project.version,
+                'Implementation-Title': archiveBaseName,
+                'Implementation-Version': calculateVersion()
+        )
+    }
+}
+
+dependencies {
+
+    implementation project(':util')
+    implementation project(':core')
+    implementation project(':services:rpc:common')
+    implementation project(':trie')
+
+    // Google Guava
+    implementation 'com.google.guava:guava'
+
+    // Hyperledger Besu dependencies
+    implementation 'org.hyperledger.besu:besu-datatypes'
+    implementation 'org.hyperledger.besu.internal:api'
+    implementation 'org.hyperledger.besu.internal:rlp'
+    implementation 'org.hyperledger.besu.internal:util'
+
+    // Jackson dependencies
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+
+    // Logging dependencies
+    api 'org.slf4j:slf4j-api'
+    implementation 'org.apache.logging.log4j:log4j-core'
+    implementation 'org.apache.logging.log4j:log4j-slf4j2-impl'
+
+    // OpenTelemetry
+    implementation 'io.opentelemetry:opentelemetry-api'
+
+    // Tuweni
+    implementation 'org.apache.tuweni:tuweni-bytes'
+
+    // Vert.x dependencies
+    implementation 'io.vertx:vertx-auth-jwt'
+    implementation 'io.vertx:vertx-codegen'
+    implementation 'io.vertx:vertx-core'
+    implementation 'io.vertx:vertx-unit'
+    implementation 'io.vertx:vertx-web'
+
+    // Test dependencies
+    testImplementation 'junit:junit'
+    testImplementation 'org.assertj:assertj-core'
+    testImplementation 'org.mockito:mockito-core'
+    testRuntimeOnly 'org.junit.vintage:junit-vintage-engine'
+}
+
+test {
+    useJUnitPlatform()
+}

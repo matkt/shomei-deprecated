@@ -134,7 +134,7 @@ public class TrieLogAccountValue {
     Bytes32 mimcCodeHash;
     UInt256 codeSize;
     if (in.nextIsNull()) {
-      storageRoot = ZKTrie.EMPTY_TRIE_ROOT;
+      storageRoot = ZKTrie.DEFAULT_TRIE_ROOT;
       in.skipNext();
     } else {
       storageRoot = in.readBytes32();

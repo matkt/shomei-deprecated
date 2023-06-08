@@ -25,6 +25,11 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.tuweni.units.bigints.UInt256;
 
+/**
+ * The ZkEvmWorldStateUpdateAccumulator class is responsible for accumulating updates to the EVM
+ * world state in a zero-knowledge-friendly manner. It tracks the changes made to account states and
+ * storage values within the EVM world state.
+ */
 public class ZkEvmWorldStateUpdateAccumulator {
 
   private final Map<AccountKey, ZkValue<ZkAccount>> accountsToUpdate = new ConcurrentHashMap<>();
@@ -70,6 +75,7 @@ public class ZkEvmWorldStateUpdateAccumulator {
                                 storageSlotKey,
                                 value.getPrior(),
                                 value.getUpdated(),
+                                value.isCleared(),
                                 true)));
   }
 
@@ -97,6 +103,7 @@ public class ZkEvmWorldStateUpdateAccumulator {
                                 storageSlotKey,
                                 value.getUpdated(),
                                 value.getPrior(),
+                                value.isCleared(),
                                 false)));
   }
 
@@ -145,6 +152,7 @@ public class ZkEvmWorldStateUpdateAccumulator {
       final StorageSlotKey storageSlotKey,
       final UInt256 expectedValue,
       final UInt256 replacementValue,
+      final boolean isCleared,
       final boolean isRollforward) {
     final Map<StorageSlotKey, ZkValue<UInt256>> storageMap = storageToUpdate.get(accountKey);
     ZkValue<UInt256> slotValue = storageMap == null ? null : storageMap.get(storageSlotKey);
@@ -152,7 +160,8 @@ public class ZkEvmWorldStateUpdateAccumulator {
       slotValue =
           new ZkValue<>(
               expectedValue.isZero() ? null : expectedValue,
-              expectedValue.isZero() ? null : expectedValue);
+              expectedValue.isZero() ? null : expectedValue,
+              isCleared);
       storageToUpdate
           .computeIfAbsent(accountKey, slotHash -> new ConcurrentHashMap<>())
           .put(storageSlotKey, slotValue);

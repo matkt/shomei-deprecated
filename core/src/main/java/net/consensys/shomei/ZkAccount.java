@@ -31,6 +31,7 @@ import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.Wei;
 
+/** A ZkAccount is a representation of an Ethereum account in the ZkEvm world. */
 public class ZkAccount {
 
   public static final MimcSafeBytes<Bytes32> EMPTY_KECCAK_CODE_HASH =
@@ -117,38 +118,83 @@ public class ZkAccount {
                 UInt256.fromBytes(bytesInput.readBytes32())));
   }
 
+  /**
+   * Returns the account key.
+   *
+   * @return the account key
+   */
   public Hash getHkey() {
     return accountKey.accountHash();
   }
 
+  /**
+   * Returns the account address.
+   *
+   * @return the account address
+   */
   public MimcSafeBytes<Address> getAddress() {
     return accountKey.address();
   }
 
+  /**
+   * Returns the account key.
+   *
+   * @return the account key
+   */
   public UInt256 getNonce() {
     return nonce;
   }
 
+  /**
+   * Returns the account balance.
+   *
+   * @return the account balance
+   */
   public Wei getBalance() {
     return balance;
   }
 
+  /**
+   * Returns the keccak code hash
+   *
+   * @return the keccak code hash
+   */
   public Hash getCodeHash() {
     return Hash.wrap(keccakCodeHash.getOriginalUnsafeValue());
   }
 
+  /**
+   * Returns the mimc code hash
+   *
+   * @return the mimc code hash
+   */
   public Hash getMimcCodeHash() {
     return mimcCodeHash;
   }
 
+  /**
+   * Returns the code size
+   *
+   * @return the code size
+   */
   public UInt256 getCodeSize() {
     return codeSize;
   }
 
+  /**
+   * Returns the zkevm storage root
+   *
+   * @return the zkevm storage root
+   */
   public Hash getStorageRoot() {
     return storageRoot;
   }
 
+  /**
+   * Returns the encoded bytes of the account as a safe representation for the mimc algorithm
+   *
+   * @return
+   */
   public MimcSafeBytes<Bytes> getEncodedBytes() {
     return MimcSafeBytes.concatenateSafeElements(
         nonce, balance, storageRoot, mimcCodeHash, keccakCodeHash, codeSize);

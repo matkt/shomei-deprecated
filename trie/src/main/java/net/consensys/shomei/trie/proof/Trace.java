@@ -13,4 +13,58 @@
 
 package net.consensys.shomei.trie.proof;
 
-public interface Trace {}
+import java.util.List;
+
+import org.apache.tuweni.bytes.Bytes;
+import org.hyperledger.besu.ethereum.rlp.BytesValueRLPOutput;
+import org.hyperledger.besu.ethereum.rlp.RLPInput;
+import org.hyperledger.besu.ethereum.rlp.RLPOutput;
+
+public interface Trace {
+
+  int READ_TRACE_CODE = 0;
+  int READ_ZERO_TRACE_CODE = 1;
+  int INSERTION_TRACE_CODE = 2;
+  int UPDATE_TRACE_CODE = 3;
+  int DELETION_TRACE_CODE = 4;
+
+  int getType();
+
+  Bytes getLocation();
+
+  void setLocation(final Bytes location);
+
+  void writeTo(final RLPOutput out);
+
+  static Bytes serialize(final List<Trace> traces) {
+    final BytesValueRLPOutput out = new BytesValueRLPOutput();
+    out.writeList(
+        traces,
+        (trace, rlpOutput) -> {
+          out.startList();
+          out.writeInt(trace.getType());
+          trace.writeTo(out);
+          out.endList();
+        });
+    return out.encoded();
+  }
+
+  static List<Trace> deserialize(final RLPInput in) {
+    return in.readList(
+        rlpInput -> {
+          rlpInput.enterList();
+          final int traceType = rlpInput.readInt();
+          final Trace trace;
+          switch (traceType) {
+            case DELETION_TRACE_CODE -> trace = DeletionTrace.readFrom(in);
+            case UPDATE_TRACE_CODE -> trace = UpdateTrace.readFrom(in);
+            case INSERTION_TRACE_CODE -> trace = InsertionTrace.readFrom(in);
+            case READ_TRACE_CODE -> trace = ReadTrace.readFrom(in);
+            case READ_ZERO_TRACE_CODE -> trace = ReadZeroTrace.readFrom(in);
+            default -> throw new IllegalStateException("Unexpected trace type: " + traceType);
+          }
+          rlpInput.leaveList();
+          return trace;
+        });
+  }
+}

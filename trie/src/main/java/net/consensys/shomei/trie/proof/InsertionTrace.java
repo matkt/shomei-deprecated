@@ -16,18 +16,23 @@ package net.consensys.shomei.trie.proof;
 import net.consensys.shomei.trie.model.LeafOpening;
 
 import org.apache.tuweni.bytes.Bytes;
+import org.hyperledger.besu.datatypes.Hash;
+import org.hyperledger.besu.ethereum.rlp.RLPInput;
+import org.hyperledger.besu.ethereum.rlp.RLPOutput;
 import org.hyperledger.besu.ethereum.trie.Node;
+import org.hyperledger.besu.ethereum.trie.StoredNode;
 
 public class InsertionTrace implements Trace {
 
+  private Bytes location;
   private long newNextFreeNode;
   public Node<Bytes> oldSubRoot;
   public Node<Bytes> newSubRoot;
 
   // `New` correspond to the inserted leaf
-  public Proof proofLeft; // HKEY -
-  public Proof proofNew; // hash(k)
-  public Proof proofRight; // HKEY +
+  public Proof leftProof; // HKEY -
+  public Proof newProof; // hash(k)
+  public Proof rightProof; // HKEY +
   public Bytes key;
   public Bytes value;
 
@@ -35,24 +40,43 @@ public class InsertionTrace implements Trace {
   public LeafOpening priorLeftLeaf;
   public LeafOpening priorRightLeaf;
 
-  public InsertionTrace(final Node<Bytes> oldSubRoot) {
+  public InsertionTrace(
+      final Bytes location,
+      final long newNextFreeNode,
+      final Node<Bytes> oldSubRoot,
+      final Node<Bytes> newSubRoot,
+      final Proof leftProof,
+      final Proof newProof,
+      final Proof rightProof,
+      final Bytes key,
+      final Bytes value,
+      final LeafOpening priorLeftLeaf,
+      final LeafOpening priorRightLeaf) {
+    this.location = location;
+    this.newNextFreeNode = newNextFreeNode;
     this.oldSubRoot = oldSubRoot;
-  }
-
-  public void setKey(final Bytes key) {
+    this.newSubRoot = newSubRoot;
+    this.leftProof = leftProof;
+    this.newProof = newProof;
+    this.rightProof = rightProof;
     this.key = key;
+    this.value = value;
+    this.priorLeftLeaf = priorLeftLeaf;
+    this.priorRightLeaf = priorRightLeaf;
   }
 
-  public void setValue(final Bytes value) {
-    this.value = value;
+  @Override
+  public Bytes getLocation() {
+    return location;
+  }
+
+  @Override
+  public void setLocation(final Bytes location) {
+    this.location = location;
   }
 
   public long getNewNextFreeNode() {
     return newNextFreeNode;
-  }
-
-  public void setNewNextFreeNode(final long newNextFreeNode) {
-    this.newNextFreeNode = newNextFreeNode;
   }
 
   public Node<Bytes> getOldSubRoot() {
@@ -63,32 +87,16 @@ public class InsertionTrace implements Trace {
     return newSubRoot;
   }
 
-  public void setNewSubRoot(final Node<Bytes> newSubRoot) {
-    this.newSubRoot = newSubRoot;
+  public Proof getLeftProof() {
+    return leftProof;
   }
 
-  public Proof getProofLeft() {
-    return proofLeft;
+  public Proof getNewProof() {
+    return newProof;
   }
 
-  public void setProofLeft(final Proof proofLeft) {
-    this.proofLeft = proofLeft;
-  }
-
-  public Proof getProofNew() {
-    return proofNew;
-  }
-
-  public void setProofNew(final Proof proofNew) {
-    this.proofNew = proofNew;
-  }
-
-  public Proof getProofRight() {
-    return proofRight;
-  }
-
-  public void setProofRight(final Proof proofRight) {
-    this.proofRight = proofRight;
+  public Proof getRightProof() {
+    return rightProof;
   }
 
   public Bytes getKey() {
@@ -107,19 +115,59 @@ public class InsertionTrace implements Trace {
     return priorRightLeaf;
   }
 
-  public void setPriorLeftLeaf(final LeafOpening priorLeftLeaf) {
-    this.priorLeftLeaf = priorLeftLeaf;
+  @Override
+  public int getType() {
+    return INSERTION_TRACE_CODE;
   }
 
-  public void setPriorRightLeaf(final LeafOpening priorRightLeaf) {
-    this.priorRightLeaf = priorRightLeaf;
+  public static InsertionTrace readFrom(final RLPInput in) {
+    in.enterList();
+    final Bytes location;
+    if (in.nextIsNull()) {
+      location = Bytes.EMPTY;
+      in.skipNext();
+    } else {
+      location = in.readBytes();
+    }
+    final long newNextFreeNode = in.readLongScalar();
+    final Node<Bytes> oldSubRoot = new StoredNode<>(null, null, Hash.wrap(in.readBytes32()));
+    final Node<Bytes> newSubRoot = new StoredNode<>(null, null, Hash.wrap(in.readBytes32()));
+    final Proof leftProof = Proof.readFrom(in);
+    final Proof newProof = Proof.readFrom(in);
+    final Proof rightProof = Proof.readFrom(in);
+    final Bytes key = in.readBytes();
+    final Bytes value = in.readBytes();
+    final LeafOpening priorLeftLeaf = LeafOpening.readFrom(in.readBytes());
+    final LeafOpening priorRightLeaf = LeafOpening.readFrom(in.readBytes());
+    in.leaveList();
+    return new InsertionTrace(
+        location,
+        newNextFreeNode,
+        oldSubRoot,
+        newSubRoot,
+        leftProof,
+        newProof,
+        rightProof,
+        key,
+        value,
+        priorLeftLeaf,
+        priorRightLeaf);
   }
 
-  public void load() {
-    oldSubRoot.getHash();
-    newSubRoot.getHash();
-    proofLeft.load();
-    proofNew.load();
-    proofRight.load();
+  @Override
+  public void writeTo(final RLPOutput out) {
+    out.startList();
+    out.writeBytes(location);
+    out.writeLongScalar(newNextFreeNode);
+    out.writeBytes(oldSubRoot.getHash());
+    out.writeBytes(newSubRoot.getHash());
+    leftProof.writeTo(out);
+    newProof.writeTo(out);
+    rightProof.writeTo(out);
+    out.writeBytes(key);
+    out.writeBytes(value);
+    out.writeBytes(priorLeftLeaf.getEncodesBytes());
+    out.writeBytes(priorRightLeaf.getEncodesBytes());
+    out.endList();
   }
 }

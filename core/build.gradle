@@ -2,7 +2,7 @@
 apply plugin: 'java-library'
 
 tasks.named('jar') {
-    archiveBaseName = 'core'
+    archiveBaseName = 'shomei-core'
     manifest {
         attributes(
                 'Specification-Title': archiveBaseName,
@@ -32,10 +32,10 @@ dependencies {
     implementation 'org.apache.tuweni:tuweni-bytes'
     implementation 'org.apache.tuweni:tuweni-units'
 
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
 
     testImplementation project(':util')
-    implementation 'com.google.code.gson:gson'
     testImplementation 'junit:junit'
     testImplementation 'org.assertj:assertj-core'
-    testImplementation 'org.junit.jupiter:junit-jupiter'
+
 }

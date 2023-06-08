@@ -17,9 +17,7 @@ import net.consensys.shomei.cli.StateManagerCommand;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import picocli.CommandLine;
 
-@SuppressWarnings("unused")
 public class Shomei {
   private static final Logger LOG = LoggerFactory.getLogger(Shomei.class);
 
@@ -27,11 +25,8 @@ public class Shomei {
     Thread.setDefaultUncaughtExceptionHandler(exceptionHandler());
     Thread.currentThread().setUncaughtExceptionHandler(exceptionHandler());
 
-    final Runner runner = new Runner();
-    addShutdownHook(runner);
-
-    final StateManagerCommand stateManagerCommand = new StateManagerCommand(runner::start);
-    stateManagerCommand.parse(new CommandLine.RunLast(), args);
+    final StateManagerCommand stateManagerCommand = new StateManagerCommand();
+    stateManagerCommand.parse(args);
   }
 
   private static Thread.UncaughtExceptionHandler exceptionHandler() {
@@ -40,19 +35,5 @@ public class Shomei {
         LOG.error(String.format("Uncaught exception in thread \"%s\"", thread.getName()), error);
       }
     };
-  }
-
-  private static void addShutdownHook(final Runner runner) {
-    Runtime.getRuntime()
-        .addShutdownHook(
-            new Thread(
-                () -> {
-                  try {
-                    runner.stop();
-                  } catch (final Exception e) {
-                    LOG.error("Failed to stop Shomei");
-                  }
-                },
-                "Command-Shutdown-Hook"));
   }
 }

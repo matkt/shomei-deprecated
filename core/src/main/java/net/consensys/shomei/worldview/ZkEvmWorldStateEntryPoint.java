@@ -14,93 +14,72 @@
 package net.consensys.shomei.worldview;
 
 import net.consensys.shomei.exception.MissingTrieLogException;
-import net.consensys.shomei.observer.TrieLogObserver;
-import net.consensys.shomei.storage.WorldStateStorage;
+import net.consensys.shomei.observer.TrieLogObserver.TrieLogIdentifier;
+import net.consensys.shomei.storage.WorldStateRepository;
 import net.consensys.shomei.trielog.TrieLogLayer;
 import net.consensys.shomei.trielog.TrieLogLayerConverter;
 
 import java.util.Optional;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.JsonPrimitive;
-import com.google.gson.JsonSerializer;
-import org.apache.tuweni.bytes.Bytes;
-import org.apache.tuweni.units.bigints.UInt256;
+import com.google.common.annotations.VisibleForTesting;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.ethereum.rlp.RLP;
-import org.hyperledger.besu.ethereum.trie.Node;
 
-public class ZkEvmWorldStateEntryPoint implements TrieLogObserver {
+/**
+ * This class is the entry point for the ZK EVM world state. It is responsible for importing the
+ * trie log and updating the world state.
+ */
+public class ZkEvmWorldStateEntryPoint {
 
   private final ZKEvmWorldState currentWorldState;
 
   private final TrieLogLayerConverter trieLogLayerConverter;
 
-  private final WorldStateStorage worldStateStorage;
+  private final WorldStateRepository worldStateStorage;
 
-  public ZkEvmWorldStateEntryPoint(final WorldStateStorage worldStateStorage) {
+  public ZkEvmWorldStateEntryPoint(final WorldStateRepository worldStateStorage) {
     this.worldStateStorage = worldStateStorage;
     this.currentWorldState = new ZKEvmWorldState(worldStateStorage);
     this.trieLogLayerConverter = new TrieLogLayerConverter(worldStateStorage);
   }
 
-  public void moveHead(final long newBlockNumber, final Hash blockHash)
+  /**
+   * Import the trie log for the given block number.
+   *
+   * @param trieLogId the trie log identifier
+   * @param generateTrace whether to generate the trace
+   * @throws MissingTrieLogException if the trie log is not found
+   */
+  public void importBlock(final TrieLogIdentifier trieLogId, final boolean generateTrace)
       throws MissingTrieLogException {
-    while (currentWorldState.getBlockNumber() < newBlockNumber) {
-      Optional<TrieLogLayer> trieLog =
-          worldStateStorage
-              .getTrieLog(blockHash)
-              .map(RLP::input)
-              .map(trieLogLayerConverter::decodeTrieLog);
-      if (trieLog.isPresent()) {
-        moveHead(newBlockNumber, trieLog.get());
-      } else {
-        throw new MissingTrieLogException(newBlockNumber);
-      }
+    Optional<TrieLogLayer> trieLog =
+        worldStateStorage
+            .getTrieLog(trieLogId.blockNumber())
+            .map(RLP::input)
+            .map(trieLogLayerConverter::decodeTrieLog);
+    if (trieLog.isPresent()) {
+      applyTrieLog(trieLogId.blockNumber(), generateTrace, trieLog.get());
+    } else {
+      throw new MissingTrieLogException(trieLogId.blockNumber());
     }
   }
 
-  public void moveHead(final long newBlockNumber, final TrieLogLayer trieLogLayer) {
+  @VisibleForTesting
+  public void applyTrieLog(
+      final long newBlockNumber, final boolean generateTrace, final TrieLogLayer trieLogLayer) {
     currentWorldState.getAccumulator().rollForward(trieLogLayer);
-    currentWorldState.commit(newBlockNumber, trieLogLayer.getBlockHash());
+    currentWorldState.commit(newBlockNumber, trieLogLayer.getBlockHash(), generateTrace);
   }
 
   public Hash getCurrentRootHash() {
     return currentWorldState.getStateRootHash();
   }
 
-  static int block = 1;
+  public Hash getCurrentBlockHash() {
+    return currentWorldState.getBlockHash();
+  }
 
-  @Override
-  public void onTrieLogAdded(final Hash blockHash) {
-    // receive trie log
-    System.out.println("receive trie log " + blockHash);
-    try {
-      moveHead(++block, blockHash);
-    } catch (MissingTrieLogException e) {
-      throw new RuntimeException(e);
-    }
-    // TODO use Jackson
-    Gson gson =
-        new GsonBuilder()
-            .registerTypeAdapter(
-                Node.class,
-                (JsonSerializer<Node<Bytes>>)
-                    (src, typeOfSrc, context) -> new JsonPrimitive(src.getHash().toHexString()))
-            .registerTypeAdapter(
-                UInt256.class,
-                (JsonSerializer<UInt256>)
-                    (src, typeOfSrc, context) -> new JsonPrimitive(src.toHexString()))
-            .registerTypeAdapter(
-                Hash.class,
-                (JsonSerializer<Hash>)
-                    (src, typeOfSrc, context) -> new JsonPrimitive(src.toHexString()))
-            .registerTypeAdapter(
-                Bytes.class,
-                (JsonSerializer<Bytes>)
-                    (src, typeOfSrc, context) -> new JsonPrimitive(src.toHexString()))
-            .create();
-    System.out.println(gson.toJson(currentWorldState.getLastTraces()));
+  public long getCurrentBlockNumber() {
+    return currentWorldState.getBlockNumber();
   }
 }

@@ -20,17 +20,17 @@ import net.consensys.shomei.trie.model.FlattenedLeaf;
 import net.consensys.shomei.trie.model.LeafOpening;
 import net.consensys.shomei.trie.node.EmptyLeafNode;
 import net.consensys.shomei.trie.path.PathResolver;
-import net.consensys.shomei.trie.proof.DeletionTrace;
 import net.consensys.shomei.trie.proof.EmptyTrace;
-import net.consensys.shomei.trie.proof.InsertionTrace;
 import net.consensys.shomei.trie.proof.Proof;
-import net.consensys.shomei.trie.proof.ReadTrace;
-import net.consensys.shomei.trie.proof.ReadZeroTrace;
 import net.consensys.shomei.trie.proof.Trace;
-import net.consensys.shomei.trie.proof.UpdateTrace;
-import net.consensys.shomei.trie.storage.InMemoryStorage;
-import net.consensys.shomei.trie.storage.StorageProxy;
-import net.consensys.shomei.trie.storage.StorageProxy.Range;
+import net.consensys.shomei.trie.proof.builder.DeletionTraceBuilder;
+import net.consensys.shomei.trie.proof.builder.InsertionTraceBuilder;
+import net.consensys.shomei.trie.proof.builder.ReadTraceBuilder;
+import net.consensys.shomei.trie.proof.builder.ReadZeroTraceBuilder;
+import net.consensys.shomei.trie.proof.builder.UpdateTraceBuilder;
+import net.consensys.shomei.trie.storage.InMemoryRepository;
+import net.consensys.shomei.trie.storage.TrieRepository;
+import net.consensys.shomei.trie.storage.TrieRepository.Range;
 import net.consensys.shomei.util.bytes.MimcSafeBytes;
 import net.consensys.zkevm.HashProvider;
 
@@ -44,47 +44,95 @@ import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.ethereum.trie.Node;
 import org.hyperledger.besu.ethereum.trie.NodeUpdater;
 
+/**
+ * The ZKTrie class represents a zero-knowledge Merkle trie. It provides methods for storing,
+ * retrieving, and manipulating data in the trie. The ZKTrie implements the Trie interface and uses
+ * a Merkle tree structure for efficient storage and retrieval.
+ */
 public class ZKTrie {
 
-  public static final Hash EMPTY_TRIE_ROOT =
-      Hash.wrap(ZKTrie.createTrie(new InMemoryStorage()).getTopRootHash());
+  public static final ZKTrie EMPTY_TRIE = generateEmptyTrie();
 
-  public static final Hash EMPTY_TRIE_SUB_ROOT =
-      Hash.wrap(ZKTrie.createTrie(new InMemoryStorage()).getSubRootHash());
+  public static final Hash DEFAULT_TRIE_ROOT =
+      Hash.wrap(createTrie(new InMemoryRepository()).getTopRootHash());
 
   private static final int ZK_TRIE_DEPTH = 40;
 
   private final PathResolver pathResolver;
   private final StoredSparseMerkleTrie state;
-  private final StorageProxy worldStateStorage;
+  private final TrieRepository worldStateStorage;
 
-  private final StorageProxy.Updater updater;
+  private final TrieRepository.TrieUpdater updater;
 
-  private ZKTrie(final Bytes32 rootHash, final StorageProxy worldStateStorage) {
+  public TrieRepository getWorldStateStorage() {
+    return worldStateStorage;
+  }
+
+  /**
+   * Creates a new ZK trie.
+   *
+   * @param rootHash the root hash of the trie
+   * @param worldStateStorage the storage used to store the trie
+   * @return the created ZK trie
+   */
+  private ZKTrie(final Bytes32 rootHash, final TrieRepository worldStateStorage) {
     this.worldStateStorage = worldStateStorage;
     this.updater = worldStateStorage.updater();
-    this.state =
-        new StoredSparseMerkleTrie(worldStateStorage::getTrieNode, rootHash, b -> b, b -> b);
+    this.state = new StoredSparseMerkleTrie(worldStateStorage::getTrieNode, rootHash, b -> b);
     this.pathResolver = new PathResolver(ZK_TRIE_DEPTH, state);
   }
 
-  public static ZKTrie createTrie(final StorageProxy worldStateStorage) {
-    StorageProxy.Updater updater = worldStateStorage.updater();
-    final ZKTrie trie =
-        new ZKTrie(ZKTrie.initWorldState(updater::putTrieNode).getHash(), worldStateStorage);
+  public static ZKTrie generateEmptyTrie() {
+    final InMemoryRepository inMemoryStorage =
+        new InMemoryRepository() {
+          @Override
+          public Optional<Bytes> getTrieNode(final Bytes location, final Bytes nodeHash) {
+            return Optional.ofNullable(super.getTrieNodeStorage().get(nodeHash));
+            // In a sparse Merkle trie, the hash value of a parent node is computed based on the
+            // hashes of its children nodes.
+            // so the hash value of a parent node at each level will be the same as long as its
+            // children remain unchanged.
+            // this ensures the consistency of the hash values within each level.
+            // for that nodes are saved by hash in order to not have to fill all the trie during
+            // the init step
+          }
+
+          @Override
+          public void putTrieNode(final Bytes location, final Bytes nodeHash, final Bytes value) {
+            super.getTrieNodeStorage().put(nodeHash, value);
+          }
+        };
+    return new ZKTrie(initWorldState(inMemoryStorage::putTrieNode).getHash(), inMemoryStorage);
+  }
+
+  public static ZKTrie createTrie(final TrieRepository worldStateStorage) {
+    final ZKTrie trie = new ZKTrie(EMPTY_TRIE.getTopRootHash(), worldStateStorage);
     trie.setHeadAndTail();
-    // updater.commit();
     return trie;
   }
 
-  public static ZKTrie loadTrie(final Bytes32 rootHash, final StorageProxy worldStateStorage) {
+  public static ZKTrie loadTrie(final Bytes32 rootHash, final TrieRepository worldStateStorage) {
     return new ZKTrie(rootHash, worldStateStorage);
   }
 
+  /**
+   * Fills the sparse Merkle trie by creating a single node on each level with two children per
+   * level. Each level is filled with branch nodes, except for the bottom level with empty leaf
+   * nodes.
+   *
+   * <p>This approach simplifies the population process by creating a balanced trie structure with a
+   * fixed number of nodes on each level. Each level (except the bottom level) has two children,
+   * which are empty branch nodes. The bottom level has empty leaf nodes.
+   *
+   * <p>Algorithm: 1. Start with an empty trie. 2. Create leaf nodes at the bottom level. 3. For
+   * each level of the trie (starting from the bottom level and moving upwards): - Create a parent
+   * node with the leaf/branch nodes of the current level as children. - Insert the parent node into
+   * the trie.
+   */
   private static Node<Bytes> initWorldState(final NodeUpdater nodeUpdater) {
     // if empty we need to fill the sparse trie with zero leaves
     final StoredNodeFactory nodeFactory =
-        new StoredNodeFactory((location, hash) -> Optional.empty(), a -> a, b -> b);
+        new StoredNodeFactory((location, hash) -> Optional.empty(), a -> a);
     Node<Bytes> defaultNode = EmptyLeafNode.instance();
     for (int i = 0; i < ZK_TRIE_DEPTH; i++) {
       nodeUpdater.store(null, defaultNode.getHash(), defaultNode.getEncodedBytes());
@@ -146,17 +194,14 @@ public class ZKTrie {
         .flatMap(this::get);
   }
 
-  public Trace readZeroAndProve(final Hash hkey, final Bytes key) {
-    return readAndProve(hkey, key);
-  }
-
-  public Trace readAndProve(final Hash hkey, final Bytes key) {
+  public Trace readAndProve(final Hash hkey, final MimcSafeBytes<? extends Bytes> key) {
     // GET the openings HKEY-,  hash(k) , HKEY+
     final Range nearestKeys = worldStateStorage.getNearestKeys(hkey);
     // CHECK if hash(k) exist
     if (nearestKeys.getCenterNodeKey().isEmpty()) {
       // INIT trace
-      final ReadZeroTrace readZeroTrace = new ReadZeroTrace(getSubRootNode());
+      final ReadZeroTraceBuilder readZeroTrace =
+          ReadZeroTraceBuilder.aReadZeroTrace().withSubRoot(getSubRootNode());
 
       // GET path of HKey-
       final Bytes leftLeafPath =
@@ -168,19 +213,19 @@ public class ZKTrie {
       final GetAndProve leftData = state.getAndProve(leftLeafPath);
       final GetAndProve rightData = state.getAndProve(rightLeafPath);
 
-      readZeroTrace.setKey(key);
-      readZeroTrace.setNextFreeNode(pathResolver.getNextFreeLeafNodeIndex());
-      readZeroTrace.setLeftLeaf(leftData.nodeValue().map(LeafOpening::readFrom).orElseThrow());
-      readZeroTrace.setRightLeaf(rightData.nodeValue().map(LeafOpening::readFrom).orElseThrow());
-      readZeroTrace.setProofLeft(
-          new Proof(nearestKeys.getLeftNodeValue().leafIndex(), leftData.proof()));
-      readZeroTrace.setProofRight(
-          new Proof(nearestKeys.getRightNodeValue().leafIndex(), rightData.proof()));
+      return readZeroTrace
+          .withKey(key.getOriginalUnsafeValue())
+          .withNextFreeNode(pathResolver.getNextFreeLeafNodeIndex())
+          .withLeftLeaf(leftData.nodeValue().map(LeafOpening::readFrom).orElseThrow())
+          .withRightLeaf(rightData.nodeValue().map(LeafOpening::readFrom).orElseThrow())
+          .withLeftProof(new Proof(nearestKeys.getLeftNodeValue().leafIndex(), leftData.proof()))
+          .withRightProof(new Proof(nearestKeys.getRightNodeValue().leafIndex(), rightData.proof()))
+          .build();
 
-      return readZeroTrace;
     } else {
       // INIT trace
-      final ReadTrace readTrace = new ReadTrace(getSubRootNode());
+      final ReadTraceBuilder readTrace =
+          ReadTraceBuilder.aReadTrace().withSubRoot(getSubRootNode());
 
       final FlattenedLeaf currentFlatLeafValue = nearestKeys.getCenterNodeValue().orElseThrow();
 
@@ -189,13 +234,13 @@ public class ZKTrie {
       // READ hash(k)
       final GetAndProve data = state.getAndProve(leafPath);
 
-      readTrace.setKey(key);
-      readTrace.setValue(currentFlatLeafValue.leafValue());
-      readTrace.setNextFreeNode(pathResolver.getNextFreeLeafNodeIndex());
-      readTrace.setLeaf(data.nodeValue().map(LeafOpening::readFrom).orElseThrow());
-      readTrace.setProof(new Proof(currentFlatLeafValue.leafIndex(), data.proof()));
-
-      return readTrace;
+      return readTrace
+          .withKey(key.getOriginalUnsafeValue())
+          .withNextFreeNode(pathResolver.getNextFreeLeafNodeIndex())
+          .withValue(currentFlatLeafValue.leafValue())
+          .withLeaf(data.nodeValue().map(LeafOpening::readFrom).orElseThrow())
+          .withProof(new Proof(currentFlatLeafValue.leafIndex(), data.proof()))
+          .build();
     }
   }
 
@@ -216,7 +261,8 @@ public class ZKTrie {
     if (nearestKeys.getCenterNodeKey().isEmpty()) {
 
       // INIT trace
-      final InsertionTrace insertionTrace = new InsertionTrace(getSubRootNode());
+      final InsertionTraceBuilder insertionTrace =
+          InsertionTraceBuilder.anInsertionTrace().withOldSubRoot(getSubRootNode());
 
       // GET path of HKey-
       final Bytes leftLeafPath =
@@ -262,24 +308,23 @@ public class ZKTrie {
       // UPDATE next free node
       pathResolver.incrementNextFreeLeafNodeIndex();
 
-      insertionTrace.setKey(key);
-      insertionTrace.setValue(newValue.getOriginalUnsafeValue());
-      insertionTrace.setPriorLeftLeaf(priorLeftLeaf);
-      insertionTrace.setPriorRightLeaf(priorRightLeaf);
-      insertionTrace.setProofLeft(
-          new Proof(nearestKeys.getLeftNodeValue().leafIndex(), leftSiblings));
-      insertionTrace.setProofNew(new Proof(nextFreeNode, centerSiblings));
-      insertionTrace.setProofRight(
-          new Proof(nearestKeys.getRightNodeValue().leafIndex(), rightSiblings));
-      insertionTrace.setNewNextFreeNode(pathResolver.getNextFreeLeafNodeIndex());
-      insertionTrace.setNewSubRoot(getSubRootNode());
-
-      return insertionTrace;
+      return insertionTrace
+          .withKey(key.getOriginalUnsafeValue())
+          .withValue(newValue.getOriginalUnsafeValue())
+          .withPriorLeftLeaf(priorLeftLeaf)
+          .withPriorRightLeaf(priorRightLeaf)
+          .withLeftProof(new Proof(nearestKeys.getLeftNodeValue().leafIndex(), leftSiblings))
+          .withNewProof(new Proof(nextFreeNode, centerSiblings))
+          .withRightProof(new Proof(nearestKeys.getRightNodeValue().leafIndex(), rightSiblings))
+          .withNewNextFreeNode(pathResolver.getNextFreeLeafNodeIndex())
+          .withNewSubRoot(getSubRootNode())
+          .build();
 
     } else {
 
       // INIT trace
-      final UpdateTrace updateTrace = new UpdateTrace(getSubRootNode());
+      final UpdateTraceBuilder updateTrace =
+          UpdateTraceBuilder.anUpdateTrace().withOldSubRoot(getSubRootNode());
 
       final FlattenedLeaf currentFlatLeafValue = nearestKeys.getCenterNodeValue().orElseThrow();
 
@@ -297,19 +342,19 @@ public class ZKTrie {
       final List<Node<Bytes>> siblings =
           state.putAndProve(leafPathToUpdate, newUpdatedLeaf.getEncodesBytes());
 
-      updateTrace.setKey(key);
-      updateTrace.setOldValue(currentFlatLeafValue.leafValue());
-      updateTrace.setNewValue(newValue.getOriginalUnsafeValue());
-      updateTrace.setPriorUpdatedLeaf(priorUpdatedLeaf);
-      updateTrace.setProof(new Proof(currentFlatLeafValue.leafIndex(), siblings));
-      updateTrace.setNewNextFreeNode(pathResolver.getNextFreeLeafNodeIndex());
-      updateTrace.setNewSubRoot(getSubRootNode());
-
-      return updateTrace;
+      return updateTrace
+          .withKey(key.getOriginalUnsafeValue())
+          .withOldValue(currentFlatLeafValue.leafValue())
+          .withNewValue(newValue.getOriginalUnsafeValue())
+          .withPriorUpdatedLeaf(priorUpdatedLeaf)
+          .withProof(new Proof(currentFlatLeafValue.leafIndex(), siblings))
+          .withNewNextFreeNode(pathResolver.getNextFreeLeafNodeIndex())
+          .withNewSubRoot(getSubRootNode())
+          .build();
     }
   }
 
-  public Trace removeAndProve(final Hash hkey, final Bytes key) {
+  public Trace removeAndProve(final Hash hkey, final MimcSafeBytes<? extends Bytes> key) {
     checkArgument(hkey.size() == Bytes32.SIZE);
 
     // GET the openings HKEY-,  hash(k) , HKEY+
@@ -319,7 +364,8 @@ public class ZKTrie {
     if (nearestKeys.getCenterNode().isPresent()) {
 
       // INIT trace
-      final DeletionTrace deleteTrace = new DeletionTrace(getSubRootNode());
+      final DeletionTraceBuilder deleteTrace =
+          DeletionTraceBuilder.aDeletionTrace().withOldSubRoot(getSubRootNode());
 
       final Long leftLeafIndex = nearestKeys.getLeftNodeValue().leafIndex();
       final Long rightLeafIndex = nearestKeys.getRightNodeValue().leafIndex();
@@ -334,8 +380,8 @@ public class ZKTrie {
           state.putAndProve(leftLeafPath, newLeftLeaf.getEncodesBytes());
 
       // REMOVE hash(k)
-      final Bytes leafPathToDelete =
-          pathResolver.getLeafPath(nearestKeys.getCenterNodeValue().orElseThrow().leafIndex());
+      final FlattenedLeaf currentFlatLeafValue = nearestKeys.getCenterNodeValue().orElseThrow();
+      final Bytes leafPathToDelete = pathResolver.getLeafPath(currentFlatLeafValue.leafIndex());
       final LeafOpening priorDeletedLeaf =
           get(leafPathToDelete).map(LeafOpening::readFrom).orElseThrow();
       updater.removeFlatLeafValue(hkey);
@@ -351,19 +397,19 @@ public class ZKTrie {
       final List<Node<Bytes>> rightSiblings =
           state.putAndProve(rightLeafPath, newRightLeaf.getEncodesBytes());
 
-      deleteTrace.setKey(key);
-      deleteTrace.setPriorLeftLeaf(priorLeftLeaf);
-      deleteTrace.setPriorDeletedLeaf(priorDeletedLeaf);
-      deleteTrace.setPriorRightLeaf(priorRightLeaf);
-      deleteTrace.setProofLeft(new Proof(nearestKeys.getLeftNodeValue().leafIndex(), leftSiblings));
-      deleteTrace.setProofDeleted(
-          new Proof(nearestKeys.getCenterNodeValue().orElseThrow().leafIndex(), centerSiblings));
-      deleteTrace.setProofRight(
-          new Proof(nearestKeys.getRightNodeValue().leafIndex(), rightSiblings));
-      deleteTrace.setNewNextFreeNode(pathResolver.getNextFreeLeafNodeIndex());
-      deleteTrace.setNewSubRoot(getSubRootNode());
-
-      return deleteTrace;
+      return deleteTrace
+          .withKey(key.getOriginalUnsafeValue())
+          .withDeletedValue(currentFlatLeafValue.leafValue())
+          .withPriorLeftLeaf(priorLeftLeaf)
+          .withPriorDeletedLeaf(priorDeletedLeaf)
+          .withPriorRightLeaf(priorRightLeaf)
+          .withLeftProof(new Proof(nearestKeys.getLeftNodeValue().leafIndex(), leftSiblings))
+          .withDeletedProof(
+              new Proof(nearestKeys.getCenterNodeValue().orElseThrow().leafIndex(), centerSiblings))
+          .withRightProof(new Proof(nearestKeys.getRightNodeValue().leafIndex(), rightSiblings))
+          .withNewNextFreeNode(pathResolver.getNextFreeLeafNodeIndex())
+          .withNewSubRoot(getSubRootNode())
+          .build();
     }
 
     return new EmptyTrace();

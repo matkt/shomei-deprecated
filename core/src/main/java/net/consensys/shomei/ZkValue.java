@@ -20,8 +20,8 @@ import org.hyperledger.besu.ethereum.rlp.RLPOutput;
 
 public class ZkValue<T> {
 
-  private T prior;
-  private T updated;
+  private T prior; // the value before the update
+  private T updated; // the value after the update
   private boolean isCleared; // it was destroyed between the two blocks
 
   private boolean isRollforward;
@@ -63,7 +63,9 @@ public class ZkValue<T> {
   }
 
   public boolean isCleared() {
-    return isCleared || ((prior != null && updated == null) || (prior == null && updated != null));
+    return isCleared
+        || ((isRollforward && prior != null && updated == null)
+            || (!isRollforward && prior == null && updated != null));
   }
 
   public boolean isRecreated() {

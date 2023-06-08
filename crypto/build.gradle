@@ -2,7 +2,7 @@
 apply plugin: 'java-library'
 
 tasks.named('jar') {
-    archiveBaseName = 'crypto'
+    archiveBaseName = 'shomei-crypto'
     manifest {
         attributes(
                 'Specification-Title': archiveBaseName,
@@ -31,7 +31,6 @@ dependencies {
 
     testImplementation 'junit:junit'
     testImplementation 'org.assertj:assertj-core'
-    testImplementation 'org.junit.jupiter:junit-jupiter'
 
 
 }
