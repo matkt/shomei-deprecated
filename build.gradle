@@ -420,6 +420,7 @@ task manifestDocker {
 }
 
 task manifestDockerRelease {
+    dependsOn manifestDocker
     def archs = ["arm64", "amd64"]
     def baseTag = "${dockerImageName}:latest";
 
