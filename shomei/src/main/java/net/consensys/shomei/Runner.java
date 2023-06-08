@@ -15,6 +15,7 @@ package net.consensys.shomei;
 
 import net.consensys.shomei.cli.option.DataStorageOption;
 import net.consensys.shomei.cli.option.JsonRpcOption;
+import net.consensys.shomei.cli.option.SyncOption;
 import net.consensys.shomei.fullsync.FullSyncDownloader;
 import net.consensys.shomei.rpc.client.GetRawTrieLogClient;
 import net.consensys.shomei.rpc.server.JsonRpcService;
@@ -37,7 +38,10 @@ public class Runner {
   private final JsonRpcService jsonRpcService;
   private final WorldStateRepository worldStateStorage;
 
-  public Runner(final DataStorageOption dataStorageOption, JsonRpcOption jsonRpcOption) {
+  public Runner(
+      final DataStorageOption dataStorageOption,
+      JsonRpcOption jsonRpcOption,
+      final SyncOption syncOption) {
     this.vertx = Vertx.vertx();
 
     worldStateStorage =
@@ -56,7 +60,9 @@ public class Runner {
             jsonRpcOption.getBesuRpcHttpHost(),
             jsonRpcOption.getBesuRHttpPort());
 
-    fullSyncDownloader = new FullSyncDownloader(zkEvmWorldStateEntryPoint, getRawTrieLog, 3);
+    fullSyncDownloader =
+        new FullSyncDownloader(
+            zkEvmWorldStateEntryPoint, getRawTrieLog, syncOption.getImportDelay());
 
     this.jsonRpcService =
         new JsonRpcService(

@@ -48,7 +48,7 @@ public class FullSyncDownloader extends AbstractVerticle implements TrieLogObser
 
   private final GetRawTrieLogClient getRawTrieLog;
 
-  private final long blockNumberDelayBeforeImporting;
+  private final long importDelay;
 
   private CompletableFuture<Void> completableFuture;
   private Optional<Long> estimateHeadBlockNumber = Optional.empty();
@@ -56,7 +56,7 @@ public class FullSyncDownloader extends AbstractVerticle implements TrieLogObser
   public FullSyncDownloader(
       final ZkEvmWorldStateEntryPoint zkEvmWorldStateEntryPoint,
       final GetRawTrieLogClient getRawTrieLog,
-      final long blockNumberDelayBeforeImporting) {
+      final long importDelay) {
     this.zkEvmWorldStateEntryPoint = zkEvmWorldStateEntryPoint;
     this.getRawTrieLog = getRawTrieLog;
     this.blockQueue =
@@ -64,18 +64,18 @@ public class FullSyncDownloader extends AbstractVerticle implements TrieLogObser
             INITIAL_SYNC_BLOCK_NUMBER_RANGE * 2,
             zkEvmWorldStateEntryPoint::getCurrentBlockNumber,
             this::findMissingTrieLogFromBesu);
-    this.blockNumberDelayBeforeImporting = blockNumberDelayBeforeImporting;
+    this.importDelay = importDelay;
   }
 
   public FullSyncDownloader(
       final TrieLogBlockingQueue blockQueue,
       final ZkEvmWorldStateEntryPoint zkEvmWorldStateEntryPoint,
       final GetRawTrieLogClient getRawTrieLog,
-      final long blockNumberDelayBeforeImporting) {
+      final long importDelay) {
     this.blockQueue = blockQueue;
     this.zkEvmWorldStateEntryPoint = zkEvmWorldStateEntryPoint;
     this.getRawTrieLog = getRawTrieLog;
-    this.blockNumberDelayBeforeImporting = blockNumberDelayBeforeImporting;
+    this.importDelay = importDelay;
   }
 
   @Override
@@ -85,11 +85,17 @@ public class FullSyncDownloader extends AbstractVerticle implements TrieLogObser
   }
 
   public void startFullSync() {
-    System.out.println(blockNumberDelayBeforeImporting);
-    LOG.atInfo().setMessage("Fullsync downloader service started").log();
+    if (importDelay == 0) {
+      LOG.atInfo().setMessage("Fullsync downloader service started").log();
+    } else {
+      LOG.atInfo()
+          .setMessage("Fullsync downloader service started with import delay {}")
+          .addArgument(importDelay)
+          .log();
+    }
     completableFuture = new CompletableFuture<>();
     while (!completableFuture.isDone()
-        && blockQueue.waitForMinimumEntries(3)
+        && blockQueue.waitForMinimumEntries(importDelay)
         && blockQueue.waitForNewElement()) {
       importBlock();
     }
