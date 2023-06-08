@@ -94,24 +94,24 @@ public class FullSyncDownloader extends AbstractVerticle implements TrieLogObser
           .log();
     }
     completableFuture = new CompletableFuture<>();
-    while (!completableFuture.isDone()
-        && blockQueue.waitForMinimumEntries(importDelay)
-        && blockQueue.waitForNewElement()) {
-      importBlock();
+    while (!completableFuture.isDone()) {
+      final boolean isFarFromHead = isFarFromHead();
+      if (blockQueue.waitForNewElement(isFarFromHead ? 0 : importDelay)) {
+        importBlock(isFarFromHead);
+      }
     }
   }
 
-  public void importBlock() {
+  public void importBlock(final boolean isFarFromHead) {
     final TrieLogObserver.TrieLogIdentifier trieLogId = blockQueue.poll();
     if (trieLogId != null) {
       try {
-        final boolean tooFarFromTheHead = isTooFarFromTheHead();
-        zkEvmWorldStateEntryPoint.importBlock(
-            Objects.requireNonNull(trieLogId), !tooFarFromTheHead);
+
+        zkEvmWorldStateEntryPoint.importBlock(Objects.requireNonNull(trieLogId), !isFarFromHead);
         if (zkEvmWorldStateEntryPoint
             .getCurrentBlockHash()
             .equals(Objects.requireNonNull(trieLogId.blockHash()))) {
-          if (tooFarFromTheHead) {
+          if (isFarFromHead) {
             if (trieLogId.blockNumber() % INITIAL_SYNC_BLOCK_NUMBER_RANGE == 0) {
               LOG.atInfo()
                   .setMessage("Block import progress: {}:{}")
@@ -163,7 +163,7 @@ public class FullSyncDownloader extends AbstractVerticle implements TrieLogObser
    *
    * @return `true` if the current block is too far from the head, `false` otherwise.
    */
-  public boolean isTooFarFromTheHead() {
+  public boolean isFarFromHead() {
     return getEstimateHeadBlockNumber().isEmpty()
         || getEstimateDistanceFromTheHead() > INITIAL_SYNC_BLOCK_NUMBER_RANGE;
   }
@@ -179,7 +179,7 @@ public class FullSyncDownloader extends AbstractVerticle implements TrieLogObser
         trieLogIds.stream()
             .max(Comparator.comparingLong(TrieLogIdentifier::blockNumber))
             .map(TrieLogIdentifier::blockNumber);
-    if (!isTooFarFromTheHead()) { // not save trielog sent by besu if we are too far from head
+    if (!isFarFromHead()) { // not save trielog sent by besu if we are too far from head
       addTrieLogs(trieLogIds);
     }
   }

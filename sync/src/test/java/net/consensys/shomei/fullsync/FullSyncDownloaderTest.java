@@ -100,12 +100,12 @@ public class FullSyncDownloaderTest {
   }
 
   @Test
-  public void testIsTooFarFromTheHead() {
-    assertThat(fullSyncDownloader.isTooFarFromTheHead()).isTrue();
+  public void testIsFarFromHead() {
+    assertThat(fullSyncDownloader.isFarFromHead()).isTrue();
     fullSyncDownloader.onTrieLogsReceived(List.of(new TrieLogIdentifier(501L, Hash.EMPTY, true)));
-    assertThat(fullSyncDownloader.isTooFarFromTheHead()).isTrue();
+    assertThat(fullSyncDownloader.isFarFromHead()).isTrue();
     fullSyncDownloader.onTrieLogsReceived(List.of(new TrieLogIdentifier(500L, Hash.EMPTY, true)));
-    assertThat(fullSyncDownloader.isTooFarFromTheHead()).isFalse();
+    assertThat(fullSyncDownloader.isFarFromHead()).isFalse();
   }
 
   @Test
