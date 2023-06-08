@@ -57,7 +57,7 @@ public class FullSyncDownloaderTest {
                 }));
     fullSyncDownloader =
         new FullSyncDownloader(
-            blockingQueue, zkEvmWorldStateEntryPoint, Mockito.mock(GetRawTrieLogClient.class));
+            blockingQueue, zkEvmWorldStateEntryPoint, Mockito.mock(GetRawTrieLogClient.class), 0);
     doThrow(new RuntimeException()).when(blockingQueue).startWaiting();
   }
 

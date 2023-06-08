@@ -78,6 +78,31 @@ public class TrieLogBlockingQueue extends PriorityBlockingQueue<TrieLogObserver.
     return true;
   }
 
+  /**
+   * Waits until the minimum required number of entries is reached. This method ensures that there
+   * is sufficient blocks in the blockchain before importing. For example, if the minimum required
+   * entries is 3 and the network is currently at block 6, Shomei will start importing block 3 once
+   * the network reaches block 6, as the minimum required entries are 3. This is necessary to handle
+   * reorganizations and give enough time for Besu to send the final version of block. Note: This
+   * method is only needed to the testnet environment.
+   *
+   * @param minimumEntriesRequired The minimum number of entries required before importing.
+   */
+  public synchronized boolean waitForMinimumEntries(final long minimumEntriesRequired) {
+    long nbEntries;
+    do {
+      try {
+        nbEntries = size();
+        if (nbEntries < minimumEntriesRequired) {
+          startWaiting();
+        }
+      } catch (RuntimeException e) {
+        return false;
+      }
+    } while (nbEntries < minimumEntriesRequired);
+    return true;
+  }
+
   @SuppressWarnings("WaitNotInLoop")
   public synchronized void startWaiting() {
     try {

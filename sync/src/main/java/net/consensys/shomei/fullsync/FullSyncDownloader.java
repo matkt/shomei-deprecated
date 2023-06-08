@@ -48,12 +48,15 @@ public class FullSyncDownloader extends AbstractVerticle implements TrieLogObser
 
   private final GetRawTrieLogClient getRawTrieLog;
 
+  private final long blockNumberDelayBeforeImporting;
+
   private CompletableFuture<Void> completableFuture;
   private Optional<Long> estimateHeadBlockNumber = Optional.empty();
 
   public FullSyncDownloader(
       final ZkEvmWorldStateEntryPoint zkEvmWorldStateEntryPoint,
-      final GetRawTrieLogClient getRawTrieLog) {
+      final GetRawTrieLogClient getRawTrieLog,
+      final long blockNumberDelayBeforeImporting) {
     this.zkEvmWorldStateEntryPoint = zkEvmWorldStateEntryPoint;
     this.getRawTrieLog = getRawTrieLog;
     this.blockQueue =
@@ -61,15 +64,18 @@ public class FullSyncDownloader extends AbstractVerticle implements TrieLogObser
             INITIAL_SYNC_BLOCK_NUMBER_RANGE * 2,
             zkEvmWorldStateEntryPoint::getCurrentBlockNumber,
             this::findMissingTrieLogFromBesu);
+    this.blockNumberDelayBeforeImporting = blockNumberDelayBeforeImporting;
   }
 
   public FullSyncDownloader(
       final TrieLogBlockingQueue blockQueue,
       final ZkEvmWorldStateEntryPoint zkEvmWorldStateEntryPoint,
-      final GetRawTrieLogClient getRawTrieLog) {
+      final GetRawTrieLogClient getRawTrieLog,
+      final long blockNumberDelayBeforeImporting) {
     this.blockQueue = blockQueue;
     this.zkEvmWorldStateEntryPoint = zkEvmWorldStateEntryPoint;
     this.getRawTrieLog = getRawTrieLog;
+    this.blockNumberDelayBeforeImporting = blockNumberDelayBeforeImporting;
   }
 
   @Override
@@ -79,9 +85,12 @@ public class FullSyncDownloader extends AbstractVerticle implements TrieLogObser
   }
 
   public void startFullSync() {
+    System.out.println(blockNumberDelayBeforeImporting);
     LOG.atInfo().setMessage("Fullsync downloader service started").log();
     completableFuture = new CompletableFuture<>();
-    while (!completableFuture.isDone() && blockQueue.waitForNewElement()) {
+    while (!completableFuture.isDone()
+        && blockQueue.waitForMinimumEntries(3)
+        && blockQueue.waitForNewElement()) {
       importBlock();
     }
   }

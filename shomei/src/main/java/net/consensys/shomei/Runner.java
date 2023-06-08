@@ -56,7 +56,7 @@ public class Runner {
             jsonRpcOption.getBesuRpcHttpHost(),
             jsonRpcOption.getBesuRHttpPort());
 
-    fullSyncDownloader = new FullSyncDownloader(zkEvmWorldStateEntryPoint, getRawTrieLog);
+    fullSyncDownloader = new FullSyncDownloader(zkEvmWorldStateEntryPoint, getRawTrieLog, 3);
 
     this.jsonRpcService =
         new JsonRpcService(
