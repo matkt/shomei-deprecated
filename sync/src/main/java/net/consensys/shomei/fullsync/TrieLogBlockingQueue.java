@@ -60,32 +60,37 @@ public class TrieLogBlockingQueue extends PriorityBlockingQueue<TrieLogObserver.
   }
 
   public synchronized boolean waitForNewElement(final long minimumEntriesRequired) {
+    boolean foundValidBlock = false;
     long distance;
     do {
       try {
         distance = distance(currentHeadSupplier.get()).orElse(INITIAL_SYNC_BLOCK_NUMBER_RANGE);
-        if (distance < 1) { // remove deprecated trielog
+        if (distance < 1) { // remove deprecated trielog (already imported this block)
           poll();
         }
 
-        if (distance > 1) {
+        if (distance > 1) { // missing trielog we need to import them
           onTrieLogMissing.accept(distance);
           startWaiting();
-        } else if (size() < minimumEntriesRequired) {
-          /*
-           * Waits until the minimum required number of entries is reached. This method ensures that there
-           * is sufficient blocks in the blockchain before importing. For example, if the minimum required
-           * entries is 3 and the network is currently at block 6, Shomei will start importing block 3 once
-           * the network reaches block 6, as the minimum required entries are 3. This is necessary to handle
-           * reorganizations and give enough time for Besu to send the final version of block. Note: This
-           * method is only needed to the testnet environment.
-           */
-          startWaiting();
+        } else if (distance == 1) {
+          if ((size() <= minimumEntriesRequired)) {
+            /*
+             * Waits until the minimum required number of entries is reached. This method ensures that there
+             * is sufficient blocks in the blockchain before importing. For example, if the minimum required
+             * entries is 3 and the network is currently at block 6, Shomei will start importing block 3 once
+             * the network reaches block 6, as the minimum required entries are 3. This is necessary to handle
+             * reorganizations and give enough time for Besu to send the final version of block. Note: This
+             * method is only needed to the testnet environment.
+             */
+            startWaiting();
+          } else {
+            foundValidBlock = true;
+          }
         }
       } catch (RuntimeException e) {
         return false;
       }
-    } while (distance != 1);
+    } while (!foundValidBlock);
     return true;
   }
 
