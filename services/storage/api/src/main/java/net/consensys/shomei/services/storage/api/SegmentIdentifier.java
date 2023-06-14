@@ -11,7 +11,7 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package services.storage;
+package net.consensys.shomei.services.storage.api;
 
 /**
  * A namespace identifier for the storage instance segment, a grouping of data that should be kept

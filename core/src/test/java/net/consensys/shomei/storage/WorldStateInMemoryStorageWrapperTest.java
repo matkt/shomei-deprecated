@@ -11,15 +11,15 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package services.storage;
+package net.consensys.shomei.storage;
 
-import java.util.Iterator;
+import net.consensys.shomei.storage.worldstate.InMemoryWorldStateStorage;
+import net.consensys.shomei.storage.worldstate.WorldStateStorage;
 
-public interface BidirectionalIterator<T> extends Iterator<T>, AutoCloseable {
+public class WorldStateInMemoryStorageWrapperTest extends WorldStateWrapperTestBase {
 
-  T current();
-
-  boolean hasPrevious();
-
-  T previous();
+  @Override
+  WorldStateStorage getWorldStateStorage() {
+    return new InMemoryWorldStateStorage();
+  }
 }

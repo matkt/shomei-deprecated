@@ -18,11 +18,12 @@ import net.consensys.shomei.cli.option.JsonRpcOption;
 import net.consensys.shomei.fullsync.FullSyncDownloader;
 import net.consensys.shomei.rpc.client.GetRawTrieLogClient;
 import net.consensys.shomei.rpc.server.JsonRpcService;
-import net.consensys.shomei.services.storage.rocksdb.RocksDBSegmentedStorage;
 import net.consensys.shomei.services.storage.rocksdb.configuration.RocksDBConfigurationBuilder;
-import net.consensys.shomei.storage.PersistedWorldStateRepository;
-import net.consensys.shomei.storage.WorldStateRepository;
-import net.consensys.shomei.worldview.ZkEvmWorldStateEntryPoint;
+import net.consensys.shomei.storage.RocksDBStorageProvider;
+import net.consensys.shomei.storage.StorageProvider;
+import net.consensys.shomei.storage.ZkWorldStateArchive;
+
+import java.io.IOException;
 
 import io.vertx.core.Vertx;
 import org.slf4j.Logger;
@@ -35,35 +36,33 @@ public class Runner {
   private final Vertx vertx;
   private final FullSyncDownloader fullSyncDownloader;
   private final JsonRpcService jsonRpcService;
-  private final WorldStateRepository worldStateStorage;
+  private final ZkWorldStateArchive worldStateArchive;
 
   public Runner(final DataStorageOption dataStorageOption, JsonRpcOption jsonRpcOption) {
     this.vertx = Vertx.vertx();
 
-    worldStateStorage =
-        new PersistedWorldStateRepository(
-            new RocksDBSegmentedStorage(
-                new RocksDBConfigurationBuilder()
-                    .databaseDir(dataStorageOption.getDataStoragePath())
-                    .build()));
+    final StorageProvider storageProvider =
+        new RocksDBStorageProvider(
+            new RocksDBConfigurationBuilder()
+                .databaseDir(dataStorageOption.getDataStoragePath())
+                .build());
 
-    final ZkEvmWorldStateEntryPoint zkEvmWorldStateEntryPoint =
-        new ZkEvmWorldStateEntryPoint(worldStateStorage);
+    worldStateArchive = new ZkWorldStateArchive(storageProvider);
 
     final GetRawTrieLogClient getRawTrieLog =
         new GetRawTrieLogClient(
-            worldStateStorage,
+            worldStateArchive.getTrieLogManager(),
             jsonRpcOption.getBesuRpcHttpHost(),
             jsonRpcOption.getBesuRHttpPort());
 
-    fullSyncDownloader = new FullSyncDownloader(zkEvmWorldStateEntryPoint, getRawTrieLog);
+    fullSyncDownloader = new FullSyncDownloader(worldStateArchive, getRawTrieLog);
 
     this.jsonRpcService =
         new JsonRpcService(
             jsonRpcOption.getRpcHttpHost(),
             jsonRpcOption.getRpcHttpPort(),
             fullSyncDownloader,
-            worldStateStorage);
+            worldStateArchive);
   }
 
   public void start() {
@@ -89,8 +88,8 @@ public class Runner {
         });
   }
 
-  public void stop() {
-    worldStateStorage.close();
+  public void stop() throws IOException {
+    worldStateArchive.close();
     vertx.close();
   }
 }

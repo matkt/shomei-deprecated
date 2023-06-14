@@ -13,10 +13,13 @@
 
 package net.consensys.shomei.storage;
 
-public class WorldStateInMemoryStorageProxyTest extends WorldStateWrapperTestBase {
+import net.consensys.shomei.storage.worldstate.WorldStateStorage;
 
-  @Override
-  WorldStateRepository getWorldStateStorage() {
-    return new InMemoryWorldStateRepository();
-  }
+public interface StorageProvider {
+
+  WorldStateStorage getWorldStateStorage();
+
+  TraceManager getTraceManager();
+
+  TrieLogManager getTrieLogManager();
 }
