@@ -194,6 +194,14 @@ public class ZKTrie {
         .flatMap(this::get);
   }
 
+  public Optional<GetAndProve> getMerkleProof(final Hash hkey) {
+    return worldStateStorage
+        .getFlatLeaf(hkey)
+        .map(FlattenedLeaf::leafIndex)
+        .map(pathResolver::getLeafPath)
+        .map(this::getMerkleProof);
+  }
+
   public Trace readAndProve(final Hash hkey, final MimcSafeBytes<? extends Bytes> key) {
     // GET the openings HKEY-,  hash(k) , HKEY+
     final Range nearestKeys = worldStateStorage.getNearestKeys(hkey);
@@ -210,8 +218,8 @@ public class ZKTrie {
       final Bytes rightLeafPath =
           pathResolver.getLeafPath(nearestKeys.getRightNodeValue().leafIndex());
 
-      final GetAndProve leftData = state.getAndProve(leftLeafPath);
-      final GetAndProve rightData = state.getAndProve(rightLeafPath);
+      final GetAndProve leftData = getMerkleProof(leftLeafPath);
+      final GetAndProve rightData = getMerkleProof(rightLeafPath);
 
       return readZeroTrace
           .withKey(key.getOriginalUnsafeValue())
@@ -232,7 +240,7 @@ public class ZKTrie {
       // GET path of hash(k)
       final Bytes leafPath = pathResolver.getLeafPath(currentFlatLeafValue.leafIndex());
       // READ hash(k)
-      final GetAndProve data = state.getAndProve(leafPath);
+      final GetAndProve data = getMerkleProof(leafPath);
 
       return readTrace
           .withKey(key.getOriginalUnsafeValue())
@@ -246,6 +254,10 @@ public class ZKTrie {
 
   private Optional<Bytes> get(final Bytes path) {
     return state.get(path);
+  }
+
+  private GetAndProve getMerkleProof(final Bytes path) {
+    return state.getAndProve(path);
   }
 
   public Trace putAndProve(
