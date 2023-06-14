@@ -13,7 +13,7 @@
 
 package net.consensys.shomei.rpc.server.model;
 
-import net.consensys.shomei.trie.proof.Trace;
+import net.consensys.shomei.trie.trace.Trace;
 
 import java.util.List;
 

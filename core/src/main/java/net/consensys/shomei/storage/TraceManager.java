@@ -15,7 +15,7 @@ package net.consensys.shomei.storage;
 
 import net.consensys.shomei.services.storage.api.KeyValueStorage;
 import net.consensys.shomei.services.storage.api.KeyValueStorageTransaction;
-import net.consensys.shomei.trie.proof.Trace;
+import net.consensys.shomei.trie.trace.Trace;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;

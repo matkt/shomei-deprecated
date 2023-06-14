@@ -18,13 +18,13 @@ import static net.consensys.shomei.util.bytes.MimcSafeBytes.unsafeFromBytes;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import net.consensys.shomei.trie.json.JsonTraceParser;
-import net.consensys.shomei.trie.proof.DeletionTrace;
-import net.consensys.shomei.trie.proof.InsertionTrace;
-import net.consensys.shomei.trie.proof.ReadTrace;
-import net.consensys.shomei.trie.proof.ReadZeroTrace;
-import net.consensys.shomei.trie.proof.Trace;
-import net.consensys.shomei.trie.proof.UpdateTrace;
 import net.consensys.shomei.trie.storage.InMemoryStorage;
+import net.consensys.shomei.trie.trace.DeletionTrace;
+import net.consensys.shomei.trie.trace.InsertionTrace;
+import net.consensys.shomei.trie.trace.ReadTrace;
+import net.consensys.shomei.trie.trace.ReadZeroTrace;
+import net.consensys.shomei.trie.trace.Trace;
+import net.consensys.shomei.trie.trace.UpdateTrace;
 import net.consensys.shomei.util.bytes.MimcSafeBytes;
 import net.consensys.zkevm.HashProvider;
 

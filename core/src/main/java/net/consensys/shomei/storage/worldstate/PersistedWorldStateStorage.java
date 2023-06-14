@@ -120,7 +120,6 @@ public class PersistedWorldStateStorage implements WorldStateStorage {
 
   @Override
   public Optional<Bytes> getTrieNode(final Bytes location, final Bytes nodeHash) {
-    // TODO use location
     return trieNodeTx.get().get(location.toArrayUnsafe()).map(Bytes::wrap);
   }
 

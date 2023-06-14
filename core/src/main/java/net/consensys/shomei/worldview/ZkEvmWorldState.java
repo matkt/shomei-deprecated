@@ -21,11 +21,11 @@ import net.consensys.shomei.ZkAccount;
 import net.consensys.shomei.ZkValue;
 import net.consensys.shomei.storage.worldstate.WorldStateStorage;
 import net.consensys.shomei.trie.ZKTrie;
-import net.consensys.shomei.trie.proof.Trace;
 import net.consensys.shomei.trie.storage.AccountTrieRepositoryWrapper;
 import net.consensys.shomei.trie.storage.StorageTrieRepositoryWrapper;
 import net.consensys.shomei.trie.storage.TrieStorage;
 import net.consensys.shomei.trie.storage.TrieStorage.TrieUpdater;
+import net.consensys.shomei.trie.trace.Trace;
 import net.consensys.shomei.trielog.AccountKey;
 import net.consensys.shomei.trielog.StorageSlotKey;
 
@@ -70,6 +70,10 @@ public class ZkEvmWorldState {
     this.accumulator = new ZkEvmWorldStateUpdateAccumulator();
     this.zkEvmWorldStateStorage = zkEvmWorldStateStorage;
     this.traceWriter = traceWriter;
+  }
+
+  public WorldStateStorage getZkEvmWorldStateStorage() {
+    return zkEvmWorldStateStorage;
   }
 
   public void commit(final long blockNumber, final Hash blockHash, final boolean generateTrace) {

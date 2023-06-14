@@ -22,7 +22,7 @@ import net.consensys.shomei.rpc.server.model.RollupGetZkEVMStateMerkleProofV0Res
 import net.consensys.shomei.rpc.server.model.RollupGetZkEvmStateV0Parameter;
 import net.consensys.shomei.storage.TraceManager;
 import net.consensys.shomei.trie.ZKTrie;
-import net.consensys.shomei.trie.proof.Trace;
+import net.consensys.shomei.trie.trace.Trace;
 
 import java.util.ArrayList;
 import java.util.List;

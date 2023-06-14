@@ -66,7 +66,7 @@ public class StoredSparseMerkleTrie {
     return root.accept(getGetVisitor(), path).getValue();
   }
 
-  record GetAndProve(Optional<Bytes> nodeValue, List<Node<Bytes>> proof) {}
+  public record GetAndProve(Optional<Bytes> nodeValue, List<Node<Bytes>> proof) {}
 
   /**
    * The `getAndProve` method retrieves the value associated with the given key in the sparse Merkle

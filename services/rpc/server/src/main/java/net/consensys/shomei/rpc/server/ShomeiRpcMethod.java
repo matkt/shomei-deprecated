@@ -18,6 +18,8 @@ public enum ShomeiRpcMethod {
 
   ROLLUP_GET_ZKEVM_BLOCK_NUMBER("rollup_getZkEVMBlockNumber"),
 
+  ROLLUP_GET_PROOF("rollup_getProof"),
+
   ROLLUP_GET_ZKEVM_STATE_MERKLE_PROOF_V0("rollup_getZkEVMStateMerkleProofV0");
 
   private final String methodName;

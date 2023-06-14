@@ -20,7 +20,7 @@ import net.consensys.shomei.services.storage.rocksdb.configuration.RocksDBConfig
 import net.consensys.shomei.storage.worldstate.PersistedWorldStateStorage;
 import net.consensys.shomei.storage.worldstate.WorldStateStorage.WorldStateUpdater;
 import net.consensys.shomei.trie.model.FlattenedLeaf;
-import net.consensys.shomei.trie.proof.Trace;
+import net.consensys.shomei.trie.trace.Trace;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;

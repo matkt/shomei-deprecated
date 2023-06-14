@@ -11,11 +11,11 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package net.consensys.shomei.trie.proof.builder;
+package net.consensys.shomei.trie.trace.builder;
 
 import net.consensys.shomei.trie.model.LeafOpening;
-import net.consensys.shomei.trie.proof.Proof;
-import net.consensys.shomei.trie.proof.ReadZeroTrace;
+import net.consensys.shomei.trie.trace.Proof;
+import net.consensys.shomei.trie.trace.ReadZeroTrace;
 
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.ethereum.trie.Node;

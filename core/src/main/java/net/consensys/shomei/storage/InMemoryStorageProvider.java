@@ -16,7 +16,7 @@ package net.consensys.shomei.storage;
 import net.consensys.shomei.observer.TrieLogObserver.TrieLogIdentifier;
 import net.consensys.shomei.storage.worldstate.InMemoryWorldStateStorage;
 import net.consensys.shomei.storage.worldstate.WorldStateStorage;
-import net.consensys.shomei.trie.proof.Trace;
+import net.consensys.shomei.trie.trace.Trace;
 
 import java.util.HashMap;
 import java.util.List;

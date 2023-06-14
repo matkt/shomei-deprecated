@@ -11,108 +11,101 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package net.consensys.shomei.trie.proof.builder;
+package net.consensys.shomei.trie.trace.builder;
 
 import net.consensys.shomei.trie.model.LeafOpening;
-import net.consensys.shomei.trie.proof.DeletionTrace;
-import net.consensys.shomei.trie.proof.Proof;
+import net.consensys.shomei.trie.trace.InsertionTrace;
+import net.consensys.shomei.trie.trace.Proof;
 
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.ethereum.trie.Node;
 
-public final class DeletionTraceBuilder {
+public final class InsertionTraceBuilder {
   private Bytes location = Bytes.EMPTY;
   private long newNextFreeNode;
   private Node<Bytes> oldSubRoot;
   private Node<Bytes> newSubRoot;
   private Proof leftProof;
-  private Proof deletedProof;
+  private Proof newProof;
   private Proof rightProof;
   private Bytes key;
-  private Bytes deletedValue;
+  private Bytes value;
   private LeafOpening priorLeftLeaf;
-  private LeafOpening priorDeletedLeaf;
   private LeafOpening priorRightLeaf;
 
-  private DeletionTraceBuilder() {}
+  private InsertionTraceBuilder() {}
 
-  public static DeletionTraceBuilder aDeletionTrace() {
-    return new DeletionTraceBuilder();
+  public static InsertionTraceBuilder anInsertionTrace() {
+    return new InsertionTraceBuilder();
   }
 
-  public DeletionTraceBuilder withLocation(Bytes location) {
+  public InsertionTraceBuilder withLocation(Bytes location) {
     this.location = location;
     return this;
   }
 
-  public DeletionTraceBuilder withNewNextFreeNode(long newNextFreeNode) {
+  public InsertionTraceBuilder withNewNextFreeNode(long newNextFreeNode) {
     this.newNextFreeNode = newNextFreeNode;
     return this;
   }
 
-  public DeletionTraceBuilder withDeletedValue(Bytes deletedValue) {
-    this.deletedValue = deletedValue;
-    return this;
-  }
-
-  public DeletionTraceBuilder withOldSubRoot(Node<Bytes> oldSubRoot) {
+  public InsertionTraceBuilder withOldSubRoot(Node<Bytes> oldSubRoot) {
     this.oldSubRoot = oldSubRoot;
     return this;
   }
 
-  public DeletionTraceBuilder withNewSubRoot(Node<Bytes> newSubRoot) {
+  public InsertionTraceBuilder withNewSubRoot(Node<Bytes> newSubRoot) {
     this.newSubRoot = newSubRoot;
     return this;
   }
 
-  public DeletionTraceBuilder withLeftProof(Proof leftProof) {
+  public InsertionTraceBuilder withLeftProof(Proof leftProof) {
     this.leftProof = leftProof;
     return this;
   }
 
-  public DeletionTraceBuilder withDeletedProof(Proof deletedProof) {
-    this.deletedProof = deletedProof;
+  public InsertionTraceBuilder withNewProof(Proof newProof) {
+    this.newProof = newProof;
     return this;
   }
 
-  public DeletionTraceBuilder withRightProof(Proof rightProof) {
+  public InsertionTraceBuilder withRightProof(Proof rightProof) {
     this.rightProof = rightProof;
     return this;
   }
 
-  public DeletionTraceBuilder withKey(Bytes key) {
+  public InsertionTraceBuilder withKey(Bytes key) {
     this.key = key;
     return this;
   }
 
-  public DeletionTraceBuilder withPriorLeftLeaf(LeafOpening priorLeftLeaf) {
+  public InsertionTraceBuilder withValue(Bytes value) {
+    this.value = value;
+    return this;
+  }
+
+  public InsertionTraceBuilder withPriorLeftLeaf(LeafOpening priorLeftLeaf) {
     this.priorLeftLeaf = priorLeftLeaf;
     return this;
   }
 
-  public DeletionTraceBuilder withPriorDeletedLeaf(LeafOpening priorDeletedLeaf) {
-    this.priorDeletedLeaf = priorDeletedLeaf;
-    return this;
-  }
-
-  public DeletionTraceBuilder withPriorRightLeaf(LeafOpening priorRightLeaf) {
+  public InsertionTraceBuilder withPriorRightLeaf(LeafOpening priorRightLeaf) {
     this.priorRightLeaf = priorRightLeaf;
     return this;
   }
 
-  public DeletionTrace build() {
-    return new DeletionTrace(
+  public InsertionTrace build() {
+    return new InsertionTrace(
         location,
         newNextFreeNode,
         oldSubRoot,
         newSubRoot,
         leftProof,
-        deletedProof,
+        newProof,
         rightProof,
         key,
-        deletedValue,
+        value,
         priorLeftLeaf,
-        priorDeletedLeaf,
         priorRightLeaf);
   }
 }

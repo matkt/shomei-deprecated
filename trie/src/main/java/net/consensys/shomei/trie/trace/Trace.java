@@ -11,7 +11,7 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package net.consensys.shomei.trie.proof;
+package net.consensys.shomei.trie.trace;
 
 import java.util.List;
 

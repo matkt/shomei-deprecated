@@ -20,17 +20,17 @@ import net.consensys.shomei.trie.model.FlattenedLeaf;
 import net.consensys.shomei.trie.model.LeafOpening;
 import net.consensys.shomei.trie.node.EmptyLeafNode;
 import net.consensys.shomei.trie.path.PathResolver;
-import net.consensys.shomei.trie.proof.EmptyTrace;
-import net.consensys.shomei.trie.proof.Proof;
-import net.consensys.shomei.trie.proof.Trace;
-import net.consensys.shomei.trie.proof.builder.DeletionTraceBuilder;
-import net.consensys.shomei.trie.proof.builder.InsertionTraceBuilder;
-import net.consensys.shomei.trie.proof.builder.ReadTraceBuilder;
-import net.consensys.shomei.trie.proof.builder.ReadZeroTraceBuilder;
-import net.consensys.shomei.trie.proof.builder.UpdateTraceBuilder;
 import net.consensys.shomei.trie.storage.InMemoryStorage;
 import net.consensys.shomei.trie.storage.TrieStorage;
 import net.consensys.shomei.trie.storage.TrieStorage.Range;
+import net.consensys.shomei.trie.trace.EmptyTrace;
+import net.consensys.shomei.trie.trace.Proof;
+import net.consensys.shomei.trie.trace.Trace;
+import net.consensys.shomei.trie.trace.builder.DeletionTraceBuilder;
+import net.consensys.shomei.trie.trace.builder.InsertionTraceBuilder;
+import net.consensys.shomei.trie.trace.builder.ReadTraceBuilder;
+import net.consensys.shomei.trie.trace.builder.ReadZeroTraceBuilder;
+import net.consensys.shomei.trie.trace.builder.UpdateTraceBuilder;
 import net.consensys.shomei.util.bytes.MimcSafeBytes;
 import net.consensys.zkevm.HashProvider;
 
@@ -194,12 +194,15 @@ public class ZKTrie {
         .flatMap(this::get);
   }
 
-  public Optional<GetAndProve> getMerkleProof(final Hash hkey) {
+  public Optional<GetAndProve> getValueAndMerkleProof(final Hash hkey) {
     return worldStateStorage
         .getFlatLeaf(hkey)
         .map(FlattenedLeaf::leafIndex)
-        .map(pathResolver::getLeafPath)
-        .map(this::getMerkleProof);
+        .map(this::getValueAndMerkleProof);
+  }
+
+  public GetAndProve getValueAndMerkleProof(final Long leafIndex) {
+    return getValueAndMerkleProof(pathResolver.getLeafPath(leafIndex));
   }
 
   public Trace readAndProve(final Hash hkey, final MimcSafeBytes<? extends Bytes> key) {
@@ -218,8 +221,8 @@ public class ZKTrie {
       final Bytes rightLeafPath =
           pathResolver.getLeafPath(nearestKeys.getRightNodeValue().leafIndex());
 
-      final GetAndProve leftData = getMerkleProof(leftLeafPath);
-      final GetAndProve rightData = getMerkleProof(rightLeafPath);
+      final GetAndProve leftData = getValueAndMerkleProof(leftLeafPath);
+      final GetAndProve rightData = getValueAndMerkleProof(rightLeafPath);
 
       return readZeroTrace
           .withKey(key.getOriginalUnsafeValue())
@@ -240,7 +243,7 @@ public class ZKTrie {
       // GET path of hash(k)
       final Bytes leafPath = pathResolver.getLeafPath(currentFlatLeafValue.leafIndex());
       // READ hash(k)
-      final GetAndProve data = getMerkleProof(leafPath);
+      final GetAndProve data = getValueAndMerkleProof(leafPath);
 
       return readTrace
           .withKey(key.getOriginalUnsafeValue())
@@ -256,7 +259,7 @@ public class ZKTrie {
     return state.get(path);
   }
 
-  private GetAndProve getMerkleProof(final Bytes path) {
+  private GetAndProve getValueAndMerkleProof(final Bytes path) {
     return state.getAndProve(path);
   }
 

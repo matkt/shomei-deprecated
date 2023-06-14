@@ -25,8 +25,8 @@ import net.consensys.shomei.rpc.server.model.RollupGetZkEvmStateV0Parameter;
 import net.consensys.shomei.storage.TraceManager;
 import net.consensys.shomei.storage.worldstate.InMemoryWorldStateStorage;
 import net.consensys.shomei.trie.ZKTrie;
-import net.consensys.shomei.trie.proof.Trace;
 import net.consensys.shomei.trie.storage.AccountTrieRepositoryWrapper;
+import net.consensys.shomei.trie.trace.Trace;
 import net.consensys.shomei.util.bytes.MimcSafeBytes;
 
 import java.util.List;

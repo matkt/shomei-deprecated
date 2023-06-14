@@ -11,7 +11,7 @@
  * specific language governing permissions and limitations under the License.
  */
 
-package net.consensys.shomei.trie.proof;
+package net.consensys.shomei.trie.trace;
 
 import net.consensys.shomei.trie.model.LeafOpening;
 
@@ -22,35 +22,38 @@ import org.hyperledger.besu.ethereum.rlp.RLPOutput;
 import org.hyperledger.besu.ethereum.trie.Node;
 import org.hyperledger.besu.ethereum.trie.StoredNode;
 
-public class ReadTrace implements Trace {
+public class ReadZeroTrace implements Trace {
 
   private Bytes location;
   private long nextFreeNode;
   public Node<Bytes> subRoot;
 
-  public LeafOpening leaf;
+  public LeafOpening leftLeaf;
 
-  public Proof proof;
+  public LeafOpening rightLeaf;
+
+  public Proof leftProof; // HKEY -
+  public Proof rightProof; // HKEY +
 
   public Bytes key;
 
-  public Bytes value;
-
-  public ReadTrace(
+  public ReadZeroTrace(
       final Bytes location,
       final long nextFreeNode,
       final Node<Bytes> subRoot,
-      final LeafOpening leaf,
-      final Proof proof,
-      final Bytes key,
-      final Bytes value) {
+      final LeafOpening leftLeaf,
+      final LeafOpening rightLeaf,
+      final Proof leftProof,
+      final Proof rightProof,
+      final Bytes key) {
     this.location = location;
     this.nextFreeNode = nextFreeNode;
     this.subRoot = subRoot;
-    this.leaf = leaf;
-    this.proof = proof;
+    this.leftLeaf = leftLeaf;
+    this.rightLeaf = rightLeaf;
+    this.leftProof = leftProof;
+    this.rightProof = rightProof;
     this.key = key;
-    this.value = value;
   }
 
   @Override
@@ -71,28 +74,32 @@ public class ReadTrace implements Trace {
     return subRoot;
   }
 
-  public LeafOpening getLeaf() {
-    return leaf;
+  public LeafOpening getLeftLeaf() {
+    return leftLeaf;
   }
 
-  public Proof getProof() {
-    return proof;
+  public LeafOpening getRightLeaf() {
+    return rightLeaf;
+  }
+
+  public Proof getLeftProof() {
+    return leftProof;
+  }
+
+  public Proof getRightProof() {
+    return rightProof;
   }
 
   public Bytes getKey() {
     return key;
   }
 
-  public Bytes getValue() {
-    return value;
-  }
-
   @Override
   public int getType() {
-    return READ_TRACE_CODE;
+    return READ_ZERO_TRACE_CODE;
   }
 
-  public static ReadTrace readFrom(final RLPInput in) {
+  public static ReadZeroTrace readFrom(final RLPInput in) {
     in.enterList();
     final Bytes location;
     if (in.nextIsNull()) {
@@ -103,12 +110,14 @@ public class ReadTrace implements Trace {
     }
     final long newNextFreeNode = in.readLongScalar();
     final Node<Bytes> subRoot = new StoredNode<>(null, null, Hash.wrap(in.readBytes32()));
-    final LeafOpening leaf = LeafOpening.readFrom(in.readBytes());
-    final Proof proof = Proof.readFrom(in);
+    final LeafOpening leftLeaf = LeafOpening.readFrom(in.readBytes());
+    final LeafOpening rightLeaf = LeafOpening.readFrom(in.readBytes());
+    final Proof leftProof = Proof.readFrom(in);
+    final Proof rightProof = Proof.readFrom(in);
     final Bytes key = in.readBytes();
-    final Bytes value = in.readBytes();
     in.leaveList();
-    return new ReadTrace(location, newNextFreeNode, subRoot, leaf, proof, key, value);
+    return new ReadZeroTrace(
+        location, newNextFreeNode, subRoot, leftLeaf, rightLeaf, leftProof, rightProof, key);
   }
 
   @Override
@@ -117,10 +126,11 @@ public class ReadTrace implements Trace {
     out.writeBytes(location);
     out.writeLongScalar(nextFreeNode);
     out.writeBytes(subRoot.getHash());
-    out.writeBytes(leaf.getEncodesBytes());
-    proof.writeTo(out);
+    out.writeBytes(leftLeaf.getEncodesBytes());
+    out.writeBytes(rightLeaf.getEncodesBytes());
+    leftProof.writeTo(out);
+    rightProof.writeTo(out);
     out.writeBytes(key);
-    out.writeBytes(value);
     out.endList();
   }
 }
