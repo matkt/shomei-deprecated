@@ -28,7 +28,7 @@ public class UpdateTrace implements Trace {
   public Node<Bytes> oldSubRoot;
   public Node<Bytes> newSubRoot;
 
-  public Proof proof;
+  public TraceProof proof;
 
   public Bytes key;
   public Bytes oldValue;
@@ -42,7 +42,7 @@ public class UpdateTrace implements Trace {
       final long newNextFreeNode,
       final Node<Bytes> oldSubRoot,
       final Node<Bytes> newSubRoot,
-      final Proof proof,
+      final TraceProof proof,
       final Bytes key,
       final Bytes oldValue,
       final Bytes newValue,
@@ -80,7 +80,7 @@ public class UpdateTrace implements Trace {
     return newSubRoot;
   }
 
-  public Proof getProof() {
+  public TraceProof getProof() {
     return proof;
   }
 
@@ -117,7 +117,7 @@ public class UpdateTrace implements Trace {
     final long newNextFreeNode = in.readLongScalar();
     final Node<Bytes> oldSubRoot = new StoredNode<>(null, null, Hash.wrap(in.readBytes32()));
     final Node<Bytes> newSubRoot = new StoredNode<>(null, null, Hash.wrap(in.readBytes32()));
-    final Proof proof = Proof.readFrom(in);
+    final TraceProof proof = TraceProof.readFrom(in);
     final Bytes key = in.readBytes();
     final Bytes oldValue = in.readBytes();
     final Bytes newValue = in.readBytes();

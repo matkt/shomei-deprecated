@@ -14,24 +14,18 @@
 package net.consensys.shomei.proof;
 
 import net.consensys.shomei.ZkAccount;
-import net.consensys.shomei.trie.StoredSparseMerkleTrie.GetAndProve;
 import net.consensys.shomei.trie.ZKTrie;
+import net.consensys.shomei.trie.proof.MerkleInclusionProof;
+import net.consensys.shomei.trie.proof.MerkleProof;
+import net.consensys.shomei.trie.storage.AccountTrieRepositoryWrapper;
 import net.consensys.shomei.trie.storage.StorageTrieRepositoryWrapper;
 import net.consensys.shomei.trielog.AccountKey;
 import net.consensys.shomei.trielog.StorageSlotKey;
 import net.consensys.shomei.worldview.ZkEvmWorldState;
 
+import java.util.ArrayList;
 import java.util.List;
-import java.util.NavigableMap;
-import java.util.Optional;
-import java.util.SortedMap;
-import java.util.TreeMap;
 import java.util.stream.Collectors;
-
-import org.apache.tuweni.bytes.Bytes;
-import org.apache.tuweni.units.bigints.UInt256;
-import org.hyperledger.besu.ethereum.trie.Node;
-import org.hyperledger.besu.ethereum.trie.Proof;
 
 public class WorldStateProofProvider {
 
@@ -41,35 +35,32 @@ public class WorldStateProofProvider {
     this.zkEvmWorldState = zkEvmWorldState;
   }
 
-  public Optional<WorldStateProof> getAccountProof(
+  public MerkleAccountProof getAccountProof(
       final AccountKey accountKey, final List<StorageSlotKey> accountStorageKeys) {
 
     final ZKTrie accountTrie =
         ZKTrie.loadTrie(
-            zkEvmWorldState.getStateRootHash(), zkEvmWorldState.getZkEvmWorldStateStorage());
-    final Optional<Long> maybeAccountLeafIndex = accountTrie.getLeafIndex(accountKey.accountHash());
-    final Optional<GetAndProve> accountProof =
-        maybeAccountLeafIndex.map(accountTrie::getValueAndMerkleProof);
-
-    return accountProof
-        .flatMap(GetAndProve::nodeValue)
-        .map(
-            bytes -> {
-              ZkAccount zkAccount = ZkAccount.fromEncodedBytes(accountKey, bytes);
-              final SortedMap<UInt256, Proof<Bytes>> storageProofs =
-                  getStorageProofs(zkAccount, maybeAccountLeafIndex.get(), accountStorageKeys);
-              return new WorldStateProof(
-                  zkAccount,
-                  new Proof<>(
-                      accountProof.get().nodeValue(),
-                      accountProof.get().proof().stream()
-                          .map(Node::getEncodedBytes)
-                          .collect(Collectors.toList())),
-                  storageProofs);
-            });
+            zkEvmWorldState.getStateRootHash(),
+            new AccountTrieRepositoryWrapper(zkEvmWorldState.getZkEvmWorldStateStorage()));
+    final MerkleProof accountProof =
+        accountTrie.getProof(accountKey.accountHash(), accountKey.address());
+    if (accountProof instanceof MerkleInclusionProof merkleInclusionProof) {
+      ZkAccount zkAccount =
+          ZkAccount.fromEncodedBytes(
+              accountKey, merkleInclusionProof.getProof().getValue().orElseThrow());
+      if (!zkAccount.getStorageRoot().equals(ZKTrie.DEFAULT_TRIE_ROOT)) {
+        final List<MerkleProof> storageProofs =
+            getStorageProofs(zkAccount, merkleInclusionProof.getLeafIndex(), accountStorageKeys);
+        return new MerkleAccountProof(accountProof, storageProofs);
+      } else {
+        return new MerkleAccountProof(accountProof, new ArrayList<>());
+      }
+    } else {
+      return new MerkleAccountProof(accountProof, new ArrayList<>());
+    }
   }
 
-  private SortedMap<UInt256, Proof<Bytes>> getStorageProofs(
+  private List<MerkleProof> getStorageProofs(
       final ZkAccount account,
       final Long accountIndex,
       final List<StorageSlotKey> accountStorageKeys) {
@@ -78,24 +69,8 @@ public class WorldStateProofProvider {
             account.getStorageRoot(),
             new StorageTrieRepositoryWrapper(
                 accountIndex, zkEvmWorldState.getZkEvmWorldStateStorage()));
-    final NavigableMap<UInt256, Proof<Bytes>> storageProofs = new TreeMap<>();
-    accountStorageKeys.forEach(
-        key -> {
-          storageTrie
-              .getLeafIndex(key.slotHash())
-              .ifPresent(
-                  slotLeafIndex -> {
-                    final GetAndProve valueAndMerkleProof =
-                        storageTrie.getValueAndMerkleProof(slotLeafIndex);
-                    storageProofs.put(
-                        key.slotKey().getOriginalUnsafeValue(),
-                        new Proof<>(
-                            valueAndMerkleProof.nodeValue(),
-                            valueAndMerkleProof.proof().stream()
-                                .map(Node::getEncodedBytes)
-                                .collect(Collectors.toList())));
-                  });
-        });
-    return storageProofs;
+    return accountStorageKeys.stream()
+        .map(key -> storageTrie.getProof(key.slotHash(), key.slotKey()))
+        .collect(Collectors.toList());
   }
 }

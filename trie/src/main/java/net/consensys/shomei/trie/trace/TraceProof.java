@@ -21,12 +21,12 @@ import org.hyperledger.besu.ethereum.rlp.RLPOutput;
 import org.hyperledger.besu.ethereum.trie.Node;
 import org.hyperledger.besu.ethereum.trie.StoredNode;
 
-public class Proof {
+public class TraceProof {
 
   public long leafIndex;
   public List<Node<Bytes>> siblings;
 
-  public Proof(final long leafIndex, final List<Node<Bytes>> siblings) {
+  public TraceProof(final long leafIndex, final List<Node<Bytes>> siblings) {
     this.leafIndex = leafIndex;
     this.siblings = siblings;
   }
@@ -39,17 +39,13 @@ public class Proof {
     return siblings;
   }
 
-  public void load() {
-    siblings.parallelStream().forEach(Node::getHash);
-  }
-
-  public static Proof readFrom(final RLPInput in) {
+  public static TraceProof readFrom(final RLPInput in) {
     in.enterList();
     final long leafIndex = in.readLongScalar();
     final List<Node<Bytes>> siblings =
         in.readList(rlpInput -> new StoredNode<>(null, null, rlpInput.readBytes32()));
     in.leaveList();
-    return new Proof(leafIndex, siblings);
+    return new TraceProof(leafIndex, siblings);
   }
 
   public void writeTo(final RLPOutput out) {

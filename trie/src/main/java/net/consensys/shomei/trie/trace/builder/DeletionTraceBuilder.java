@@ -15,7 +15,7 @@ package net.consensys.shomei.trie.trace.builder;
 
 import net.consensys.shomei.trie.model.LeafOpening;
 import net.consensys.shomei.trie.trace.DeletionTrace;
-import net.consensys.shomei.trie.trace.Proof;
+import net.consensys.shomei.trie.trace.TraceProof;
 
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.ethereum.trie.Node;
@@ -25,9 +25,9 @@ public final class DeletionTraceBuilder {
   private long newNextFreeNode;
   private Node<Bytes> oldSubRoot;
   private Node<Bytes> newSubRoot;
-  private Proof leftProof;
-  private Proof deletedProof;
-  private Proof rightProof;
+  private TraceProof leftProof;
+  private TraceProof deletedProof;
+  private TraceProof rightProof;
   private Bytes key;
   private Bytes deletedValue;
   private LeafOpening priorLeftLeaf;
@@ -65,17 +65,17 @@ public final class DeletionTraceBuilder {
     return this;
   }
 
-  public DeletionTraceBuilder withLeftProof(Proof leftProof) {
+  public DeletionTraceBuilder withLeftProof(TraceProof leftProof) {
     this.leftProof = leftProof;
     return this;
   }
 
-  public DeletionTraceBuilder withDeletedProof(Proof deletedProof) {
+  public DeletionTraceBuilder withDeletedProof(TraceProof deletedProof) {
     this.deletedProof = deletedProof;
     return this;
   }
 
-  public DeletionTraceBuilder withRightProof(Proof rightProof) {
+  public DeletionTraceBuilder withRightProof(TraceProof rightProof) {
     this.rightProof = rightProof;
     return this;
   }

@@ -30,9 +30,9 @@ public class InsertionTrace implements Trace {
   public Node<Bytes> newSubRoot;
 
   // `New` correspond to the inserted leaf
-  public Proof leftProof; // HKEY -
-  public Proof newProof; // hash(k)
-  public Proof rightProof; // HKEY +
+  public TraceProof leftProof; // HKEY -
+  public TraceProof newProof; // hash(k)
+  public TraceProof rightProof; // HKEY +
   public Bytes key;
   public Bytes value;
 
@@ -45,9 +45,9 @@ public class InsertionTrace implements Trace {
       final long newNextFreeNode,
       final Node<Bytes> oldSubRoot,
       final Node<Bytes> newSubRoot,
-      final Proof leftProof,
-      final Proof newProof,
-      final Proof rightProof,
+      final TraceProof leftProof,
+      final TraceProof newProof,
+      final TraceProof rightProof,
       final Bytes key,
       final Bytes value,
       final LeafOpening priorLeftLeaf,
@@ -87,15 +87,15 @@ public class InsertionTrace implements Trace {
     return newSubRoot;
   }
 
-  public Proof getLeftProof() {
+  public TraceProof getLeftProof() {
     return leftProof;
   }
 
-  public Proof getNewProof() {
+  public TraceProof getNewProof() {
     return newProof;
   }
 
-  public Proof getRightProof() {
+  public TraceProof getRightProof() {
     return rightProof;
   }
 
@@ -132,9 +132,9 @@ public class InsertionTrace implements Trace {
     final long newNextFreeNode = in.readLongScalar();
     final Node<Bytes> oldSubRoot = new StoredNode<>(null, null, Hash.wrap(in.readBytes32()));
     final Node<Bytes> newSubRoot = new StoredNode<>(null, null, Hash.wrap(in.readBytes32()));
-    final Proof leftProof = Proof.readFrom(in);
-    final Proof newProof = Proof.readFrom(in);
-    final Proof rightProof = Proof.readFrom(in);
+    final TraceProof leftProof = TraceProof.readFrom(in);
+    final TraceProof newProof = TraceProof.readFrom(in);
+    final TraceProof rightProof = TraceProof.readFrom(in);
     final Bytes key = in.readBytes();
     final Bytes value = in.readBytes();
     final LeafOpening priorLeftLeaf = LeafOpening.readFrom(in.readBytes());

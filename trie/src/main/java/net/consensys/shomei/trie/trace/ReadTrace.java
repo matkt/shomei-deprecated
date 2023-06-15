@@ -30,7 +30,7 @@ public class ReadTrace implements Trace {
 
   public LeafOpening leaf;
 
-  public Proof proof;
+  public TraceProof proof;
 
   public Bytes key;
 
@@ -41,7 +41,7 @@ public class ReadTrace implements Trace {
       final long nextFreeNode,
       final Node<Bytes> subRoot,
       final LeafOpening leaf,
-      final Proof proof,
+      final TraceProof proof,
       final Bytes key,
       final Bytes value) {
     this.location = location;
@@ -75,7 +75,7 @@ public class ReadTrace implements Trace {
     return leaf;
   }
 
-  public Proof getProof() {
+  public TraceProof getProof() {
     return proof;
   }
 
@@ -104,7 +104,7 @@ public class ReadTrace implements Trace {
     final long newNextFreeNode = in.readLongScalar();
     final Node<Bytes> subRoot = new StoredNode<>(null, null, Hash.wrap(in.readBytes32()));
     final LeafOpening leaf = LeafOpening.readFrom(in.readBytes());
-    final Proof proof = Proof.readFrom(in);
+    final TraceProof proof = TraceProof.readFrom(in);
     final Bytes key = in.readBytes();
     final Bytes value = in.readBytes();
     in.leaveList();

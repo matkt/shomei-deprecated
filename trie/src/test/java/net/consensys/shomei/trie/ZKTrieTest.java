@@ -55,7 +55,7 @@ public class ZKTrieTest {
     final MimcSafeBytes<Bytes> value = unsafeFromBytes(createDumDigest(42));
     final Hash hkey = HashProvider.mimc(key);
 
-    zkTrie.putAndProve(hkey, key, value);
+    zkTrie.putWithTrace(hkey, key, value);
     zkTrie.commit();
     assertThat(storage.getTrieNodeStorage()).isNotEmpty();
     assertThat(zkTrie.getSubRootHash())
@@ -79,7 +79,7 @@ public class ZKTrieTest {
     final MimcSafeBytes<Bytes> newDumValue = unsafeFromBytes(createDumDigest(42));
     final Hash hkey = HashProvider.mimc(key);
 
-    zkTrie.putAndProve(hkey, key, dumValue);
+    zkTrie.putWithTrace(hkey, key, dumValue);
 
     assertThat(zkTrie.getSubRootHash())
         .isNotEqualTo(
@@ -92,7 +92,7 @@ public class ZKTrieTest {
 
     // Note : the tree should be in exactly the same state as after directly
     // inserting 42
-    zkTrie.putAndProve(hkey, key, newDumValue);
+    zkTrie.putWithTrace(hkey, key, newDumValue);
 
     assertThat(zkTrie.getSubRootHash())
         .isEqualTo(
@@ -113,7 +113,7 @@ public class ZKTrieTest {
     final MimcSafeBytes<Bytes> value = unsafeFromBytes(createDumDigest(41));
     final Hash hkey = HashProvider.mimc(key);
 
-    zkTrie.putAndProve(hkey, key, value);
+    zkTrie.putWithTrace(hkey, key, value);
 
     assertThat(zkTrie.getSubRootHash())
         .isNotEqualTo(
@@ -124,7 +124,7 @@ public class ZKTrieTest {
             Bytes.fromHexString(
                 "2844b523cac49f6c5205b7b44065a741fd5c4ba8481c0ebee1d06ecf33f5ef40"));
 
-    zkTrie.removeAndProve(hkey, key);
+    zkTrie.removeWithTrace(hkey, key);
 
     assertThat(zkTrie.getSubRootHash())
         .isEqualTo(

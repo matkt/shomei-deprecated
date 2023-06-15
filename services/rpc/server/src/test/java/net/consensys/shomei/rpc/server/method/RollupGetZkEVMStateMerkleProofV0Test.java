@@ -96,7 +96,8 @@ public class RollupGetZkEVMStateMerkleProofV0Test {
 
     Bytes trace =
         Trace.serialize(
-            List.of(accountStateTrie.readAndProve(Hash.ZERO, MimcSafeBytes.safeByte32(Hash.ZERO))));
+            List.of(
+                accountStateTrie.readWithTrace(Hash.ZERO, MimcSafeBytes.safeByte32(Hash.ZERO))));
 
     when(traceManager.getZkStateRootHash(anyLong()))
         .thenReturn(Optional.of(Hash.wrap(accountStateTrie.getTopRootHash())));

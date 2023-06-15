@@ -156,7 +156,7 @@ public class ZkEvmWorldState {
       if (accountValue.isRollforward()) {
         if (accountValue.isZeroRead() || accountValue.isNonZeroRead()) {
           // read zero or non zero
-          traces.add(zkAccountTrie.readAndProve(accountKey.accountHash(), accountKey.address()));
+          traces.add(zkAccountTrie.readWithTrace(accountKey.accountHash(), accountKey.address()));
         }
         // only read if the contract already exist
         if (accountValue.getPrior() != null) {
@@ -173,7 +173,7 @@ public class ZkEvmWorldState {
         zkAccountTrie.decrementNextFreeNode();
       }
       if (accountValue.getPrior() != null) {
-        traces.add(zkAccountTrie.removeAndProve(accountKey.accountHash(), accountKey.address()));
+        traces.add(zkAccountTrie.removeWithTrace(accountKey.accountHash(), accountKey.address()));
         // TODO remove all slots from storage : if we not do that the rollback will not work
         // get index leaf from DB and delete all keys starting by HKEY+index in trie branch
       }
@@ -183,7 +183,7 @@ public class ZkEvmWorldState {
     if (!accountValue.isRollforward()
         && accountValue.isRecreated()) { // decrement again in case of selfdestruct
       zkAccountTrie.decrementNextFreeNode();
-      zkAccountTrie.removeAndProve(accountKey.accountHash(), accountKey.address());
+      zkAccountTrie.removeWithTrace(accountKey.accountHash(), accountKey.address());
       // TODO remove all slots from storage : if we not do that the rollback will not work
       // get index leaf from DB and delete all keys starting by HKEY+index in trie branch
     }
@@ -201,7 +201,7 @@ public class ZkEvmWorldState {
         traces.addAll(updateSlots(accountKey, accountLeafIndex, accountValue, updater));
 
         traces.add(
-            zkAccountTrie.putAndProve(
+            zkAccountTrie.putWithTrace(
                 accountValue.getUpdated().getHkey(),
                 accountKey.address(),
                 accountValue.getUpdated().getEncodedBytes()));
@@ -232,7 +232,7 @@ public class ZkEvmWorldState {
                 if (Objects.equals(storageValue.getPrior(), storageValue.getUpdated())
                     || storageValue.isCleared()) {
                   traces.add(
-                      zkStorageTrie.readAndProve(
+                      zkStorageTrie.readWithTrace(
                           storageSlotKey.slotHash(), storageSlotKey.slotKey()));
                 }
               });
@@ -298,7 +298,7 @@ public class ZkEvmWorldState {
       }
       if (storageValue.getPrior() != null) {
         traces.add(
-            zkStorageTrie.removeAndProve(storageSlotKey.slotHash(), storageSlotKey.slotKey()));
+            zkStorageTrie.removeWithTrace(storageSlotKey.slotHash(), storageSlotKey.slotKey()));
       }
     }
 
@@ -307,7 +307,7 @@ public class ZkEvmWorldState {
       // update account or create
       if (storageValue.getUpdated() != null) {
         traces.add(
-            zkStorageTrie.putAndProve(
+            zkStorageTrie.putWithTrace(
                 storageSlotKey.slotHash(),
                 storageSlotKey.slotKey(),
                 safeUInt256(storageValue.getUpdated())));

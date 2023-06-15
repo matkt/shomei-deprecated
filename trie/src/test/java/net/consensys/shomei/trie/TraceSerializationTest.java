@@ -57,7 +57,7 @@ public class TraceSerializationTest {
     final MimcSafeBytes<Bytes> value = unsafeFromBytes(createDumDigest(41));
     final Hash hkey = HashProvider.mimc(key);
 
-    final InsertionTrace expectedTrace = (InsertionTrace) zkTrie.putAndProve(hkey, key, value);
+    final InsertionTrace expectedTrace = (InsertionTrace) zkTrie.putWithTrace(hkey, key, value);
 
     // try encode and decode
     final InsertionTrace decodedTrace =
@@ -78,9 +78,9 @@ public class TraceSerializationTest {
     final MimcSafeBytes<Bytes> newDumValue = unsafeFromBytes(createDumDigest(42));
     final Hash hkey = HashProvider.mimc(key);
 
-    zkTrie.putAndProve(hkey, key, dumValue);
+    zkTrie.putWithTrace(hkey, key, dumValue);
 
-    final UpdateTrace expectedTrace = (UpdateTrace) zkTrie.putAndProve(hkey, key, newDumValue);
+    final UpdateTrace expectedTrace = (UpdateTrace) zkTrie.putWithTrace(hkey, key, newDumValue);
 
     // try encode and decode
     final UpdateTrace decodedTrace =
@@ -99,9 +99,9 @@ public class TraceSerializationTest {
     final MimcSafeBytes<Bytes> value = unsafeFromBytes(createDumDigest(41));
     final Hash hkey = HashProvider.mimc(key);
 
-    zkTrie.putAndProve(hkey, key, value);
+    zkTrie.putWithTrace(hkey, key, value);
 
-    final DeletionTrace expectedTrace = (DeletionTrace) zkTrie.removeAndProve(hkey, key);
+    final DeletionTrace expectedTrace = (DeletionTrace) zkTrie.removeWithTrace(hkey, key);
 
     // try encode and decode
     final DeletionTrace decodedTrace =
@@ -122,7 +122,7 @@ public class TraceSerializationTest {
     final Hash hkey = HashProvider.mimc(key);
 
     // try read zero trace before inserting the key in the trie
-    final ReadZeroTrace expectedReadZeroTrace = (ReadZeroTrace) zkTrie.readAndProve(hkey, key);
+    final ReadZeroTrace expectedReadZeroTrace = (ReadZeroTrace) zkTrie.readWithTrace(hkey, key);
 
     // try encode and decode
     final ReadZeroTrace decodedReadZeroTrace =
@@ -131,10 +131,10 @@ public class TraceSerializationTest {
     assertThat(JSON_OBJECT_MAPPER.writeValueAsString(decodedReadZeroTrace))
         .isEqualTo(JSON_OBJECT_MAPPER.writeValueAsString(expectedReadZeroTrace));
 
-    zkTrie.putAndProve(hkey, key, dumValue);
+    zkTrie.putWithTrace(hkey, key, dumValue);
 
     // try read trace
-    final ReadTrace expectedReadTrace = (ReadTrace) zkTrie.readAndProve(hkey, key);
+    final ReadTrace expectedReadTrace = (ReadTrace) zkTrie.readWithTrace(hkey, key);
 
     // try encode and decode
     final ReadTrace decodedReadTrace =
@@ -156,8 +156,8 @@ public class TraceSerializationTest {
     final Hash hkey = HashProvider.mimc(key);
 
     List<Trace> expectedTraces = new ArrayList<>();
-    expectedTraces.add(zkTrie.putAndProve(hkey, key, dumValue));
-    expectedTraces.add(zkTrie.putAndProve(hkey, key, newDumValue));
+    expectedTraces.add(zkTrie.putWithTrace(hkey, key, dumValue));
+    expectedTraces.add(zkTrie.putWithTrace(hkey, key, newDumValue));
 
     // try encode and decode
     final List<Trace> decodedTraces = Trace.deserialize(RLP.input(Trace.serialize(expectedTraces)));

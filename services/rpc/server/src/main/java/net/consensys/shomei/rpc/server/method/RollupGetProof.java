@@ -13,7 +13,6 @@
 
 package net.consensys.shomei.rpc.server.method;
 
-import net.consensys.shomei.proof.WorldStateProof;
 import net.consensys.shomei.proof.WorldStateProofProvider;
 import net.consensys.shomei.rpc.server.ShomeiRpcMethod;
 import net.consensys.shomei.rpc.server.error.ShomeiJsonRpcErrorResponse;
@@ -27,7 +26,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.ethereum.api.jsonrpc.internal.JsonRpcRequestContext;
@@ -59,6 +57,8 @@ public class RollupGetProof implements JsonRpcMethod {
         getBlockParameterOrBlockHash(requestContext);
 
     Optional<ZkEvmWorldState> worldState = Optional.empty();
+    System.out.println(
+        blockParameterOrBlockHash.getHash() + " " + blockParameterOrBlockHash.getNumber());
     if (blockParameterOrBlockHash.isNumeric()) {
       worldState =
           worldStateArchive.getCachedWorldState(blockParameterOrBlockHash.getNumber().getAsLong());
@@ -67,18 +67,17 @@ public class RollupGetProof implements JsonRpcMethod {
           worldStateArchive.getCachedWorldState(blockParameterOrBlockHash.getHash().orElseThrow());
     }
     if (worldState.isPresent()) {
-      Optional<WorldStateProof> accountProof =
-          new WorldStateProofProvider(worldState.get()).getAccountProof(accountAddress, slotKeys);
-
+      final WorldStateProofProvider worldStateProofProvider =
+          new WorldStateProofProvider(worldState.get());
+      return new JsonRpcSuccessResponse(
+          requestContext.getRequest().getId(),
+          worldStateProofProvider.getAccountProof(accountAddress, slotKeys));
     } else {
       return new ShomeiJsonRpcErrorResponse(
           requestContext.getRequest().getId(),
           JsonRpcError.INVALID_REQUEST,
           "BLOCK_MISSING_IN_CHAIN - block is missing");
     }
-    return new JsonRpcSuccessResponse(
-        requestContext.getRequest().getId(),
-        Bytes.ofUnsignedLong(worldStateArchive.getCurrentBlockNumber()).toShortHexString());
   }
 
   private AccountKey getAccountAddress(final JsonRpcRequestContext request) {

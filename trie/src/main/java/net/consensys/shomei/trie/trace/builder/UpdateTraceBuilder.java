@@ -14,7 +14,7 @@
 package net.consensys.shomei.trie.trace.builder;
 
 import net.consensys.shomei.trie.model.LeafOpening;
-import net.consensys.shomei.trie.trace.Proof;
+import net.consensys.shomei.trie.trace.TraceProof;
 import net.consensys.shomei.trie.trace.UpdateTrace;
 
 import org.apache.tuweni.bytes.Bytes;
@@ -25,7 +25,7 @@ public final class UpdateTraceBuilder {
   private long newNextFreeNode;
   private Node<Bytes> oldSubRoot;
   private Node<Bytes> newSubRoot;
-  private Proof proof;
+  private TraceProof proof;
   private Bytes key;
   private Bytes oldValue;
   private Bytes newValue;
@@ -57,7 +57,7 @@ public final class UpdateTraceBuilder {
     return this;
   }
 
-  public UpdateTraceBuilder withProof(Proof proof) {
+  public UpdateTraceBuilder withProof(TraceProof proof) {
     this.proof = proof;
     return this;
   }

@@ -34,9 +34,9 @@ public class DeletionTrace implements Trace {
   private Bytes deletedValue;
 
   // `New` correspond to the inserted leaf
-  public Proof leftProof; // HKEY -
-  public Proof deletedProof; // hash(k)
-  public Proof rightProof; // HKEY +
+  public TraceProof leftProof; // HKEY -
+  public TraceProof deletedProof; // hash(k)
+  public TraceProof rightProof; // HKEY +
   public Bytes key;
 
   // Value of the leaf opening before being modified
@@ -49,9 +49,9 @@ public class DeletionTrace implements Trace {
       final long newNextFreeNode,
       final Node<Bytes> oldSubRoot,
       final Node<Bytes> newSubRoot,
-      final Proof leftProof,
-      final Proof deletedProof,
-      final Proof rightProof,
+      final TraceProof leftProof,
+      final TraceProof deletedProof,
+      final TraceProof rightProof,
       final Bytes key,
       final Bytes deletedValue,
       final LeafOpening priorLeftLeaf,
@@ -102,7 +102,7 @@ public class DeletionTrace implements Trace {
     return newSubRoot;
   }
 
-  public Proof getLeftProof() {
+  public TraceProof getLeftProof() {
     return leftProof;
   }
 
@@ -110,11 +110,11 @@ public class DeletionTrace implements Trace {
     return deletedValue;
   }
 
-  public Proof getDeletedProof() {
+  public TraceProof getDeletedProof() {
     return deletedProof;
   }
 
-  public Proof getRightProof() {
+  public TraceProof getRightProof() {
     return rightProof;
   }
 
@@ -147,9 +147,9 @@ public class DeletionTrace implements Trace {
     final long newNextFreeNode = in.readLongScalar();
     final Node<Bytes> oldSubRoot = new StoredNode<>(null, null, Hash.wrap(in.readBytes32()));
     final Node<Bytes> newSubRoot = new StoredNode<>(null, null, Hash.wrap(in.readBytes32()));
-    final Proof leftProof = Proof.readFrom(in);
-    final Proof deletedProof = Proof.readFrom(in);
-    final Proof rightProof = Proof.readFrom(in);
+    final TraceProof leftProof = TraceProof.readFrom(in);
+    final TraceProof deletedProof = TraceProof.readFrom(in);
+    final TraceProof rightProof = TraceProof.readFrom(in);
     final Bytes key = in.readBytes();
     final Bytes deletedValue = in.readBytes();
     final LeafOpening priorLeftLeaf = LeafOpening.readFrom(in.readBytes());

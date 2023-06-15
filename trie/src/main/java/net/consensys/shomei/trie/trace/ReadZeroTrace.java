@@ -32,8 +32,8 @@ public class ReadZeroTrace implements Trace {
 
   public LeafOpening rightLeaf;
 
-  public Proof leftProof; // HKEY -
-  public Proof rightProof; // HKEY +
+  public TraceProof leftProof; // HKEY -
+  public TraceProof rightProof; // HKEY +
 
   public Bytes key;
 
@@ -43,8 +43,8 @@ public class ReadZeroTrace implements Trace {
       final Node<Bytes> subRoot,
       final LeafOpening leftLeaf,
       final LeafOpening rightLeaf,
-      final Proof leftProof,
-      final Proof rightProof,
+      final TraceProof leftProof,
+      final TraceProof rightProof,
       final Bytes key) {
     this.location = location;
     this.nextFreeNode = nextFreeNode;
@@ -82,11 +82,11 @@ public class ReadZeroTrace implements Trace {
     return rightLeaf;
   }
 
-  public Proof getLeftProof() {
+  public TraceProof getLeftProof() {
     return leftProof;
   }
 
-  public Proof getRightProof() {
+  public TraceProof getRightProof() {
     return rightProof;
   }
 
@@ -112,8 +112,8 @@ public class ReadZeroTrace implements Trace {
     final Node<Bytes> subRoot = new StoredNode<>(null, null, Hash.wrap(in.readBytes32()));
     final LeafOpening leftLeaf = LeafOpening.readFrom(in.readBytes());
     final LeafOpening rightLeaf = LeafOpening.readFrom(in.readBytes());
-    final Proof leftProof = Proof.readFrom(in);
-    final Proof rightProof = Proof.readFrom(in);
+    final TraceProof leftProof = TraceProof.readFrom(in);
+    final TraceProof rightProof = TraceProof.readFrom(in);
     final Bytes key = in.readBytes();
     in.leaveList();
     return new ReadZeroTrace(

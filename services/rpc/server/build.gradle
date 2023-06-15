@@ -52,6 +52,9 @@ dependencies {
     implementation 'io.vertx:vertx-unit'
     implementation 'io.vertx:vertx-web'
 
+    // Jackson
+    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jdk8'
+
     // Test dependencies
     testImplementation 'junit:junit'
     testImplementation 'org.assertj:assertj-core'

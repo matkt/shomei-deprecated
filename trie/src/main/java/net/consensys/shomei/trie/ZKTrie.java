@@ -20,12 +20,15 @@ import net.consensys.shomei.trie.model.FlattenedLeaf;
 import net.consensys.shomei.trie.model.LeafOpening;
 import net.consensys.shomei.trie.node.EmptyLeafNode;
 import net.consensys.shomei.trie.path.PathResolver;
+import net.consensys.shomei.trie.proof.MerkleInclusionProof;
+import net.consensys.shomei.trie.proof.MerkleNonInclusionProof;
+import net.consensys.shomei.trie.proof.MerkleProof;
 import net.consensys.shomei.trie.storage.InMemoryStorage;
 import net.consensys.shomei.trie.storage.TrieStorage;
 import net.consensys.shomei.trie.storage.TrieStorage.Range;
 import net.consensys.shomei.trie.trace.EmptyTrace;
-import net.consensys.shomei.trie.trace.Proof;
 import net.consensys.shomei.trie.trace.Trace;
+import net.consensys.shomei.trie.trace.TraceProof;
 import net.consensys.shomei.trie.trace.builder.DeletionTraceBuilder;
 import net.consensys.shomei.trie.trace.builder.InsertionTraceBuilder;
 import net.consensys.shomei.trie.trace.builder.ReadTraceBuilder;
@@ -37,12 +40,15 @@ import net.consensys.zkevm.HashProvider;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.ethereum.trie.Node;
 import org.hyperledger.besu.ethereum.trie.NodeUpdater;
+import org.hyperledger.besu.ethereum.trie.Proof;
 
 /**
  * The ZKTrie class represents a zero-knowledge Merkle trie. It provides methods for storing,
@@ -182,8 +188,12 @@ public class ZKTrie {
     return pathResolver.getNextFreeLeafNodeIndex();
   }
 
+  public Optional<FlattenedLeaf> getFlatLeaf(final Hash hkey) {
+    return worldStateStorage.getFlatLeaf(hkey);
+  }
+
   public Optional<Long> getLeafIndex(final Hash hkey) {
-    return worldStateStorage.getFlatLeaf(hkey).map(FlattenedLeaf::leafIndex);
+    return getFlatLeaf(hkey).map(FlattenedLeaf::leafIndex);
   }
 
   public Optional<Bytes> get(final Hash hkey) {
@@ -194,18 +204,78 @@ public class ZKTrie {
         .flatMap(this::get);
   }
 
-  public Optional<GetAndProve> getValueAndMerkleProof(final Hash hkey) {
-    return worldStateStorage
-        .getFlatLeaf(hkey)
-        .map(FlattenedLeaf::leafIndex)
-        .map(this::getValueAndMerkleProof);
-  }
-
   public GetAndProve getValueAndMerkleProof(final Long leafIndex) {
     return getValueAndMerkleProof(pathResolver.getLeafPath(leafIndex));
   }
 
-  public Trace readAndProve(final Hash hkey, final MimcSafeBytes<? extends Bytes> key) {
+  private Optional<Bytes> get(final Bytes path) {
+    return state.get(path);
+  }
+
+  private GetAndProve getValueAndMerkleProof(final Bytes path) {
+    return state.getAndProve(path);
+  }
+
+  public MerkleProof getProof(final Hash hkey, final MimcSafeBytes<? extends Bytes> key) {
+    // GET the openings HKEY-,  hash(k) , HKEY+
+    final Range nearestKeys = worldStateStorage.getNearestKeys(hkey);
+    // CHECK if hash(k) exist
+    if (nearestKeys.getCenterNodeKey().isEmpty()) {
+
+      final FlattenedLeaf leftFlatLeafValue = nearestKeys.getLeftNodeValue();
+      final FlattenedLeaf rightFlatLeafValue = nearestKeys.getRightNodeValue();
+
+      // GET path of HKey-
+      final Bytes leftLeafPath = pathResolver.getLeafPath(leftFlatLeafValue.leafIndex());
+      // GET path of HKey+
+      final Bytes rightLeafPath = pathResolver.getLeafPath(rightFlatLeafValue.leafIndex());
+
+      final GetAndProve leftData = getValueAndMerkleProof(leftLeafPath);
+      final GetAndProve rightData = getValueAndMerkleProof(rightLeafPath);
+
+      return new MerkleNonInclusionProof(
+          key.getOriginalUnsafeValue(),
+          new Proof<>(
+              Optional.of(leftFlatLeafValue.leafValue()),
+              Stream.of(
+                      List.of(leftData.leaf().orElseThrow()),
+                      leftData.subProof(),
+                      List.of(state.root))
+                  .flatMap(List::stream)
+                  .map(Node::getEncodedBytes)
+                  .collect(Collectors.toList())),
+          new Proof<>(
+              Optional.of(rightFlatLeafValue.leafValue()),
+              Stream.of(
+                      List.of(rightData.leaf().orElseThrow()),
+                      rightData.subProof(),
+                      List.of(state.root))
+                  .flatMap(List::stream)
+                  .map(Node::getEncodedBytes)
+                  .collect(Collectors.toList())));
+
+    } else {
+
+      final FlattenedLeaf currentFlatLeafValue = nearestKeys.getCenterNodeValue().orElseThrow();
+
+      // GET path of hash(k)
+      final Bytes leafPath = pathResolver.getLeafPath(currentFlatLeafValue.leafIndex());
+      // READ hash(k)
+      final GetAndProve data = getValueAndMerkleProof(leafPath);
+
+      return new MerkleInclusionProof(
+          key.getOriginalUnsafeValue(),
+          currentFlatLeafValue.leafIndex(),
+          new Proof<>(
+              Optional.of(currentFlatLeafValue.leafValue()),
+              Stream.of(List.of(data.leaf().orElseThrow()), data.subProof(), List.of(state.root))
+                  .flatMap(List::stream)
+                  .map(Node::getEncodedBytes)
+                  .collect(Collectors.toList())));
+    }
+  }
+
+  public Trace readWithTrace(final Hash hkey, final MimcSafeBytes<? extends Bytes> key) {
     // GET the openings HKEY-,  hash(k) , HKEY+
     final Range nearestKeys = worldStateStorage.getNearestKeys(hkey);
     // CHECK if hash(k) exist
@@ -229,8 +299,10 @@ public class ZKTrie {
           .withNextFreeNode(pathResolver.getNextFreeLeafNodeIndex())
           .withLeftLeaf(leftData.nodeValue().map(LeafOpening::readFrom).orElseThrow())
           .withRightLeaf(rightData.nodeValue().map(LeafOpening::readFrom).orElseThrow())
-          .withLeftProof(new Proof(nearestKeys.getLeftNodeValue().leafIndex(), leftData.proof()))
-          .withRightProof(new Proof(nearestKeys.getRightNodeValue().leafIndex(), rightData.proof()))
+          .withLeftProof(
+              new TraceProof(nearestKeys.getLeftNodeValue().leafIndex(), leftData.subProof()))
+          .withRightProof(
+              new TraceProof(nearestKeys.getRightNodeValue().leafIndex(), rightData.subProof()))
           .build();
 
     } else {
@@ -250,20 +322,12 @@ public class ZKTrie {
           .withNextFreeNode(pathResolver.getNextFreeLeafNodeIndex())
           .withValue(currentFlatLeafValue.leafValue())
           .withLeaf(data.nodeValue().map(LeafOpening::readFrom).orElseThrow())
-          .withProof(new Proof(currentFlatLeafValue.leafIndex(), data.proof()))
+          .withProof(new TraceProof(currentFlatLeafValue.leafIndex(), data.subProof()))
           .build();
     }
   }
 
-  private Optional<Bytes> get(final Bytes path) {
-    return state.get(path);
-  }
-
-  private GetAndProve getValueAndMerkleProof(final Bytes path) {
-    return state.getAndProve(path);
-  }
-
-  public Trace putAndProve(
+  public Trace putWithTrace(
       final Hash hKey,
       final MimcSafeBytes<? extends Bytes> key,
       final MimcSafeBytes<? extends Bytes> newValue) {
@@ -328,9 +392,10 @@ public class ZKTrie {
           .withValue(newValue.getOriginalUnsafeValue())
           .withPriorLeftLeaf(priorLeftLeaf)
           .withPriorRightLeaf(priorRightLeaf)
-          .withLeftProof(new Proof(nearestKeys.getLeftNodeValue().leafIndex(), leftSiblings))
-          .withNewProof(new Proof(nextFreeNode, centerSiblings))
-          .withRightProof(new Proof(nearestKeys.getRightNodeValue().leafIndex(), rightSiblings))
+          .withLeftProof(new TraceProof(nearestKeys.getLeftNodeValue().leafIndex(), leftSiblings))
+          .withNewProof(new TraceProof(nextFreeNode, centerSiblings))
+          .withRightProof(
+              new TraceProof(nearestKeys.getRightNodeValue().leafIndex(), rightSiblings))
           .withNewNextFreeNode(pathResolver.getNextFreeLeafNodeIndex())
           .withNewSubRoot(getSubRootNode())
           .build();
@@ -362,14 +427,14 @@ public class ZKTrie {
           .withOldValue(currentFlatLeafValue.leafValue())
           .withNewValue(newValue.getOriginalUnsafeValue())
           .withPriorUpdatedLeaf(priorUpdatedLeaf)
-          .withProof(new Proof(currentFlatLeafValue.leafIndex(), siblings))
+          .withProof(new TraceProof(currentFlatLeafValue.leafIndex(), siblings))
           .withNewNextFreeNode(pathResolver.getNextFreeLeafNodeIndex())
           .withNewSubRoot(getSubRootNode())
           .build();
     }
   }
 
-  public Trace removeAndProve(final Hash hkey, final MimcSafeBytes<? extends Bytes> key) {
+  public Trace removeWithTrace(final Hash hkey, final MimcSafeBytes<? extends Bytes> key) {
     checkArgument(hkey.size() == Bytes32.SIZE);
 
     // GET the openings HKEY-,  hash(k) , HKEY+
@@ -418,10 +483,12 @@ public class ZKTrie {
           .withPriorLeftLeaf(priorLeftLeaf)
           .withPriorDeletedLeaf(priorDeletedLeaf)
           .withPriorRightLeaf(priorRightLeaf)
-          .withLeftProof(new Proof(nearestKeys.getLeftNodeValue().leafIndex(), leftSiblings))
+          .withLeftProof(new TraceProof(nearestKeys.getLeftNodeValue().leafIndex(), leftSiblings))
           .withDeletedProof(
-              new Proof(nearestKeys.getCenterNodeValue().orElseThrow().leafIndex(), centerSiblings))
-          .withRightProof(new Proof(nearestKeys.getRightNodeValue().leafIndex(), rightSiblings))
+              new TraceProof(
+                  nearestKeys.getCenterNodeValue().orElseThrow().leafIndex(), centerSiblings))
+          .withRightProof(
+              new TraceProof(nearestKeys.getRightNodeValue().leafIndex(), rightSiblings))
           .withNewNextFreeNode(pathResolver.getNextFreeLeafNodeIndex())
           .withNewSubRoot(getSubRootNode())
           .build();

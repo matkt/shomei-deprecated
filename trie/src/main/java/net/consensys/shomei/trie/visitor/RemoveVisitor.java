@@ -29,7 +29,7 @@ import org.hyperledger.besu.ethereum.trie.patricia.ExtensionNode;
 import org.hyperledger.besu.ethereum.trie.patricia.LeafNode;
 
 /**
- * A visitor that removes a node from the trie and collects the proof.
+ * A visitor that removes a node from the trie and collects the subProof.
  *
  * @param <V> the type of the value stored in the trie.
  */
@@ -50,8 +50,8 @@ public class RemoveVisitor<V> implements PathNodeVisitor<V> {
        *       / \
        *  (L2)o  x
        *
-       * (L1) and (L3) represent the nodes that are part of the proof for the second leaf x.
-       * it's why we are adding the sibling to the proof. (we removed the next free node from the proof because we want only the subtrie that contains the key)
+       * (L1) and (L3) represent the nodes that are part of the subProof for the second leaf x.
+       * it's why we are adding the sibling to the subProof. (we removed the next free node from the subProof because we want only the subtrie that contains the key)
        */
       proof.add(sibling);
     }

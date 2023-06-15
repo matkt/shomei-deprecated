@@ -170,7 +170,8 @@ public class RollingBackwardTests {
     StorageSlotKey storageSlotKey = new StorageSlotKey(UInt256.valueOf(14));
     MimcSafeBytes<UInt256> slotValue = safeUInt256(UInt256.valueOf(12));
     ZKTrie contractStorageTrie = getContractStorageTrie(contract);
-    contractStorageTrie.putAndProve(storageSlotKey.slotHash(), storageSlotKey.slotKey(), slotValue);
+    contractStorageTrie.putWithTrace(
+        storageSlotKey.slotHash(), storageSlotKey.slotKey(), slotValue);
     contract.setStorageRoot(Hash.wrap(contractStorageTrie.getTopRootHash()));
 
     TrieLogLayer trieLogLayer = new TrieLogLayer();
@@ -183,7 +184,7 @@ public class RollingBackwardTests {
 
     // remove slot
     final MutableZkAccount updatedContract = new MutableZkAccount(contract);
-    contractStorageTrie.removeAndProve(storageSlotKey.slotHash(), storageSlotKey.slotKey());
+    contractStorageTrie.removeWithTrace(storageSlotKey.slotHash(), storageSlotKey.slotKey());
     updatedContract.setStorageRoot(Hash.wrap(contractStorageTrie.getTopRootHash()));
 
     TrieLogLayer trieLogLayer2 = new TrieLogLayer();
@@ -226,7 +227,8 @@ public class RollingBackwardTests {
     StorageSlotKey storageSlotKey = new StorageSlotKey(UInt256.valueOf(14));
     MimcSafeBytes<UInt256> slotValue = safeUInt256(UInt256.valueOf(12));
     ZKTrie contractStorageTrie = getContractStorageTrie(contract);
-    contractStorageTrie.putAndProve(storageSlotKey.slotHash(), storageSlotKey.slotKey(), slotValue);
+    contractStorageTrie.putWithTrace(
+        storageSlotKey.slotHash(), storageSlotKey.slotKey(), slotValue);
     contract.setStorageRoot(Hash.wrap(contractStorageTrie.getTopRootHash()));
 
     TrieLogLayer trieLogLayer = new TrieLogLayer();
@@ -241,7 +243,7 @@ public class RollingBackwardTests {
     // update slot
     final MutableZkAccount updatedContract = new MutableZkAccount(contract);
     final MimcSafeBytes<UInt256> updatedStorageValue = safeUInt256(UInt256.valueOf(19));
-    contractStorageTrie.putAndProve(
+    contractStorageTrie.putWithTrace(
         storageSlotKey.slotHash(), storageSlotKey.slotKey(), updatedStorageValue);
     updatedContract.setStorageRoot(Hash.wrap(contractStorageTrie.getTopRootHash()));
 

@@ -14,8 +14,8 @@
 package net.consensys.shomei.trie.trace.builder;
 
 import net.consensys.shomei.trie.model.LeafOpening;
-import net.consensys.shomei.trie.trace.Proof;
 import net.consensys.shomei.trie.trace.ReadTrace;
+import net.consensys.shomei.trie.trace.TraceProof;
 
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.ethereum.trie.Node;
@@ -25,7 +25,7 @@ public final class ReadTraceBuilder {
   private long nextFreeNode;
   private Node<Bytes> subRoot;
   private LeafOpening leaf;
-  private Proof proof;
+  private TraceProof proof;
   private Bytes key;
   private Bytes value;
 
@@ -55,7 +55,7 @@ public final class ReadTraceBuilder {
     return this;
   }
 
-  public ReadTraceBuilder withProof(Proof proof) {
+  public ReadTraceBuilder withProof(TraceProof proof) {
     this.proof = proof;
     return this;
   }

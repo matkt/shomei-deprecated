@@ -15,7 +15,7 @@ package net.consensys.shomei.trie.trace.builder;
 
 import net.consensys.shomei.trie.model.LeafOpening;
 import net.consensys.shomei.trie.trace.InsertionTrace;
-import net.consensys.shomei.trie.trace.Proof;
+import net.consensys.shomei.trie.trace.TraceProof;
 
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.ethereum.trie.Node;
@@ -25,9 +25,9 @@ public final class InsertionTraceBuilder {
   private long newNextFreeNode;
   private Node<Bytes> oldSubRoot;
   private Node<Bytes> newSubRoot;
-  private Proof leftProof;
-  private Proof newProof;
-  private Proof rightProof;
+  private TraceProof leftProof;
+  private TraceProof newProof;
+  private TraceProof rightProof;
   private Bytes key;
   private Bytes value;
   private LeafOpening priorLeftLeaf;
@@ -59,17 +59,17 @@ public final class InsertionTraceBuilder {
     return this;
   }
 
-  public InsertionTraceBuilder withLeftProof(Proof leftProof) {
+  public InsertionTraceBuilder withLeftProof(TraceProof leftProof) {
     this.leftProof = leftProof;
     return this;
   }
 
-  public InsertionTraceBuilder withNewProof(Proof newProof) {
+  public InsertionTraceBuilder withNewProof(TraceProof newProof) {
     this.newProof = newProof;
     return this;
   }
 
-  public InsertionTraceBuilder withRightProof(Proof rightProof) {
+  public InsertionTraceBuilder withRightProof(TraceProof rightProof) {
     this.rightProof = rightProof;
     return this;
   }

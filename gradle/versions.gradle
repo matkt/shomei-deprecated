@@ -54,6 +54,10 @@ dependencyManagement {
       entry 'jackson-databind'
     }
 
+    dependencySet(group:'com.fasterxml.jackson.core', version:'2.14.2') {
+      entry 'jackson-datatype-jdk8'
+    }
+
     // JNA
     dependency 'net.java.dev.jna:jna:5.13.0'
 
