@@ -73,7 +73,11 @@ public class ZkWorldStateArchiveTests {
             new HashMap<>(),
             false);
     TrieLogIdentifier genesis = new TrieLogIdentifier(0L, pluginLayer.getBlockHash());
-    archive.getTrieLogManager().saveTrieLog(genesis, Bytes.of(encoder.serialize(pluginLayer)));
+    TrieLogManager trieLogManager = archive.getTrieLogManager();
+    TrieLogManager.TrieLogManagerTransaction trieLogManagerTransaction =
+        trieLogManager.startTransaction();
+    trieLogManagerTransaction.saveTrieLog(genesis, Bytes.of(encoder.serialize(pluginLayer)));
+    trieLogManagerTransaction.commit();
 
     archive.importBlock(new TrieLogIdentifier(0L, pluginLayer.getBlockHash()), true);
 

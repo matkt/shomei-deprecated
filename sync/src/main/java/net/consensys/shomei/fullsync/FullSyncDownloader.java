@@ -162,9 +162,6 @@ public class FullSyncDownloader extends AbstractVerticle implements TrieLogObser
         trieLogIds.stream()
             .max(Comparator.comparingLong(TrieLogIdentifier::blockNumber))
             .map(TrieLogIdentifier::blockNumber);
-    if (!isTooFarFromTheHead()) { // not save trielog sent by besu if we are too far from head
-      addTrieLogs(trieLogIds);
-    }
   }
 
   public void addTrieLogs(final List<TrieLogObserver.TrieLogIdentifier> trieLogIds) {
@@ -202,6 +199,7 @@ public class FullSyncDownloader extends AbstractVerticle implements TrieLogObser
 
     final long startBlockNumber = zkWorldStateArchive.getCurrentBlockNumber() + 1;
     final long endBlockNumber = zkWorldStateArchive.getCurrentBlockNumber() + missingTrieLogCount;
+    System.out.println("ask " + startBlockNumber + " " + endBlockNumber);
     getRawTrieLog
         .getTrieLog(startBlockNumber, endBlockNumber)
         .whenComplete(

@@ -22,7 +22,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.IntStream;
 
-import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.ethereum.api.jsonrpc.internal.JsonRpcRequestContext;
 import org.hyperledger.besu.ethereum.api.jsonrpc.internal.methods.JsonRpcMethod;
 import org.hyperledger.besu.ethereum.api.jsonrpc.internal.response.JsonRpcError;
@@ -58,11 +57,8 @@ public class SendRawTrieLog implements JsonRpcMethod {
               index -> {
                 TrieLogElement param =
                     requestContext.getRequest().getRequiredParameter(index, TrieLogElement.class);
-                trieLogManager.saveTrieLog(
-                    param.getTrieLogIdentifier(), Bytes.fromHexString(param.trieLog()));
                 trieLogIdentifiers.add(param.getTrieLogIdentifier());
               });
-      trieLogManager.commitTrieLogStorage();
       trieLogObserver.onTrieLogsReceived(trieLogIdentifiers);
 
     } catch (RuntimeException e) {

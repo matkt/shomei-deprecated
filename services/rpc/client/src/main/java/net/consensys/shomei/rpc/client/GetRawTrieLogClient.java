@@ -91,15 +91,17 @@ public class GetRawTrieLogClient {
                     .log();
 
                 try {
+                  TrieLogManager.TrieLogManagerTransaction trieLogManagerTransaction =
+                      trieLogManager.startTransaction();
                   final List<TrieLogObserver.TrieLogIdentifier> trieLogIdentifiers =
                       new ArrayList<>();
                   for (TrieLogElement trieLogElement : responseBody.getResult()) {
-                    trieLogManager.saveTrieLog(
+                    trieLogManagerTransaction.saveTrieLog(
                         trieLogElement.getTrieLogIdentifier(),
                         Bytes.fromHexString(trieLogElement.trieLog()));
                     trieLogIdentifiers.add(trieLogElement.getTrieLogIdentifier());
                   }
-                  trieLogManager.commitTrieLogStorage();
+                  trieLogManagerTransaction.commit();
                   completableFuture.complete(trieLogIdentifiers);
 
                 } catch (RuntimeException e) {

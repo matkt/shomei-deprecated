@@ -72,12 +72,6 @@ public class InMemoryStorageProvider implements StorageProvider {
     HashMap<Long, Bytes> trieLogStorage = new HashMap<>();
 
     return new TrieLogManager() {
-      @Override
-      public TrieLogManager saveTrieLog(
-          final TrieLogIdentifier trieLogIdentifier, final Bytes rawTrieLogLayer) {
-        trieLogStorage.put(trieLogIdentifier.blockNumber(), rawTrieLogLayer);
-        return this;
-      }
 
       @Override
       public Optional<Bytes> getTrieLog(final long blockNumber) {
@@ -85,8 +79,20 @@ public class InMemoryStorageProvider implements StorageProvider {
       }
 
       @Override
-      public void commitTrieLogStorage() {
-        // no-op
+      public TrieLogManagerTransaction startTransaction() {
+        return new TrieLogManagerTransaction(null) {
+          @Override
+          public TrieLogManagerTransaction saveTrieLog(
+              final TrieLogIdentifier trieLogIdentifier, final Bytes rawTrieLogLayer) {
+            trieLogStorage.put(trieLogIdentifier.blockNumber(), rawTrieLogLayer);
+            return this;
+          }
+
+          @Override
+          public void commit() {
+            // no-op
+          }
+        };
       }
     };
   }

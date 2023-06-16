@@ -16,80 +16,52 @@ package net.consensys.shomei.storage;
 import net.consensys.shomei.observer.TrieLogObserver;
 import net.consensys.shomei.services.storage.api.KeyValueStorage;
 import net.consensys.shomei.services.storage.api.KeyValueStorageTransaction;
-import net.consensys.shomei.services.storage.api.StorageException;
 
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicReference;
 
 import com.google.common.primitives.Longs;
 import org.apache.tuweni.bytes.Bytes;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public interface TrieLogManager {
 
-  TrieLogManager saveTrieLog(
-      final TrieLogObserver.TrieLogIdentifier trieLogIdentifier, final Bytes rawTrieLogLayer);
-
   Optional<Bytes> getTrieLog(final long blockNumber);
 
-  void commitTrieLogStorage();
+  TrieLogManagerTransaction startTransaction();
 
   class TrieLogManagerImpl implements TrieLogManager {
-    private static final Logger LOG = LoggerFactory.getLogger(TrieLogManager.class);
-    static final int MAX_TX_RETRIES = 5;
     private final KeyValueStorage trieLogStorage;
-    private AtomicReference<KeyValueStorageTransaction> trieLogTx;
 
     public TrieLogManagerImpl(final KeyValueStorage trieLogStorage) {
       this.trieLogStorage = trieLogStorage;
-      trieLogTx = new AtomicReference<>(trieLogStorage.startTransaction());
-    }
-
-    @Override
-    public TrieLogManager saveTrieLog(
-        final TrieLogObserver.TrieLogIdentifier trieLogIdentifier, final Bytes rawTrieLogLayer) {
-      trieLogTx
-          .get()
-          .put(Longs.toByteArray(trieLogIdentifier.blockNumber()), rawTrieLogLayer.toArrayUnsafe());
-      return this;
     }
 
     @Override
     public Optional<Bytes> getTrieLog(final long blockNumber) {
-      return trieLogTx.get().get(Longs.toByteArray(blockNumber)).map(Bytes::wrap);
+      return trieLogStorage.get(Longs.toByteArray(blockNumber)).map(Bytes::wrap);
     }
 
     @Override
-    public void commitTrieLogStorage() {
-      trieLogTx.getAndUpdate(
-          tx -> {
-            int tries = 0;
-            KeyValueStorageTransaction newTx = null;
-            while (newTx == null) {
-              try {
-                tries++;
-                tx.commit();
-                newTx = trieLogStorage.startTransaction();
-              } catch (final StorageException e) {
-                if (tries >= MAX_TX_RETRIES) {
-                  LOG.atError()
-                      .setMessage("Failed to commit trie log storage transaction after {} tries")
-                      .addArgument(tries)
-                      .setCause(e)
-                      .log();
-                  throw e;
-                } else {
-                  LOG.atWarn()
-                      .setMessage("Failed to commit trie log storage transaction, retry #{}")
-                      .addArgument(tries)
-                      .log();
-                  LOG.atDebug().setCause(e).log();
-                }
-              }
-            }
-            return newTx;
-          });
+    public TrieLogManagerTransaction startTransaction() {
+      return new TrieLogManagerTransaction(trieLogStorage.startTransaction());
+    }
+  }
+
+  class TrieLogManagerTransaction {
+    private final KeyValueStorageTransaction transaction;
+
+    public TrieLogManagerTransaction(final KeyValueStorageTransaction transaction) {
+      this.transaction = transaction;
+    }
+
+    public TrieLogManagerTransaction saveTrieLog(
+        final TrieLogObserver.TrieLogIdentifier trieLogIdentifier, final Bytes rawTrieLogLayer) {
+      transaction.put(
+          Longs.toByteArray(trieLogIdentifier.blockNumber()), rawTrieLogLayer.toArrayUnsafe());
+      return this;
+    }
+
+    public void commit() {
+      transaction.commit();
     }
   }
 }

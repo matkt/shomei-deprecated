@@ -125,7 +125,11 @@ public class PersistedWorldStateStorageTest {
     updater.putTrieNode(Bytes.of(1), Bytes.of(1), BYTES_TEST);
     updater.saveZkStateRootHash(1337L, HASH_TEST);
     traceManager.saveTrace(80085, TRACE_TEST);
-    trieLogManager.saveTrieLog(new TrieLogObserver.TrieLogIdentifier(99L, Hash.ZERO), BYTES_TEST);
+    TrieLogManager.TrieLogManagerTransaction trieLogManagerTransaction =
+        trieLogManager.startTransaction();
+    trieLogManagerTransaction.saveTrieLog(
+        new TrieLogObserver.TrieLogIdentifier(99L, Hash.ZERO), BYTES_TEST);
+    trieLogManagerTransaction.commit();
   }
 
   void assertWorldStateStorage() {
