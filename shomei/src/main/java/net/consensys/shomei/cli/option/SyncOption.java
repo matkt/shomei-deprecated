@@ -27,16 +27,16 @@ public class SyncOption {
 
   @CommandLine.Spec CommandLine.Model.CommandSpec spec;
 
-  static final long DEFAULT_IMPORT_DELAY = 0;
+  static final long DEFAULT_MIN_CONFIRMATION = 0;
 
   @CommandLine.Option(
-      names = {"--import-delay"},
+      names = {"--min-confirmations-before-importing"},
       paramLabel = "<PATH>",
-      description = "Delay before importing",
+      description = "Number of confirmations before importing block. Default: ${DEFAULT-VALUE}",
       arity = "1")
-  private long importDelay = DEFAULT_IMPORT_DELAY;
+  private long minConfirmationsBeforeImporting = DEFAULT_MIN_CONFIRMATION;
 
-  public long getImportDelay() {
-    return importDelay;
+  public long getMinConfirmationsBeforeImporting() {
+    return minConfirmationsBeforeImporting;
   }
 }

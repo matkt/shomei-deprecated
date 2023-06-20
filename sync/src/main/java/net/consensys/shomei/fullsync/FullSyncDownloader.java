@@ -48,7 +48,7 @@ public class FullSyncDownloader extends AbstractVerticle implements TrieLogObser
 
   private final GetRawTrieLogClient getRawTrieLog;
 
-  private final long importDelay;
+  private final long minConfirmationsBeforeImporting;
 
   private CompletableFuture<Void> completableFuture;
   private Optional<Long> estimateHeadBlockNumber = Optional.empty();
@@ -56,7 +56,7 @@ public class FullSyncDownloader extends AbstractVerticle implements TrieLogObser
   public FullSyncDownloader(
       final ZkEvmWorldStateEntryPoint zkEvmWorldStateEntryPoint,
       final GetRawTrieLogClient getRawTrieLog,
-      final long importDelay) {
+      final long minConfirmationsBeforeImporting) {
     this.zkEvmWorldStateEntryPoint = zkEvmWorldStateEntryPoint;
     this.getRawTrieLog = getRawTrieLog;
     this.blockQueue =
@@ -64,18 +64,18 @@ public class FullSyncDownloader extends AbstractVerticle implements TrieLogObser
             INITIAL_SYNC_BLOCK_NUMBER_RANGE * 2,
             zkEvmWorldStateEntryPoint::getCurrentBlockNumber,
             this::findMissingTrieLogFromBesu);
-    this.importDelay = importDelay;
+    this.minConfirmationsBeforeImporting = minConfirmationsBeforeImporting;
   }
 
   public FullSyncDownloader(
       final TrieLogBlockingQueue blockQueue,
       final ZkEvmWorldStateEntryPoint zkEvmWorldStateEntryPoint,
       final GetRawTrieLogClient getRawTrieLog,
-      final long importDelay) {
+      final long minConfirmationsBeforeImporting) {
     this.blockQueue = blockQueue;
     this.zkEvmWorldStateEntryPoint = zkEvmWorldStateEntryPoint;
     this.getRawTrieLog = getRawTrieLog;
-    this.importDelay = importDelay;
+    this.minConfirmationsBeforeImporting = minConfirmationsBeforeImporting;
   }
 
   @Override
@@ -85,18 +85,19 @@ public class FullSyncDownloader extends AbstractVerticle implements TrieLogObser
   }
 
   public void startFullSync() {
-    if (importDelay == 0) {
+    if (minConfirmationsBeforeImporting == 0) {
       LOG.atInfo().setMessage("Fullsync downloader service started").log();
     } else {
       LOG.atInfo()
-          .setMessage("Fullsync downloader service started with import delay {}")
-          .addArgument(importDelay)
+          .setMessage(
+              "Fullsync downloader service started (with minimum confirmation configuration {})")
+          .addArgument(minConfirmationsBeforeImporting)
           .log();
     }
     completableFuture = new CompletableFuture<>();
     while (!completableFuture.isDone()) {
       final boolean isFarFromHead = isFarFromHead();
-      if (blockQueue.waitForNewElement(isFarFromHead ? 0 : importDelay)) {
+      if (blockQueue.waitForNewElement(isFarFromHead ? 0 : minConfirmationsBeforeImporting)) {
         importBlock(isFarFromHead);
       }
     }

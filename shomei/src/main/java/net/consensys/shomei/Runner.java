@@ -73,7 +73,9 @@ public class Runner {
 
     fullSyncDownloader =
         new FullSyncDownloader(
-            zkEvmWorldStateEntryPoint, getRawTrieLog, syncOption.getImportDelay());
+            zkEvmWorldStateEntryPoint,
+            getRawTrieLog,
+            syncOption.getMinConfirmationsBeforeImporting());
 
     this.jsonRpcService =
         new JsonRpcService(
