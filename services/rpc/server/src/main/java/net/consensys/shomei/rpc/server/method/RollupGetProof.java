@@ -57,8 +57,6 @@ public class RollupGetProof implements JsonRpcMethod {
         getBlockParameterOrBlockHash(requestContext);
 
     Optional<ZkEvmWorldState> worldState = Optional.empty();
-    System.out.println(
-        blockParameterOrBlockHash.getHash() + " " + blockParameterOrBlockHash.getNumber());
     if (blockParameterOrBlockHash.isNumeric()) {
       worldState =
           worldStateArchive.getCachedWorldState(blockParameterOrBlockHash.getNumber().getAsLong());
