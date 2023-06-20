@@ -186,7 +186,7 @@ public class FullSyncDownloader extends AbstractVerticle implements TrieLogObser
     blockQueue.notifyNewHeadAvailable(); // notify the waiting thread that new head is available
   }
 
-  private void addTrieLogs(final List<TrieLogObserver.TrieLogIdentifier> trieLogIds) {
+  public void addTrieLogs(final List<TrieLogObserver.TrieLogIdentifier> trieLogIds) {
     trieLogIds.forEach(
         trieLogIdentifier -> {
           LOG.atDebug().setMessage("received trie log {} ").addArgument(trieLogIdentifier).log();
