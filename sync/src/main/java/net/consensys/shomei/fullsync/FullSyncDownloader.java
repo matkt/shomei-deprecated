@@ -15,7 +15,6 @@ package net.consensys.shomei.fullsync;
 
 import static net.consensys.shomei.fullsync.TrieLogBlockingQueue.INITIAL_SYNC_BLOCK_NUMBER_RANGE;
 
-import net.consensys.shomei.exception.MissingTrieLogException;
 import net.consensys.shomei.observer.TrieLogObserver;
 import net.consensys.shomei.rpc.client.GetRawTrieLogClient;
 import net.consensys.shomei.storage.ZkWorldStateArchive;
@@ -132,13 +131,6 @@ public class FullSyncDownloader extends AbstractVerticle implements TrieLogObser
           throw new RuntimeException(
               "failed to import block %d".formatted(trieLogId.blockNumber()));
         }
-      } catch (MissingTrieLogException e) {
-        LOG.atTrace()
-            .setMessage("Not found trie log exception {} ({}) : {}")
-            .addArgument(trieLogId.blockNumber())
-            .addArgument(trieLogId.blockHash())
-            .addArgument(e.getMessage())
-            .log();
       } catch (Exception e) {
         LOG.atError()
             .setMessage("Exception during import block {} ({}) : {}")

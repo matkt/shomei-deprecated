@@ -69,11 +69,13 @@ public class TrieLogBlockingQueue extends PriorityBlockingQueue<TrieLogObserver.
     do {
       try {
         // remove deprecated trielog (already imported block)
-        stream()
-            .takeWhile(
-                trieLogIdentifier ->
-                    (trieLogIdentifier.blockNumber() - currentShomeiHeadSupplier.get()) < 1)
-            .forEach(this::remove);
+        iterator()
+            .forEachRemaining(
+                trieLogIdentifier -> {
+                  if (trieLogIdentifier.blockNumber() <= currentShomeiHeadSupplier.get()) {
+                    remove(trieLogIdentifier);
+                  }
+                });
 
         final Long shomeiHead = currentShomeiHeadSupplier.get();
         final Optional<Long> besuEstimateHead = currentBesuEstimateHeadSupplier.get();
