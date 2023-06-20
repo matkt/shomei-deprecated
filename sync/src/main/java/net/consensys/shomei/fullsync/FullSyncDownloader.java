@@ -173,18 +173,15 @@ public class FullSyncDownloader extends AbstractVerticle implements TrieLogObser
   }
 
   @Override
-  public void onTrieLogsReceived(final List<TrieLogObserver.TrieLogIdentifier> trieLogIds) {
+  public void onNewHeadReceived(final List<TrieLogObserver.TrieLogIdentifier> trieLogIds) {
     // we can estimate head number when besu is pushing trielog
     estimateHeadBlockNumber =
         trieLogIds.stream()
             .max(Comparator.comparingLong(TrieLogIdentifier::blockNumber))
             .map(TrieLogIdentifier::blockNumber);
-    if (!isFarFromHead()) { // not save trielog sent by besu if we are too far from head
-      addTrieLogs(trieLogIds);
-    }
   }
 
-  public void addTrieLogs(final List<TrieLogObserver.TrieLogIdentifier> trieLogIds) {
+  private void addTrieLogs(final List<TrieLogObserver.TrieLogIdentifier> trieLogIds) {
     trieLogIds.forEach(
         trieLogIdentifier -> {
           LOG.atDebug().setMessage("received trie log {} ").addArgument(trieLogIdentifier).log();
@@ -204,7 +201,7 @@ public class FullSyncDownloader extends AbstractVerticle implements TrieLogObser
    * range.
    *
    * <p>If Besu returns the trie logs, they are immediately imported. Otherwise, the component waits
-   * for 30 seconds before retrying to check for the trie log availability.
+   * before retrying to check for the trie log availability.
    *
    * <p>For example, suppose we have the trie log for block 6, and our current local head is block
    * 3. We can determine that trie logs 4 and 5 are missing. In this case, we will immediately
@@ -225,6 +222,11 @@ public class FullSyncDownloader extends AbstractVerticle implements TrieLogObser
         .whenComplete(
             (trieLogIdentifiers, throwable) -> {
               if (throwable == null) {
+                if (trieLogIdentifiers.size() < missingTrieLogCount) {
+                  onNewHeadReceived(
+                      trieLogIdentifiers); // If the range is not complete, we have reached the
+                  // head.
+                }
                 addTrieLogs(trieLogIdentifiers);
               }
             });

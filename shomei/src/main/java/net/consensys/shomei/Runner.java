@@ -15,8 +15,8 @@ package net.consensys.shomei;
 
 import net.consensys.shomei.cli.option.DataStorageOption;
 import net.consensys.shomei.cli.option.JsonRpcOption;
-import net.consensys.shomei.cli.option.SyncOption;
 import net.consensys.shomei.cli.option.MetricsOption;
+import net.consensys.shomei.cli.option.SyncOption;
 import net.consensys.shomei.fullsync.FullSyncDownloader;
 import net.consensys.shomei.metrics.MetricsService;
 import net.consensys.shomei.metrics.PrometheusMetricsService;

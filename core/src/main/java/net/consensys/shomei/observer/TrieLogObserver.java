@@ -25,7 +25,7 @@ public interface TrieLogObserver {
    *
    * @param trieLogIds the trie log identifiers
    */
-  void onTrieLogsReceived(final List<TrieLogIdentifier> trieLogIds);
+  void onNewHeadReceived(final List<TrieLogIdentifier> trieLogIds);
 
   /** A trie log identifier. */
   record TrieLogIdentifier(Long blockNumber, Hash blockHash, boolean isInitialSync)
