@@ -26,16 +26,20 @@ public class TrieLogBlockingQueue extends PriorityBlockingQueue<TrieLogObserver.
   public static final long INITIAL_SYNC_BLOCK_NUMBER_RANGE = 500;
 
   private final long maxCapacity;
-  private final Supplier<Long> currentHeadSupplier;
+  private final Supplier<Long> currentShomeiHeadSupplier;
+  private final Supplier<Optional<Long>> currentBesuEstimateHeadSupplier;
+
   private final Consumer<Long> onTrieLogMissing;
 
   public TrieLogBlockingQueue(
       long capacity,
-      final Supplier<Long> currentHeadSupplier,
+      final Supplier<Long> currentShomeiHeadSupplier,
+      final Supplier<Optional<Long>> currentBesuEstimateHeadSupplier,
       final Consumer<Long> onTrieLogMissing) {
     super((int) capacity, TrieLogObserver.TrieLogIdentifier::compareTo);
     this.maxCapacity = capacity;
-    this.currentHeadSupplier = currentHeadSupplier;
+    this.currentShomeiHeadSupplier = currentShomeiHeadSupplier;
+    this.currentBesuEstimateHeadSupplier = currentBesuEstimateHeadSupplier;
     this.onTrieLogMissing = onTrieLogMissing;
   }
 
@@ -59,22 +63,47 @@ public class TrieLogBlockingQueue extends PriorityBlockingQueue<TrieLogObserver.
     return isEmpty() ? Optional.empty() : Optional.of(peek().blockNumber() - e);
   }
 
-  public synchronized boolean waitForNewElement() {
+  public synchronized boolean waitForNewElement(final long minimumEntriesRequired) {
+    boolean foundBlockToImport = false;
     long distance;
     do {
       try {
-        distance = distance(currentHeadSupplier.get()).orElse(INITIAL_SYNC_BLOCK_NUMBER_RANGE);
-        if (distance < 1) { // remove deprecated trielog
-          poll();
-        }
-        if (distance > 1) {
-          onTrieLogMissing.accept(distance);
+        // remove deprecated trielog (already imported block)
+        iterator()
+            .forEachRemaining(
+                trieLogIdentifier -> {
+                  if (trieLogIdentifier.blockNumber() <= currentShomeiHeadSupplier.get()) {
+                    remove(trieLogIdentifier);
+                  }
+                });
+
+        final Long shomeiHead = currentShomeiHeadSupplier.get();
+        final Optional<Long> besuEstimateHead = currentBesuEstimateHeadSupplier.get();
+        if (besuEstimateHead.isPresent()
+            && (besuEstimateHead.orElseThrow() - shomeiHead) <= minimumEntriesRequired) {
+          /*
+           * Waits until the minimum required number of entries is reached. This method ensures that there
+           * is sufficient blocks in the blockchain before importing. For example, if the minimum required
+           * entries is 3 and the network is currently at block 6, Shomei will start importing block 3 once
+           * the network reaches block 6, as the minimum required entries are 3. This is necessary to handle
+           * reorganizations and give enough time for Besu to send the final version of block. Note: This
+           * method is only needed to the testnet environment.
+           */
           startWaiting();
+        } else {
+          distance =
+              distance(currentShomeiHeadSupplier.get()).orElse(INITIAL_SYNC_BLOCK_NUMBER_RANGE);
+          if (distance == 1) {
+            foundBlockToImport = true;
+          } else { // missing trielog we need to import them
+            onTrieLogMissing.accept(distance);
+            startWaiting();
+          }
         }
       } catch (RuntimeException e) {
         return false;
       }
-    } while (distance != 1);
+    } while (!foundBlockToImport);
     return true;
   }
 
@@ -87,7 +116,7 @@ public class TrieLogBlockingQueue extends PriorityBlockingQueue<TrieLogObserver.
     }
   }
 
-  public synchronized void notifyNewElementAvailable() {
+  public synchronized void notifyNewHeadAvailable() {
     notifyAll();
   }
 }

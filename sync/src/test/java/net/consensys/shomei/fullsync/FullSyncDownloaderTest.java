@@ -22,9 +22,10 @@ import static org.mockito.Mockito.times;
 
 import net.consensys.shomei.observer.TrieLogObserver.TrieLogIdentifier;
 import net.consensys.shomei.rpc.client.GetRawTrieLogClient;
-import net.consensys.shomei.worldview.ZkEvmWorldStateEntryPoint;
+import net.consensys.shomei.storage.ZkWorldStateArchive;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.hyperledger.besu.datatypes.Hash;
 import org.junit.Before;
@@ -37,7 +38,7 @@ import org.mockito.junit.MockitoJUnitRunner;
 @RunWith(MockitoJUnitRunner.class)
 public class FullSyncDownloaderTest {
 
-  @Mock ZkEvmWorldStateEntryPoint zkEvmWorldStateEntryPoint;
+  @Mock ZkWorldStateArchive zkWorldStateArchive;
 
   FullSyncDownloader fullSyncDownloader;
 
@@ -47,7 +48,8 @@ public class FullSyncDownloaderTest {
         spy(
             new TrieLogBlockingQueue(
                 INITIAL_SYNC_BLOCK_NUMBER_RANGE * 2,
-                zkEvmWorldStateEntryPoint::getCurrentBlockNumber,
+                zkWorldStateArchive::getCurrentBlockNumber,
+                Optional::empty,
                 aLong -> {
                   try {
                     fullSyncDownloader.stop(); // force stop the downloader
@@ -57,70 +59,93 @@ public class FullSyncDownloaderTest {
                 }));
     fullSyncDownloader =
         new FullSyncDownloader(
-            blockingQueue, zkEvmWorldStateEntryPoint, Mockito.mock(GetRawTrieLogClient.class));
+            blockingQueue, zkWorldStateArchive, Mockito.mock(GetRawTrieLogClient.class), 0);
     doThrow(new RuntimeException()).when(blockingQueue).startWaiting();
   }
 
   @Test
   public void testNotTriggerImportWhenTrieLogMissing() throws Exception {
     fullSyncDownloader.startFullSync();
-    Mockito.verify(zkEvmWorldStateEntryPoint, Mockito.never())
+    Mockito.verify(zkWorldStateArchive, Mockito.never())
         .importBlock(Mockito.any(TrieLogIdentifier.class), Mockito.anyBoolean());
   }
 
   @Test
   public void testTriggerImportWhenTrieLogAvailableFromTrieLogShipping() throws Exception {
-    fullSyncDownloader.onTrieLogsReceived(List.of(new TrieLogIdentifier(1L, Hash.EMPTY, true)));
+    List<TrieLogIdentifier> trieLogIdentifiers =
+        List.of(new TrieLogIdentifier(1L, Hash.EMPTY, true));
+    fullSyncDownloader.addTrieLogs(trieLogIdentifiers);
+    fullSyncDownloader.onNewBesuHeadReceived(trieLogIdentifiers);
     fullSyncDownloader.startFullSync();
-    Mockito.verify(zkEvmWorldStateEntryPoint, times(1))
+    Mockito.verify(zkWorldStateArchive, times(1))
         .importBlock(Mockito.any(TrieLogIdentifier.class), Mockito.anyBoolean());
   }
 
   @Test
   public void testNotTriggerImportWhenTrieLogAvailableButAlreadyImported() throws Exception {
-    fullSyncDownloader.onTrieLogsReceived(List.of(new TrieLogIdentifier(0L, Hash.EMPTY, true)));
+    List<TrieLogIdentifier> trieLogIdentifiers =
+        List.of(new TrieLogIdentifier(0L, Hash.EMPTY, true));
+    fullSyncDownloader.addTrieLogs(trieLogIdentifiers);
+    fullSyncDownloader.onNewBesuHeadReceived(trieLogIdentifiers);
     fullSyncDownloader.startFullSync();
-    Mockito.verify(zkEvmWorldStateEntryPoint, never())
+    Mockito.verify(zkWorldStateArchive, never())
         .importBlock(Mockito.any(TrieLogIdentifier.class), Mockito.anyBoolean());
   }
 
   @Test
   public void testNotTriggerImportWhenTrieLogTooFarFromHead() throws Exception {
-    fullSyncDownloader.onTrieLogsReceived(List.of(new TrieLogIdentifier(500L, Hash.EMPTY, true)));
+    List<TrieLogIdentifier> trieLogIdentifiers =
+        List.of(new TrieLogIdentifier(500L, Hash.EMPTY, true));
+    fullSyncDownloader.addTrieLogs(trieLogIdentifiers);
+    fullSyncDownloader.onNewBesuHeadReceived(trieLogIdentifiers);
     fullSyncDownloader.startFullSync();
-    Mockito.verify(zkEvmWorldStateEntryPoint, never())
+    Mockito.verify(zkWorldStateArchive, never())
         .importBlock(Mockito.any(TrieLogIdentifier.class), Mockito.anyBoolean());
   }
 
   @Test
   public void testGetEstimateDistanceFromTheHead() {
-    assertThat(fullSyncDownloader.getEstimateDistanceFromTheHead()).isEqualTo(-1);
-    fullSyncDownloader.onTrieLogsReceived(List.of(new TrieLogIdentifier(500L, Hash.EMPTY, true)));
-    assertThat(fullSyncDownloader.getEstimateDistanceFromTheHead()).isEqualTo(500L);
+    assertThat(fullSyncDownloader.getEstimateDistanceFromTheBesuHead()).isEqualTo(-1);
+    List<TrieLogIdentifier> trieLogIdentifiers =
+        List.of(new TrieLogIdentifier(500L, Hash.EMPTY, true));
+    fullSyncDownloader.onNewBesuHeadReceived(trieLogIdentifiers);
+    assertThat(fullSyncDownloader.getEstimateDistanceFromTheBesuHead()).isEqualTo(500L);
   }
 
   @Test
-  public void testIsTooFarFromTheHead() {
-    assertThat(fullSyncDownloader.isTooFarFromTheHead()).isTrue();
-    fullSyncDownloader.onTrieLogsReceived(List.of(new TrieLogIdentifier(501L, Hash.EMPTY, true)));
-    assertThat(fullSyncDownloader.isTooFarFromTheHead()).isTrue();
-    fullSyncDownloader.onTrieLogsReceived(List.of(new TrieLogIdentifier(500L, Hash.EMPTY, true)));
-    assertThat(fullSyncDownloader.isTooFarFromTheHead()).isFalse();
+  public void testIsFarFromHead() {
+    assertThat(fullSyncDownloader.isFarFromBesuHead()).isTrue();
+    fullSyncDownloader.onNewBesuHeadReceived(
+        List.of(new TrieLogIdentifier(500L, Hash.EMPTY, true)));
+    assertThat(fullSyncDownloader.isFarFromBesuHead()).isFalse();
+    fullSyncDownloader.onNewBesuHeadReceived(
+        List.of(new TrieLogIdentifier(501L, Hash.EMPTY, true)));
+    assertThat(fullSyncDownloader.isFarFromBesuHead()).isTrue();
+  }
+
+  @Test
+  public void onlyUpdateWithHigherHead() {
+    assertThat(fullSyncDownloader.isFarFromBesuHead()).isTrue();
+    fullSyncDownloader.onNewBesuHeadReceived(
+        List.of(new TrieLogIdentifier(501L, Hash.EMPTY, true)));
+    assertThat(fullSyncDownloader.isFarFromBesuHead()).isTrue();
+    fullSyncDownloader.onNewBesuHeadReceived(List.of(new TrieLogIdentifier(2L, Hash.EMPTY, true)));
+    assertThat(fullSyncDownloader.isFarFromBesuHead()).isTrue();
   }
 
   @Test
   public void getEstimateHeadBlockNumber() {
-    assertThat(fullSyncDownloader.getEstimateHeadBlockNumber()).isEmpty();
-    fullSyncDownloader.onTrieLogsReceived(List.of(new TrieLogIdentifier(1L, Hash.EMPTY, true)));
-    assertThat(fullSyncDownloader.getEstimateHeadBlockNumber()).contains(1L);
-    fullSyncDownloader.onTrieLogsReceived(List.of(new TrieLogIdentifier(2L, Hash.EMPTY, true)));
-    assertThat(fullSyncDownloader.getEstimateHeadBlockNumber()).contains(2L);
+    assertThat(fullSyncDownloader.getEstimateBesuHeadBlockNumber()).isEmpty();
+    fullSyncDownloader.onNewBesuHeadReceived(List.of(new TrieLogIdentifier(1L, Hash.EMPTY, true)));
+    assertThat(fullSyncDownloader.getEstimateBesuHeadBlockNumber()).contains(1L);
+    fullSyncDownloader.onNewBesuHeadReceived(List.of(new TrieLogIdentifier(2L, Hash.EMPTY, true)));
+    assertThat(fullSyncDownloader.getEstimateBesuHeadBlockNumber()).contains(2L);
   }
 
   @Test
   public void onTrieLogsReceivedUpdateEstimateHead() {
-    assertThat(fullSyncDownloader.getEstimateHeadBlockNumber()).isEmpty();
-    fullSyncDownloader.onTrieLogsReceived(List.of(new TrieLogIdentifier(1L, Hash.EMPTY, true)));
-    assertThat(fullSyncDownloader.getEstimateHeadBlockNumber()).contains(1L);
+    assertThat(fullSyncDownloader.getEstimateBesuHeadBlockNumber()).isEmpty();
+    fullSyncDownloader.onNewBesuHeadReceived(List.of(new TrieLogIdentifier(1L, Hash.EMPTY, true)));
+    assertThat(fullSyncDownloader.getEstimateBesuHeadBlockNumber()).contains(1L);
   }
 }

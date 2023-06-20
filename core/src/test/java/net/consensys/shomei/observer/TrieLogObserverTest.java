@@ -46,7 +46,7 @@ public class TrieLogObserverTest {
             new TrieLogIdentifier(123L, Hash.hash(Bytes.of(0)), false),
             new TrieLogIdentifier(456L, Hash.hash(Bytes.of(1)), true));
 
-    observer.onTrieLogsReceived(logIdentifiers);
+    observer.onNewBesuHeadReceived(logIdentifiers);
   }
 
   @Test

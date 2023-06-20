@@ -16,17 +16,18 @@ package net.consensys.shomei;
 import net.consensys.shomei.cli.option.DataStorageOption;
 import net.consensys.shomei.cli.option.JsonRpcOption;
 import net.consensys.shomei.cli.option.MetricsOption;
+import net.consensys.shomei.cli.option.SyncOption;
 import net.consensys.shomei.fullsync.FullSyncDownloader;
 import net.consensys.shomei.metrics.MetricsService;
 import net.consensys.shomei.metrics.PrometheusMetricsService;
 import net.consensys.shomei.rpc.client.GetRawTrieLogClient;
 import net.consensys.shomei.rpc.server.JsonRpcService;
-import net.consensys.shomei.services.storage.rocksdb.RocksDBSegmentedStorage;
 import net.consensys.shomei.services.storage.rocksdb.configuration.RocksDBConfigurationBuilder;
-import net.consensys.shomei.storage.PersistedWorldStateRepository;
-import net.consensys.shomei.storage.WorldStateRepository;
-import net.consensys.shomei.worldview.ZkEvmWorldStateEntryPoint;
+import net.consensys.shomei.storage.RocksDBStorageProvider;
+import net.consensys.shomei.storage.StorageProvider;
+import net.consensys.shomei.storage.ZkWorldStateArchive;
 
+import java.io.IOException;
 import java.util.Optional;
 
 import io.micrometer.core.instrument.MeterRegistry;
@@ -44,34 +45,37 @@ public class Runner {
   private final Vertx vertx;
   private final FullSyncDownloader fullSyncDownloader;
   private final JsonRpcService jsonRpcService;
+
   private final MetricsService metricsService;
-  private final WorldStateRepository worldStateStorage;
+
+  private final ZkWorldStateArchive worldStateArchive;
 
   public Runner(
       final DataStorageOption dataStorageOption,
       JsonRpcOption jsonRpcOption,
+      final SyncOption syncOption,
       MetricsOption metricsOption) {
     this.vertx = Vertx.vertx();
 
     metricsService = setupMetrics(metricsOption);
 
-    worldStateStorage =
-        new PersistedWorldStateRepository(
-            new RocksDBSegmentedStorage(
-                new RocksDBConfigurationBuilder()
-                    .databaseDir(dataStorageOption.getDataStoragePath())
-                    .build()));
+    final StorageProvider storageProvider =
+        new RocksDBStorageProvider(
+            new RocksDBConfigurationBuilder()
+                .databaseDir(dataStorageOption.getDataStoragePath())
+                .build());
 
-    final ZkEvmWorldStateEntryPoint zkEvmWorldStateEntryPoint =
-        new ZkEvmWorldStateEntryPoint(worldStateStorage);
+    worldStateArchive = new ZkWorldStateArchive(storageProvider);
 
     final GetRawTrieLogClient getRawTrieLog =
         new GetRawTrieLogClient(
-            worldStateStorage,
+            worldStateArchive.getTrieLogManager(),
             jsonRpcOption.getBesuRpcHttpHost(),
             jsonRpcOption.getBesuRHttpPort());
 
-    fullSyncDownloader = new FullSyncDownloader(zkEvmWorldStateEntryPoint, getRawTrieLog);
+    fullSyncDownloader =
+        new FullSyncDownloader(
+            worldStateArchive, getRawTrieLog, syncOption.getMinConfirmationsBeforeImporting());
 
     this.jsonRpcService =
         new JsonRpcService(
@@ -79,7 +83,7 @@ public class Runner {
             jsonRpcOption.getRpcHttpPort(),
             Optional.of(jsonRpcOption.getRpcHttpHostAllowList()),
             fullSyncDownloader,
-            worldStateStorage);
+            worldStateArchive);
   }
 
   private MetricsService setupMetrics(MetricsOption metricsOption) {
@@ -130,8 +134,8 @@ public class Runner {
         });
   }
 
-  public void stop() {
-    worldStateStorage.close();
+  public void stop() throws IOException {
+    worldStateArchive.close();
     vertx.close();
   }
 }

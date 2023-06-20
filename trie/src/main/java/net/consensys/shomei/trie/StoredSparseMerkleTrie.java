@@ -66,19 +66,20 @@ public class StoredSparseMerkleTrie {
     return root.accept(getGetVisitor(), path).getValue();
   }
 
-  record GetAndProve(Optional<Bytes> nodeValue, List<Node<Bytes>> proof) {}
+  public record GetAndProve(
+      Optional<Bytes> nodeValue, List<Node<Bytes>> subProof, Optional<Node<Bytes>> leaf) {}
 
   /**
    * The `getAndProve` method retrieves the value associated with the given key in the sparse Merkle
-   * trie and generates a proof of existence for the key-value pair.
+   * trie and generates a subProof of existence for the key-value pair.
    *
-   * @param path The path for which to retrieve the value and generate a proof.
+   * @param path The path for which to retrieve the value and generate a subProof.
    */
   public GetAndProve getAndProve(final Bytes path) {
     checkNotNull(path);
     final GetVisitor<Bytes> getVisitor = getGetVisitor();
     final Node<Bytes> node = root.accept(getVisitor, path);
-    return new GetAndProve(node.getValue(), getVisitor.getProof());
+    return new GetAndProve(node.getValue(), getVisitor.getSubProof(), getVisitor.getLeaf());
   }
 
   public void put(final Bytes path, final Bytes value) {
@@ -89,7 +90,7 @@ public class StoredSparseMerkleTrie {
 
   /**
    * The `putAndProve` method inserts or updates a key-value pair in the sparse Merkle trie and
-   * generates a proof of inclusion for the updated state.
+   * generates a subProof of inclusion for the updated state.
    */
   public List<Node<Bytes>> putAndProve(final Bytes path, final Bytes value) {
     checkNotNull(path);
@@ -101,7 +102,7 @@ public class StoredSparseMerkleTrie {
 
   /**
    * The `removeAndProve` method removes a key-value pair from the sparse Merkle trie and generates
-   * a proof of exclusion for the removed state.
+   * a subProof of exclusion for the removed state.
    */
   public List<Node<Bytes>> removeAndProve(final Bytes path) {
     checkNotNull(path);

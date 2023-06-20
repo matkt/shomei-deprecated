@@ -22,7 +22,7 @@ import static net.consensys.shomei.util.TestFixtureGenerator.createDumFullBytes;
 import static net.consensys.shomei.util.TestFixtureGenerator.getAccountOne;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import net.consensys.shomei.storage.InMemoryWorldStateRepository;
+import net.consensys.shomei.storage.worldstate.InMemoryWorldStateStorage;
 import net.consensys.shomei.trie.ZKTrie;
 import net.consensys.shomei.trie.storage.AccountTrieRepositoryWrapper;
 import net.consensys.shomei.trie.storage.StorageTrieRepositoryWrapper;
@@ -56,8 +56,8 @@ public class WorldStateStateRootTest {
             Hash.fromHexString("25ddd6106526ffb2c9b923617cf3bcab669a5d57821d0ec81daa23155c1513ea"));
 
     final ZKTrie accountStateTrie =
-        ZKTrie.createTrie(new AccountTrieRepositoryWrapper(new InMemoryWorldStateRepository()));
-    accountStateTrie.putAndProve(
+        ZKTrie.createTrie(new AccountTrieRepositoryWrapper(new InMemoryWorldStateStorage()));
+    accountStateTrie.putWithTrace(
         zkAccount.getHkey(), zkAccount.getAddress(), zkAccount.getEncodedBytes());
 
     assertThat(accountStateTrie.getSubRootHash())
@@ -89,10 +89,10 @@ public class WorldStateStateRootTest {
             Hash.fromHexString("25ddd6106526ffb2c9b923617cf3bcab669a5d57821d0ec81daa23155c1513ea"));
 
     final ZKTrie accountStateTrie =
-        ZKTrie.createTrie(new AccountTrieRepositoryWrapper(new InMemoryWorldStateRepository()));
-    accountStateTrie.putAndProve(
+        ZKTrie.createTrie(new AccountTrieRepositoryWrapper(new InMemoryWorldStateStorage()));
+    accountStateTrie.putWithTrace(
         account.getHkey(), account.getAddress(), account.getEncodedBytes());
-    accountStateTrie.putAndProve(
+    accountStateTrie.putWithTrace(
         zkAccount2.getHkey(), zkAccount2.getAddress(), zkAccount2.getEncodedBytes());
 
     assertThat(accountStateTrie.getTopRootHash())
@@ -114,12 +114,12 @@ public class WorldStateStateRootTest {
             7L);
 
     final ZKTrie accountStateTrie =
-        ZKTrie.createTrie(new AccountTrieRepositoryWrapper(new InMemoryWorldStateRepository()));
+        ZKTrie.createTrie(new AccountTrieRepositoryWrapper(new InMemoryWorldStateStorage()));
 
     MutableZkAccount account = getAccountOne();
-    accountStateTrie.putAndProve(
+    accountStateTrie.putWithTrace(
         account.getHkey(), account.getAddress(), account.getEncodedBytes());
-    accountStateTrie.putAndProve(
+    accountStateTrie.putWithTrace(
         zkAccount2.getHkey(), zkAccount2.getAddress(), zkAccount2.getEncodedBytes());
 
     assertThat(accountStateTrie.getTopRootHash())
@@ -141,29 +141,29 @@ public class WorldStateStateRootTest {
             DEFAULT_TRIE_ROOT);
 
     final ZKTrie accountStateTrie =
-        ZKTrie.createTrie(new AccountTrieRepositoryWrapper(new InMemoryWorldStateRepository()));
+        ZKTrie.createTrie(new AccountTrieRepositoryWrapper(new InMemoryWorldStateStorage()));
 
     MutableZkAccount account = getAccountOne();
-    accountStateTrie.putAndProve(
+    accountStateTrie.putWithTrace(
         account.getHkey(), account.getAddress(), account.getEncodedBytes());
-    accountStateTrie.putAndProve(
+    accountStateTrie.putWithTrace(
         zkAccount2.getHkey(), zkAccount2.getAddress(), zkAccount2.getEncodedBytes());
 
     // Write something in the storage of B
     final ZKTrie account2Storage =
         ZKTrie.createTrie(
             new StorageTrieRepositoryWrapper(
-                zkAccount2.hashCode(), new InMemoryWorldStateRepository()));
+                zkAccount2.hashCode(), new InMemoryWorldStateStorage()));
     final MimcSafeBytes<Bytes32> slotKey = createDumFullBytes(14);
     final Hash slotKeyHash = HashProvider.mimc(slotKey);
     final MimcSafeBytes<Bytes32> slotValue = createDumFullBytes(18);
-    account2Storage.putAndProve(
+    account2Storage.putWithTrace(
         slotKeyHash,
         slotKey,
         slotValue); // for this test we don't really need to add the address location
     zkAccount2.setStorageRoot(Hash.wrap(account2Storage.getTopRootHash()));
 
-    accountStateTrie.putAndProve(
+    accountStateTrie.putWithTrace(
         zkAccount2.getHkey(), zkAccount2.getAddress(), zkAccount2.getEncodedBytes());
 
     assertThat(accountStateTrie.getTopRootHash())
@@ -185,37 +185,37 @@ public class WorldStateStateRootTest {
             DEFAULT_TRIE_ROOT);
 
     final ZKTrie accountStateTrie =
-        ZKTrie.createTrie(new AccountTrieRepositoryWrapper(new InMemoryWorldStateRepository()));
+        ZKTrie.createTrie(new AccountTrieRepositoryWrapper(new InMemoryWorldStateStorage()));
 
     MutableZkAccount account = getAccountOne();
-    accountStateTrie.putAndProve(
+    accountStateTrie.putWithTrace(
         account.getHkey(), account.getAddress(), account.getEncodedBytes());
-    accountStateTrie.putAndProve(
+    accountStateTrie.putWithTrace(
         zkAccount2.getHkey(), zkAccount2.getAddress(), zkAccount2.getEncodedBytes());
 
     // Write something in the storage of B
     final ZKTrie account2Storage =
         ZKTrie.createTrie(
             new StorageTrieRepositoryWrapper(
-                zkAccount2.hashCode(), new InMemoryWorldStateRepository()));
+                zkAccount2.hashCode(), new InMemoryWorldStateStorage()));
     final MimcSafeBytes<Bytes32> slotKey = createDumFullBytes(14);
     final Hash slotKeyHash = HashProvider.mimc(slotKey);
     final MimcSafeBytes<Bytes32> slotValue = createDumFullBytes(18);
-    account2Storage.putAndProve(slotKeyHash, slotKey, slotValue);
+    account2Storage.putWithTrace(slotKeyHash, slotKey, slotValue);
     zkAccount2.setStorageRoot(Hash.wrap(account2Storage.getTopRootHash()));
-    accountStateTrie.putAndProve(
+    accountStateTrie.putWithTrace(
         zkAccount2.getHkey(), zkAccount2.getAddress(), zkAccount2.getEncodedBytes());
 
     // Delete account 1
-    accountStateTrie.removeAndProve(account.getHkey(), account.getAddress());
+    accountStateTrie.removeWithTrace(account.getHkey(), account.getAddress());
     assertThat(accountStateTrie.getTopRootHash())
         .isEqualTo(
             Hash.fromHexString("2e603c5f62481d627428d9efbfccd33fc1474e1d191b9e93cefa337b4a0e67da"));
 
     // clean storage B
-    account2Storage.removeAndProve(slotKeyHash, slotKey);
+    account2Storage.removeWithTrace(slotKeyHash, slotKey);
     zkAccount2.setStorageRoot(Hash.wrap(account2Storage.getTopRootHash()));
-    accountStateTrie.putAndProve(
+    accountStateTrie.putWithTrace(
         zkAccount2.getHkey(), zkAccount2.getAddress(), zkAccount2.getEncodedBytes());
     assertThat(accountStateTrie.getTopRootHash())
         .isEqualTo(
@@ -225,9 +225,9 @@ public class WorldStateStateRootTest {
     final MimcSafeBytes<Bytes32> newSlotKey = createDumFullBytes(11);
     final Hash newSlotKeyHash = HashProvider.mimc(newSlotKey);
     final MimcSafeBytes<Bytes32> newSlotValue = createDumFullBytes(78);
-    account2Storage.putAndProve(newSlotKeyHash, newSlotKey, newSlotValue);
+    account2Storage.putWithTrace(newSlotKeyHash, newSlotKey, newSlotValue);
     zkAccount2.setStorageRoot(Hash.wrap(account2Storage.getTopRootHash()));
-    accountStateTrie.putAndProve(
+    accountStateTrie.putWithTrace(
         zkAccount2.getHkey(), zkAccount2.getAddress(), zkAccount2.getEncodedBytes());
     assertThat(accountStateTrie.getTopRootHash())
         .isEqualTo(
@@ -258,15 +258,15 @@ public class WorldStateStateRootTest {
             19L);
 
     final ZKTrie accountStateTrie =
-        ZKTrie.createTrie(new AccountTrieRepositoryWrapper(new InMemoryWorldStateRepository()));
+        ZKTrie.createTrie(new AccountTrieRepositoryWrapper(new InMemoryWorldStateStorage()));
 
     MutableZkAccount account = getAccountOne();
-    accountStateTrie.putAndProve(
+    accountStateTrie.putWithTrace(
         account.getHkey(), account.getAddress(), account.getEncodedBytes());
-    accountStateTrie.putAndProve(
+    accountStateTrie.putWithTrace(
         zkAccount2.getHkey(), zkAccount2.getAddress(), zkAccount2.getEncodedBytes());
-    accountStateTrie.removeAndProve(account.getHkey(), account.getAddress());
-    accountStateTrie.putAndProve(
+    accountStateTrie.removeWithTrace(account.getHkey(), account.getAddress());
+    accountStateTrie.putWithTrace(
         zkAccount3.getHkey(), zkAccount3.getAddress(), zkAccount3.getEncodedBytes());
 
     assertThat(accountStateTrie.getTopRootHash())
@@ -287,13 +287,13 @@ public class WorldStateStateRootTest {
             7L);
 
     final ZKTrie accountStateTrie =
-        ZKTrie.createTrie(new AccountTrieRepositoryWrapper(new InMemoryWorldStateRepository()));
+        ZKTrie.createTrie(new AccountTrieRepositoryWrapper(new InMemoryWorldStateStorage()));
 
     // add account
     MutableZkAccount account = getAccountOne();
-    accountStateTrie.putAndProve(
+    accountStateTrie.putWithTrace(
         account.getHkey(), account.getAddress(), account.getEncodedBytes());
-    accountStateTrie.putAndProve(
+    accountStateTrie.putWithTrace(
         zkAccount2.getHkey(), zkAccount2.getAddress(), zkAccount2.getEncodedBytes());
     assertThat(accountStateTrie.getTopRootHash())
         .isEqualTo(
@@ -301,18 +301,18 @@ public class WorldStateStateRootTest {
                 "0x15471b9c6443332dccaef5b1544c5881e2c2a6e4576ad1696cec3d1769061e21"));
     accountStateTrie.commit();
     // revert all addition
-    accountStateTrie.removeAndProve(account.getHkey(), account.getAddress());
+    accountStateTrie.removeWithTrace(account.getHkey(), account.getAddress());
     accountStateTrie.decrementNextFreeNode();
-    accountStateTrie.removeAndProve(zkAccount2.getHkey(), zkAccount2.getAddress());
+    accountStateTrie.removeWithTrace(zkAccount2.getHkey(), zkAccount2.getAddress());
     accountStateTrie.decrementNextFreeNode();
     assertThat(accountStateTrie.getTopRootHash())
         .isEqualTo(
             Hash.fromHexString("2e7942bb21022172cbad3ffc38d1c59e998f1ab6ab52feb15345d04bbf859f14"));
     accountStateTrie.commit();
     // add account again
-    accountStateTrie.putAndProve(
+    accountStateTrie.putWithTrace(
         account.getHkey(), account.getAddress(), account.getEncodedBytes());
-    accountStateTrie.putAndProve(
+    accountStateTrie.putWithTrace(
         zkAccount2.getHkey(), zkAccount2.getAddress(), zkAccount2.getEncodedBytes());
     assertThat(accountStateTrie.getTopRootHash())
         .isEqualTo(
