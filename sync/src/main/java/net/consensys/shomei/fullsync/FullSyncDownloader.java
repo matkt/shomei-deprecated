@@ -17,7 +17,7 @@ import static net.consensys.shomei.fullsync.TrieLogBlockingQueue.INITIAL_SYNC_BL
 
 import net.consensys.shomei.observer.TrieLogObserver;
 import net.consensys.shomei.rpc.client.GetRawTrieLogClient;
-import net.consensys.shomei.worldview.ZkEvmWorldStateEntryPoint;
+import net.consensys.shomei.storage.ZkWorldStateArchive;
 
 import java.util.Comparator;
 import java.util.List;
@@ -44,36 +44,37 @@ public class FullSyncDownloader extends AbstractVerticle implements TrieLogObser
   private final ExecutorService importBlockTask = Executors.newSingleThreadExecutor();
   private final TrieLogBlockingQueue blockQueue;
 
-  private final ZkEvmWorldStateEntryPoint zkEvmWorldStateEntryPoint;
+  private final ZkWorldStateArchive zkWorldStateArchive;
 
   private final GetRawTrieLogClient getRawTrieLog;
 
   private final long minConfirmationsBeforeImporting;
 
   private CompletableFuture<Void> completableFuture;
-  private Optional<Long> estimateHeadBlockNumber = Optional.empty();
+  private Optional<Long> estimateBesuHeadBlockNumber = Optional.empty();
 
   public FullSyncDownloader(
-      final ZkEvmWorldStateEntryPoint zkEvmWorldStateEntryPoint,
+      final ZkWorldStateArchive zkWorldStateArchive,
       final GetRawTrieLogClient getRawTrieLog,
       final long minConfirmationsBeforeImporting) {
-    this.zkEvmWorldStateEntryPoint = zkEvmWorldStateEntryPoint;
+    this.zkWorldStateArchive = zkWorldStateArchive;
     this.getRawTrieLog = getRawTrieLog;
     this.blockQueue =
         new TrieLogBlockingQueue(
             INITIAL_SYNC_BLOCK_NUMBER_RANGE * 2,
-            zkEvmWorldStateEntryPoint::getCurrentBlockNumber,
+            zkWorldStateArchive::getCurrentBlockNumber,
+            this::getEstimateBesuHeadBlockNumber,
             this::findMissingTrieLogFromBesu);
     this.minConfirmationsBeforeImporting = minConfirmationsBeforeImporting;
   }
 
   public FullSyncDownloader(
       final TrieLogBlockingQueue blockQueue,
-      final ZkEvmWorldStateEntryPoint zkEvmWorldStateEntryPoint,
+      final ZkWorldStateArchive zkWorldStateArchive,
       final GetRawTrieLogClient getRawTrieLog,
       final long minConfirmationsBeforeImporting) {
     this.blockQueue = blockQueue;
-    this.zkEvmWorldStateEntryPoint = zkEvmWorldStateEntryPoint;
+    this.zkWorldStateArchive = zkWorldStateArchive;
     this.getRawTrieLog = getRawTrieLog;
     this.minConfirmationsBeforeImporting = minConfirmationsBeforeImporting;
   }
@@ -96,7 +97,7 @@ public class FullSyncDownloader extends AbstractVerticle implements TrieLogObser
     }
     completableFuture = new CompletableFuture<>();
     while (!completableFuture.isDone()) {
-      final boolean isFarFromHead = isFarFromHead();
+      final boolean isFarFromHead = isFarFromBesuHead();
       if (blockQueue.waitForNewElement(isFarFromHead ? 0 : minConfirmationsBeforeImporting)) {
         importBlock(isFarFromHead);
       }
@@ -107,9 +108,8 @@ public class FullSyncDownloader extends AbstractVerticle implements TrieLogObser
     final TrieLogObserver.TrieLogIdentifier trieLogId = blockQueue.poll();
     if (trieLogId != null) {
       try {
-
-        zkEvmWorldStateEntryPoint.importBlock(Objects.requireNonNull(trieLogId), !isFarFromHead);
-        if (zkEvmWorldStateEntryPoint
+        zkWorldStateArchive.importBlock(Objects.requireNonNull(trieLogId), !isFarFromHead);
+        if (zkWorldStateArchive
             .getCurrentBlockHash()
             .equals(Objects.requireNonNull(trieLogId.blockHash()))) {
           if (isFarFromHead) {
@@ -155,8 +155,8 @@ public class FullSyncDownloader extends AbstractVerticle implements TrieLogObser
    *
    * @return The estimated distance.
    */
-  public long getEstimateDistanceFromTheHead() {
-    return estimateHeadBlockNumber.orElse(-1L) - zkEvmWorldStateEntryPoint.getCurrentBlockNumber();
+  public long getEstimateDistanceFromTheBesuHead() {
+    return estimateBesuHeadBlockNumber.orElse(-1L) - zkWorldStateArchive.getCurrentBlockNumber();
   }
 
   /**
@@ -164,22 +164,26 @@ public class FullSyncDownloader extends AbstractVerticle implements TrieLogObser
    *
    * @return `true` if the current block is too far from the head, `false` otherwise.
    */
-  public boolean isFarFromHead() {
-    return getEstimateHeadBlockNumber().isEmpty()
-        || getEstimateDistanceFromTheHead() > INITIAL_SYNC_BLOCK_NUMBER_RANGE;
+  public boolean isFarFromBesuHead() {
+    return getEstimateBesuHeadBlockNumber().isEmpty()
+        || getEstimateDistanceFromTheBesuHead() > INITIAL_SYNC_BLOCK_NUMBER_RANGE;
   }
 
-  public Optional<Long> getEstimateHeadBlockNumber() {
-    return estimateHeadBlockNumber;
+  public Optional<Long> getEstimateBesuHeadBlockNumber() {
+    return estimateBesuHeadBlockNumber;
   }
 
   @Override
-  public void onNewHeadReceived(final List<TrieLogObserver.TrieLogIdentifier> trieLogIds) {
-    // we can estimate head number when besu is pushing trielog
-    estimateHeadBlockNumber =
-        trieLogIds.stream()
-            .max(Comparator.comparingLong(TrieLogIdentifier::blockNumber))
-            .map(TrieLogIdentifier::blockNumber);
+  public void onNewBesuHeadReceived(final List<TrieLogObserver.TrieLogIdentifier> trieLogIds) {
+    // Update the head only if the new besu head is higher than the previous one. receiving a trie
+    // log
+    // allows us to estimate the head of Besu.
+    trieLogIds.stream()
+        .max(Comparator.comparingLong(TrieLogIdentifier::blockNumber))
+        .map(TrieLogIdentifier::blockNumber)
+        .filter(onNewHead -> onNewHead > estimateBesuHeadBlockNumber.orElse(-1L))
+        .ifPresent(aLong -> estimateBesuHeadBlockNumber = Optional.of(aLong));
+    blockQueue.notifyNewHeadAvailable(); // notify the waiting thread that new head is available
   }
 
   private void addTrieLogs(final List<TrieLogObserver.TrieLogIdentifier> trieLogIds) {
@@ -188,10 +192,6 @@ public class FullSyncDownloader extends AbstractVerticle implements TrieLogObser
           LOG.atDebug().setMessage("received trie log {} ").addArgument(trieLogIdentifier).log();
           blockQueue.offer(trieLogIdentifier);
         });
-    if (trieLogIds.size() > 0) {
-      blockQueue
-          .notifyNewElementAvailable(); // notify the waiting thread that new trielog is available
-    }
   }
 
   /**
@@ -214,20 +214,14 @@ public class FullSyncDownloader extends AbstractVerticle implements TrieLogObser
    * log.
    */
   private void findMissingTrieLogFromBesu(final long missingTrieLogCount) {
-
-    final long startBlockNumber = zkEvmWorldStateEntryPoint.getCurrentBlockNumber() + 1;
-    final long endBlockNumber =
-        zkEvmWorldStateEntryPoint.getCurrentBlockNumber() + missingTrieLogCount;
+    final long startBlockNumber = zkWorldStateArchive.getCurrentBlockNumber() + 1;
+    final long endBlockNumber = zkWorldStateArchive.getCurrentBlockNumber() + missingTrieLogCount;
     getRawTrieLog
         .getTrieLog(startBlockNumber, endBlockNumber)
         .whenComplete(
             (trieLogIdentifiers, throwable) -> {
               if (throwable == null) {
-                if (trieLogIdentifiers.size() < missingTrieLogCount) {
-                  onNewHeadReceived(
-                      trieLogIdentifiers); // If the range is not complete, we have reached the
-                  // head.
-                }
+                onNewBesuHeadReceived(trieLogIdentifiers);
                 addTrieLogs(trieLogIdentifiers);
               }
             });

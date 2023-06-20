@@ -18,13 +18,13 @@ import static net.consensys.shomei.util.bytes.MimcSafeBytes.unsafeFromBytes;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import net.consensys.shomei.trie.json.JsonTraceParser;
-import net.consensys.shomei.trie.proof.DeletionTrace;
-import net.consensys.shomei.trie.proof.InsertionTrace;
-import net.consensys.shomei.trie.proof.ReadTrace;
-import net.consensys.shomei.trie.proof.ReadZeroTrace;
-import net.consensys.shomei.trie.proof.Trace;
-import net.consensys.shomei.trie.proof.UpdateTrace;
-import net.consensys.shomei.trie.storage.InMemoryRepository;
+import net.consensys.shomei.trie.storage.InMemoryStorage;
+import net.consensys.shomei.trie.trace.DeletionTrace;
+import net.consensys.shomei.trie.trace.InsertionTrace;
+import net.consensys.shomei.trie.trace.ReadTrace;
+import net.consensys.shomei.trie.trace.ReadZeroTrace;
+import net.consensys.shomei.trie.trace.Trace;
+import net.consensys.shomei.trie.trace.UpdateTrace;
 import net.consensys.shomei.util.bytes.MimcSafeBytes;
 import net.consensys.zkevm.HashProvider;
 
@@ -50,14 +50,14 @@ public class TraceSerializationTest {
 
   @Test
   public void testEncodeAndDecodeInsertionTrace() throws JsonProcessingException {
-    final InMemoryRepository storage = new InMemoryRepository();
+    final InMemoryStorage storage = new InMemoryStorage();
     ZKTrie zkTrie = ZKTrie.createTrie(storage);
 
     final MimcSafeBytes<Bytes> key = unsafeFromBytes(createDumDigest(58));
     final MimcSafeBytes<Bytes> value = unsafeFromBytes(createDumDigest(41));
     final Hash hkey = HashProvider.mimc(key);
 
-    final InsertionTrace expectedTrace = (InsertionTrace) zkTrie.putAndProve(hkey, key, value);
+    final InsertionTrace expectedTrace = (InsertionTrace) zkTrie.putWithTrace(hkey, key, value);
 
     // try encode and decode
     final InsertionTrace decodedTrace =
@@ -70,7 +70,7 @@ public class TraceSerializationTest {
   @Test
   public void testEncodeAndDecodeUpdateTrace() throws JsonProcessingException {
 
-    final InMemoryRepository storage = new InMemoryRepository();
+    final InMemoryStorage storage = new InMemoryStorage();
     ZKTrie zkTrie = ZKTrie.createTrie(storage);
 
     final MimcSafeBytes<Bytes> key = unsafeFromBytes(createDumDigest(58));
@@ -78,9 +78,9 @@ public class TraceSerializationTest {
     final MimcSafeBytes<Bytes> newDumValue = unsafeFromBytes(createDumDigest(42));
     final Hash hkey = HashProvider.mimc(key);
 
-    zkTrie.putAndProve(hkey, key, dumValue);
+    zkTrie.putWithTrace(hkey, key, dumValue);
 
-    final UpdateTrace expectedTrace = (UpdateTrace) zkTrie.putAndProve(hkey, key, newDumValue);
+    final UpdateTrace expectedTrace = (UpdateTrace) zkTrie.putWithTrace(hkey, key, newDumValue);
 
     // try encode and decode
     final UpdateTrace decodedTrace =
@@ -92,16 +92,16 @@ public class TraceSerializationTest {
 
   @Test
   public void testEncodeAndDecodeDeletionTrace() throws JsonProcessingException {
-    final InMemoryRepository storage = new InMemoryRepository();
+    final InMemoryStorage storage = new InMemoryStorage();
     ZKTrie zkTrie = ZKTrie.createTrie(storage);
 
     final MimcSafeBytes<Bytes> key = unsafeFromBytes(createDumDigest(58));
     final MimcSafeBytes<Bytes> value = unsafeFromBytes(createDumDigest(41));
     final Hash hkey = HashProvider.mimc(key);
 
-    zkTrie.putAndProve(hkey, key, value);
+    zkTrie.putWithTrace(hkey, key, value);
 
-    final DeletionTrace expectedTrace = (DeletionTrace) zkTrie.removeAndProve(hkey, key);
+    final DeletionTrace expectedTrace = (DeletionTrace) zkTrie.removeWithTrace(hkey, key);
 
     // try encode and decode
     final DeletionTrace decodedTrace =
@@ -114,7 +114,7 @@ public class TraceSerializationTest {
   @Test
   public void testEncodeAndDecodeReadTrace() throws JsonProcessingException {
 
-    final InMemoryRepository storage = new InMemoryRepository();
+    final InMemoryStorage storage = new InMemoryStorage();
     ZKTrie zkTrie = ZKTrie.createTrie(storage);
 
     final MimcSafeBytes<Bytes> key = unsafeFromBytes(createDumDigest(58));
@@ -122,7 +122,7 @@ public class TraceSerializationTest {
     final Hash hkey = HashProvider.mimc(key);
 
     // try read zero trace before inserting the key in the trie
-    final ReadZeroTrace expectedReadZeroTrace = (ReadZeroTrace) zkTrie.readAndProve(hkey, key);
+    final ReadZeroTrace expectedReadZeroTrace = (ReadZeroTrace) zkTrie.readWithTrace(hkey, key);
 
     // try encode and decode
     final ReadZeroTrace decodedReadZeroTrace =
@@ -131,10 +131,10 @@ public class TraceSerializationTest {
     assertThat(JSON_OBJECT_MAPPER.writeValueAsString(decodedReadZeroTrace))
         .isEqualTo(JSON_OBJECT_MAPPER.writeValueAsString(expectedReadZeroTrace));
 
-    zkTrie.putAndProve(hkey, key, dumValue);
+    zkTrie.putWithTrace(hkey, key, dumValue);
 
     // try read trace
-    final ReadTrace expectedReadTrace = (ReadTrace) zkTrie.readAndProve(hkey, key);
+    final ReadTrace expectedReadTrace = (ReadTrace) zkTrie.readWithTrace(hkey, key);
 
     // try encode and decode
     final ReadTrace decodedReadTrace =
@@ -147,7 +147,7 @@ public class TraceSerializationTest {
   @Test
   public void testEncodeAndDecodeListOfTraces() throws JsonProcessingException {
 
-    final InMemoryRepository storage = new InMemoryRepository();
+    final InMemoryStorage storage = new InMemoryStorage();
     ZKTrie zkTrie = ZKTrie.createTrie(storage);
 
     final MimcSafeBytes<Bytes> key = unsafeFromBytes(createDumDigest(58));
@@ -156,8 +156,8 @@ public class TraceSerializationTest {
     final Hash hkey = HashProvider.mimc(key);
 
     List<Trace> expectedTraces = new ArrayList<>();
-    expectedTraces.add(zkTrie.putAndProve(hkey, key, dumValue));
-    expectedTraces.add(zkTrie.putAndProve(hkey, key, newDumValue));
+    expectedTraces.add(zkTrie.putWithTrace(hkey, key, dumValue));
+    expectedTraces.add(zkTrie.putWithTrace(hkey, key, newDumValue));
 
     // try encode and decode
     final List<Trace> decodedTraces = Trace.deserialize(RLP.input(Trace.serialize(expectedTraces)));

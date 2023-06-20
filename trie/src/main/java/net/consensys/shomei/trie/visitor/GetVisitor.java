@@ -18,6 +18,7 @@ import net.consensys.shomei.trie.node.NextFreeNode;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.ethereum.trie.MerkleTrieException;
@@ -29,13 +30,15 @@ import org.hyperledger.besu.ethereum.trie.patricia.ExtensionNode;
 import org.hyperledger.besu.ethereum.trie.patricia.LeafNode;
 
 /**
- * A visitor that gets a node from the trie and collects the proof.
+ * A visitor that gets a node from the trie and collects the subProof.
  *
  * @param <V> the type of the value stored in the trie.
  */
 public class GetVisitor<V> implements PathNodeVisitor<V> {
 
-  private final List<Node<V>> proof = new ArrayList<>();
+  private final List<Node<V>> subProof = new ArrayList<>();
+
+  private Optional<Node<V>> leaf = Optional.empty();
 
   @Override
   public Node<V> visit(final BranchNode<V> branchNode, final Bytes path) {
@@ -53,16 +56,17 @@ public class GetVisitor<V> implements PathNodeVisitor<V> {
        *       / \
        *  (L2)o  x
        *
-       * (L1) and (L3) represent the nodes that are part of the proof for the second leaf x.
-       * it's why we are adding the sibling to the proof. (we removed the next free node from the proof because we want only the subtrie that contains the key)
+       * (L1) and (L3) represent the nodes that are part of the subProof for the second leaf x.
+       * it's why we are adding the sibling to the subProof. (we removed the next free node from the subProof because we want only the subtrie that contains the key)
        */
-      proof.add(sibling);
+      subProof.add(sibling);
     }
     return children;
   }
 
   @Override
   public Node<V> visit(final LeafNode<V> leafNode, final Bytes path) {
+    this.leaf = Optional.of(leafNode);
     return leafNode;
   }
 
@@ -71,8 +75,12 @@ public class GetVisitor<V> implements PathNodeVisitor<V> {
     return EmptyLeafNode.instance();
   }
 
-  public List<Node<V>> getProof() {
-    return proof;
+  public List<Node<V>> getSubProof() {
+    return subProof;
+  }
+
+  public Optional<Node<V>> getLeaf() {
+    return leaf;
   }
 
   @Override

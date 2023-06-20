@@ -29,7 +29,7 @@ import org.hyperledger.besu.ethereum.trie.patricia.ExtensionNode;
 import org.hyperledger.besu.ethereum.trie.patricia.LeafNode;
 
 /**
- * This visitor is used to put a value in the trie. It returns the updated node and the proof
+ * This visitor is used to put a value in the trie. It returns the updated node and the subProof
  *
  * @param <V> the type of the value stored in the trie.
  */
@@ -57,8 +57,8 @@ public class PutVisitor<V> implements PathNodeVisitor<V> {
        *       / \
        *  (L2)o  x
        *
-       * (L1) and (L3) represent the nodes that are part of the proof for the second leaf x.
-       * it's why we are adding the sibling to the proof. (we removed the next free node from the proof because we want only the subtrie that contains the key)
+       * (L1) and (L3) represent the nodes that are part of the subProof for the second leaf x.
+       * it's why we are adding the sibling to the subProof. (we removed the next free node from the subProof because we want only the subtrie that contains the key)
        */
       proof.add(sibling);
     }

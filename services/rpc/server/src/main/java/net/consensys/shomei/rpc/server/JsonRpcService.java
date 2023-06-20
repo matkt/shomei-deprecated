@@ -17,11 +17,11 @@ import static com.google.common.collect.Streams.stream;
 
 import net.consensys.shomei.metrics.MetricsService;
 import net.consensys.shomei.observer.TrieLogObserver;
+import net.consensys.shomei.rpc.server.method.RollupGetProof;
 import net.consensys.shomei.rpc.server.method.RollupGetZkEVMBlockNumber;
 import net.consensys.shomei.rpc.server.method.RollupGetZkEVMStateMerkleProofV0;
 import net.consensys.shomei.rpc.server.method.SendRawTrieLog;
-import net.consensys.shomei.storage.WorldStateRepository;
-import net.consensys.shomei.trie.json.JsonTraceParser;
+import net.consensys.shomei.storage.ZkWorldStateArchive;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -34,7 +34,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Splitter;
 import com.google.common.collect.Iterables;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -55,7 +54,6 @@ import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.BodyHandler;
 import io.vertx.ext.web.handler.CorsHandler;
 import org.hyperledger.besu.ethereum.api.handlers.HandlerFactory;
-import org.hyperledger.besu.ethereum.api.handlers.JsonRpcExecutorHandler;
 import org.hyperledger.besu.ethereum.api.handlers.TimeoutOptions;
 import org.hyperledger.besu.ethereum.api.jsonrpc.JsonRpcConfiguration;
 import org.hyperledger.besu.ethereum.api.jsonrpc.JsonRpcServiceException;
@@ -95,7 +93,7 @@ public class JsonRpcService extends AbstractVerticle {
       final Integer rpcHttpPort,
       final Optional<List<String>> hostAllowList,
       final TrieLogObserver trieLogObserver,
-      final WorldStateRepository worldStateStorage) {
+      final ZkWorldStateArchive worldStateArchive) {
     this.config = JsonRpcConfiguration.createDefault();
     config.setHost(rpcHttpHost);
     config.setPort(rpcHttpPort);
@@ -104,9 +102,10 @@ public class JsonRpcService extends AbstractVerticle {
     this.rpcMethods.putAll(
         mapOf(
             new AdminChangeLogLevel(),
-            new SendRawTrieLog(trieLogObserver, worldStateStorage),
-            new RollupGetZkEVMBlockNumber(worldStateStorage),
-            new RollupGetZkEVMStateMerkleProofV0(worldStateStorage)));
+            new SendRawTrieLog(trieLogObserver, worldStateArchive.getTrieLogManager()),
+            new RollupGetProof(worldStateArchive),
+            new RollupGetZkEVMBlockNumber(worldStateArchive),
+            new RollupGetZkEVMStateMerkleProofV0(worldStateArchive.getTraceManager())));
     this.maxActiveConnections = config.getMaxActiveConnections();
     this.livenessService = new HealthService(new LivenessCheck());
   }
@@ -225,11 +224,7 @@ public class JsonRpcService extends AbstractVerticle {
         .handler(HandlerFactory.timeout(new TimeoutOptions(config.getHttpTimeoutSec()), rpcMethods))
         .blockingHandler(
             JsonRpcExecutorHandler.handler(
-                new ObjectMapper().registerModules(JsonTraceParser.modules),
-                // available in the besu main branch
-                new JsonRpcExecutor(new BaseJsonRpcProcessor(), rpcMethods),
-                null,
-                config),
+                new JsonRpcExecutor(new BaseJsonRpcProcessor(), rpcMethods), null),
             false);
     router
         .route("/login")

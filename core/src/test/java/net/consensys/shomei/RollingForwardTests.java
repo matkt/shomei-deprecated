@@ -20,16 +20,18 @@ import static net.consensys.shomei.util.TestFixtureGenerator.getContractStorageT
 import static net.consensys.shomei.util.bytes.MimcSafeBytes.safeUInt256;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import net.consensys.shomei.storage.InMemoryWorldStateRepository;
+import net.consensys.shomei.storage.InMemoryStorageProvider;
+import net.consensys.shomei.storage.TraceManager;
+import net.consensys.shomei.storage.worldstate.InMemoryWorldStateStorage;
 import net.consensys.shomei.trie.ZKTrie;
 import net.consensys.shomei.trie.json.JsonTraceParser;
-import net.consensys.shomei.trie.proof.Trace;
 import net.consensys.shomei.trie.storage.AccountTrieRepositoryWrapper;
+import net.consensys.shomei.trie.trace.Trace;
 import net.consensys.shomei.trielog.AccountKey;
 import net.consensys.shomei.trielog.StorageSlotKey;
 import net.consensys.shomei.trielog.TrieLogLayer;
 import net.consensys.shomei.util.bytes.MimcSafeBytes;
-import net.consensys.shomei.worldview.ZKEvmWorldState;
+import net.consensys.shomei.worldview.ZkEvmWorldState;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -48,6 +50,11 @@ public class RollingForwardTests {
 
   private static final ObjectMapper JSON_OBJECT_MAPPER = new ObjectMapper();
 
+  private final InMemoryStorageProvider storageProvider = new InMemoryStorageProvider();
+  private final TraceManager traceManager = storageProvider.getTraceManager();
+  private final ZkEvmWorldState zkEvmWorldState =
+      new ZkEvmWorldState(storageProvider.getWorldStateStorage(), traceManager::saveTrace);
+
   @Before
   public void setup() {
     JSON_OBJECT_MAPPER.registerModules(JsonTraceParser.modules);
@@ -60,13 +67,13 @@ public class RollingForwardTests {
     MutableZkAccount missingAccount = getAccountTwo();
 
     ZKTrie accountStateTrieOne =
-        ZKTrie.createTrie(new AccountTrieRepositoryWrapper(new InMemoryWorldStateRepository()));
+        ZKTrie.createTrie(new AccountTrieRepositoryWrapper(new InMemoryWorldStateStorage()));
 
     final List<Trace> expectedTraces = new ArrayList<>();
     expectedTraces.add(
-        accountStateTrieOne.readAndProve(missingAccount.getHkey(), missingAccount.getAddress()));
+        accountStateTrieOne.readWithTrace(missingAccount.getHkey(), missingAccount.getAddress()));
     expectedTraces.add(
-        accountStateTrieOne.putAndProve(
+        accountStateTrieOne.putWithTrace(
             account.getHkey(), account.getAddress(), account.getEncodedBytes()));
 
     Hash topRootHash = Hash.wrap(accountStateTrieOne.getTopRootHash());
@@ -78,8 +85,6 @@ public class RollingForwardTests {
     trieLogLayer.addAccountChange(account.getAddress(), null, account);
     trieLogLayer.addAccountChange(missingAccount.getAddress(), null, null);
 
-    InMemoryWorldStateRepository inMemoryWorldStateRepository = new InMemoryWorldStateRepository();
-    ZKEvmWorldState zkEvmWorldState = new ZKEvmWorldState(inMemoryWorldStateRepository);
     assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(DEFAULT_TRIE_ROOT);
     zkEvmWorldState.getAccumulator().rollForward(trieLogLayer);
     zkEvmWorldState.commit(0L, null, true);
@@ -87,7 +92,7 @@ public class RollingForwardTests {
     assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(topRootHash);
     assertThat(
             JSON_OBJECT_MAPPER.writeValueAsString(
-                inMemoryWorldStateRepository
+                traceManager
                     .getTrace(0)
                     .map(bytes -> Trace.deserialize(RLP.input(bytes)))
                     .orElseThrow()))
@@ -100,10 +105,10 @@ public class RollingForwardTests {
     MutableZkAccount account = getAccountOne();
 
     ZKTrie accountStateTrieOne =
-        ZKTrie.createTrie(new AccountTrieRepositoryWrapper(new InMemoryWorldStateRepository()));
+        ZKTrie.createTrie(new AccountTrieRepositoryWrapper(new InMemoryWorldStateStorage()));
 
     Trace expectedTrace =
-        accountStateTrieOne.putAndProve(
+        accountStateTrieOne.putWithTrace(
             account.getHkey(), account.getAddress(), account.getEncodedBytes());
 
     Hash topRootHash = Hash.wrap(accountStateTrieOne.getTopRootHash());
@@ -114,8 +119,6 @@ public class RollingForwardTests {
     TrieLogLayer trieLogLayer = new TrieLogLayer();
     trieLogLayer.addAccountChange(account.getAddress(), null, account);
 
-    InMemoryWorldStateRepository inMemoryWorldStateRepository = new InMemoryWorldStateRepository();
-    ZKEvmWorldState zkEvmWorldState = new ZKEvmWorldState(inMemoryWorldStateRepository);
     assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(DEFAULT_TRIE_ROOT);
     zkEvmWorldState.getAccumulator().rollForward(trieLogLayer);
     zkEvmWorldState.commit(0L, null, true);
@@ -123,7 +126,7 @@ public class RollingForwardTests {
     assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(topRootHash);
     assertThat(
             JSON_OBJECT_MAPPER.writeValueAsString(
-                inMemoryWorldStateRepository
+                traceManager
                     .getTrace(0)
                     .map(bytes -> Trace.deserialize(RLP.input(bytes)))
                     .orElseThrow()))
@@ -134,10 +137,10 @@ public class RollingForwardTests {
   public void rollingForwardUpdatingAccount() throws JsonProcessingException {
 
     ZKTrie accountStateTrieOne =
-        ZKTrie.createTrie(new AccountTrieRepositoryWrapper(new InMemoryWorldStateRepository()));
+        ZKTrie.createTrie(new AccountTrieRepositoryWrapper(new InMemoryWorldStateStorage()));
 
     MutableZkAccount account = getAccountOne();
-    accountStateTrieOne.putAndProve(
+    accountStateTrieOne.putWithTrace(
         account.getHkey(), account.getAddress(), account.getEncodedBytes());
 
     // update account
@@ -145,7 +148,7 @@ public class RollingForwardTests {
     accountUpdated.setBalance(Wei.of(100));
 
     Trace expectedTrace =
-        accountStateTrieOne.putAndProve(
+        accountStateTrieOne.putWithTrace(
             accountUpdated.getHkey(),
             accountUpdated.getAddress(),
             accountUpdated.getEncodedBytes());
@@ -162,8 +165,6 @@ public class RollingForwardTests {
     TrieLogLayer trieLogLayer2 = new TrieLogLayer();
     trieLogLayer2.addAccountChange(account.getAddress(), account, accountUpdated);
 
-    InMemoryWorldStateRepository inMemoryWorldStateRepository = new InMemoryWorldStateRepository();
-    ZKEvmWorldState zkEvmWorldState = new ZKEvmWorldState(inMemoryWorldStateRepository);
     assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(DEFAULT_TRIE_ROOT);
     zkEvmWorldState.getAccumulator().rollForward(trieLogLayer);
     zkEvmWorldState.commit(0L, null, true);
@@ -176,7 +177,7 @@ public class RollingForwardTests {
     assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(topRootHash);
     assertThat(
             JSON_OBJECT_MAPPER.writeValueAsString(
-                inMemoryWorldStateRepository
+                traceManager
                     .getTrace(0)
                     .map(bytes -> Trace.deserialize(RLP.input(bytes)))
                     .orElseThrow()))
@@ -187,19 +188,19 @@ public class RollingForwardTests {
   public void rollingForwardTwoAccounts() throws JsonProcessingException {
 
     ZKTrie accountStateTrieOne =
-        ZKTrie.createTrie(new AccountTrieRepositoryWrapper(new InMemoryWorldStateRepository()));
+        ZKTrie.createTrie(new AccountTrieRepositoryWrapper(new InMemoryWorldStateStorage()));
 
     List<Trace> expectedTraces = new ArrayList<>();
     MutableZkAccount account = getAccountTwo();
     expectedTraces.add(
-        accountStateTrieOne.putAndProve(
+        accountStateTrieOne.putWithTrace(
             account.getHkey(),
             account.getAddress(),
             account.getEncodedBytes())); // respect the order of hkey because they are in the same
     // batch
     MutableZkAccount secondAccount = getAccountOne();
     expectedTraces.add(
-        accountStateTrieOne.putAndProve(
+        accountStateTrieOne.putWithTrace(
             secondAccount.getHkey(), secondAccount.getAddress(), secondAccount.getEncodedBytes()));
 
     Hash topRootHash = Hash.wrap(accountStateTrieOne.getTopRootHash());
@@ -208,8 +209,6 @@ public class RollingForwardTests {
     trieLogLayer.addAccountChange(secondAccount.getAddress(), null, secondAccount);
     trieLogLayer.addAccountChange(account.getAddress(), null, account);
 
-    InMemoryWorldStateRepository inMemoryWorldStateRepository = new InMemoryWorldStateRepository();
-    ZKEvmWorldState zkEvmWorldState = new ZKEvmWorldState(inMemoryWorldStateRepository);
     assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(DEFAULT_TRIE_ROOT);
 
     zkEvmWorldState.getAccumulator().rollForward(trieLogLayer);
@@ -217,7 +216,7 @@ public class RollingForwardTests {
     assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(topRootHash);
     assertThat(
             JSON_OBJECT_MAPPER.writeValueAsString(
-                inMemoryWorldStateRepository
+                traceManager
                     .getTrace(0)
                     .map(bytes -> Trace.deserialize(RLP.input(bytes)))
                     .orElseThrow()))
@@ -228,7 +227,7 @@ public class RollingForwardTests {
   public void rollingForwardContractWithStorage() throws JsonProcessingException {
 
     ZKTrie accountStateTrieOne =
-        ZKTrie.createTrie(new AccountTrieRepositoryWrapper(new InMemoryWorldStateRepository()));
+        ZKTrie.createTrie(new AccountTrieRepositoryWrapper(new InMemoryWorldStateStorage()));
 
     List<Trace> expectedTraces = new ArrayList<>();
 
@@ -239,13 +238,13 @@ public class RollingForwardTests {
     expectedTraces.add(
         updateTraceStorageLocation(
             contract.getAddress(),
-            contractStorageTrie.putAndProve(
+            contractStorageTrie.putWithTrace(
                 storageSlotKey.slotHash(), storageSlotKey.slotKey(), slotValue)));
     contract.setStorageRoot(Hash.wrap(contractStorageTrie.getTopRootHash()));
 
     // add contract
     expectedTraces.add(
-        accountStateTrieOne.putAndProve(
+        accountStateTrieOne.putWithTrace(
             contract.getHkey(),
             contract.getAddress(),
             contract.getEncodedBytes())); // respect the order of hkey because they are in the same
@@ -253,7 +252,7 @@ public class RollingForwardTests {
     // add simple account
     MutableZkAccount simpleAccount = getAccountOne();
     expectedTraces.add(
-        accountStateTrieOne.putAndProve(
+        accountStateTrieOne.putWithTrace(
             simpleAccount.getHkey(), simpleAccount.getAddress(), simpleAccount.getEncodedBytes()));
 
     Hash topRootHash = Hash.wrap(accountStateTrieOne.getTopRootHash());
@@ -268,8 +267,6 @@ public class RollingForwardTests {
         null,
         slotValue.getOriginalUnsafeValue());
 
-    InMemoryWorldStateRepository inMemoryWorldStateRepository = new InMemoryWorldStateRepository();
-    ZKEvmWorldState zkEvmWorldState = new ZKEvmWorldState(inMemoryWorldStateRepository);
     assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(DEFAULT_TRIE_ROOT);
 
     zkEvmWorldState.getAccumulator().rollForward(trieLogLayer);
@@ -277,7 +274,7 @@ public class RollingForwardTests {
     assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(topRootHash);
     assertThat(
             JSON_OBJECT_MAPPER.writeValueAsString(
-                inMemoryWorldStateRepository
+                traceManager
                     .getTrace(0)
                     .map(bytes -> Trace.deserialize(RLP.input(bytes)))
                     .orElseThrow()))
@@ -288,28 +285,31 @@ public class RollingForwardTests {
   public void rollingForwardContractWithStorageWithReadNonZero() throws JsonProcessingException {
 
     ZKTrie accountStateTrieOne =
-        ZKTrie.createTrie(new AccountTrieRepositoryWrapper(new InMemoryWorldStateRepository()));
+        ZKTrie.createTrie(new AccountTrieRepositoryWrapper(new InMemoryWorldStateStorage()));
 
     MutableZkAccount contract = getAccountTwo();
     StorageSlotKey storageSlotKey = new StorageSlotKey(UInt256.valueOf(14));
     MimcSafeBytes<UInt256> slotValue = safeUInt256(UInt256.valueOf(12));
     ZKTrie contractStorageTrie = getContractStorageTrie(contract);
-    contractStorageTrie.putAndProve(storageSlotKey.slotHash(), storageSlotKey.slotKey(), slotValue);
+    contractStorageTrie.putWithTrace(
+        storageSlotKey.slotHash(), storageSlotKey.slotKey(), slotValue);
     contract.setStorageRoot(Hash.wrap(contractStorageTrie.getTopRootHash()));
 
     // add contract
-    accountStateTrieOne.putAndProve(
+    accountStateTrieOne.putWithTrace(
         contract.getHkey(),
         contract.getAddress(),
         contract.getEncodedBytes()); // respect the order of hkey because they are in the same batch
 
     // read non zero slot of the contract
     List<Trace> expectedTraces = new ArrayList<>();
-    expectedTraces.add(accountStateTrieOne.readAndProve(contract.getHkey(), contract.getAddress()));
+    expectedTraces.add(
+        accountStateTrieOne.readWithTrace(contract.getHkey(), contract.getAddress()));
     expectedTraces.add(
         updateTraceStorageLocation(
             contract.getAddress(),
-            contractStorageTrie.readAndProve(storageSlotKey.slotHash(), storageSlotKey.slotKey())));
+            contractStorageTrie.readWithTrace(
+                storageSlotKey.slotHash(), storageSlotKey.slotKey())));
 
     TrieLogLayer trieLogLayer = new TrieLogLayer();
     final AccountKey accountKey2 =
@@ -328,8 +328,6 @@ public class RollingForwardTests {
         slotValue.getOriginalUnsafeValue(),
         slotValue.getOriginalUnsafeValue());
 
-    InMemoryWorldStateRepository inMemoryWorldStateRepository = new InMemoryWorldStateRepository();
-    ZKEvmWorldState zkEvmWorldState = new ZKEvmWorldState(inMemoryWorldStateRepository);
     assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(DEFAULT_TRIE_ROOT);
     zkEvmWorldState.getAccumulator().rollForward(trieLogLayer);
     zkEvmWorldState.commit(0L, null, true);
@@ -338,7 +336,7 @@ public class RollingForwardTests {
     zkEvmWorldState.commit(0L, null, true);
     assertThat(
             JSON_OBJECT_MAPPER.writeValueAsString(
-                inMemoryWorldStateRepository
+                traceManager
                     .getTrace(0)
                     .map(bytes -> Trace.deserialize(RLP.input(bytes)))
                     .orElseThrow()))
@@ -349,17 +347,18 @@ public class RollingForwardTests {
   public void rollingForwardAccountSelfDestructWithStorage() throws JsonProcessingException {
 
     ZKTrie accountStateTrieOne =
-        ZKTrie.createTrie(new AccountTrieRepositoryWrapper(new InMemoryWorldStateRepository()));
+        ZKTrie.createTrie(new AccountTrieRepositoryWrapper(new InMemoryWorldStateStorage()));
 
     // create contract with storage
     MutableZkAccount contract = getAccountTwo();
     StorageSlotKey storageSlotKey = new StorageSlotKey(UInt256.valueOf(14));
     MimcSafeBytes<UInt256> slotValue = safeUInt256(UInt256.valueOf(12));
     ZKTrie contractStorageTrie = getContractStorageTrie(contract);
-    contractStorageTrie.putAndProve(storageSlotKey.slotHash(), storageSlotKey.slotKey(), slotValue);
+    contractStorageTrie.putWithTrace(
+        storageSlotKey.slotHash(), storageSlotKey.slotKey(), slotValue);
     contract.setStorageRoot(Hash.wrap(contractStorageTrie.getTopRootHash()));
 
-    accountStateTrieOne.putAndProve(
+    accountStateTrieOne.putWithTrace(
         contract.getHkey(), contract.getAddress(), contract.getEncodedBytes());
 
     final List<Trace> expectedTraces = new ArrayList<>();
@@ -367,28 +366,27 @@ public class RollingForwardTests {
     expectedTraces.add(
         updateTraceStorageLocation(
             contract.getAddress(),
-            contractStorageTrie.readAndProve(storageSlotKey.slotHash(), storageSlotKey.slotKey())));
+            contractStorageTrie.readWithTrace(
+                storageSlotKey.slotHash(), storageSlotKey.slotKey())));
 
     // selfdestruct contract
     expectedTraces.add(
-        accountStateTrieOne.removeAndProve(contract.getHkey(), contract.getAddress()));
+        accountStateTrieOne.removeWithTrace(contract.getHkey(), contract.getAddress()));
 
     // recreate contract
     ZKTrie newContractStorageTrie = getContractStorageTrie(contract);
     expectedTraces.add(
         updateTraceStorageLocation(
             contract.getAddress(),
-            newContractStorageTrie.putAndProve(
+            newContractStorageTrie.putWithTrace(
                 storageSlotKey.slotHash(), storageSlotKey.slotKey(), slotValue)));
     contract.setStorageRoot(Hash.wrap(newContractStorageTrie.getTopRootHash()));
     expectedTraces.add(
-        accountStateTrieOne.putAndProve(
+        accountStateTrieOne.putWithTrace(
             contract.getHkey(), contract.getAddress(), contract.getEncodedBytes()));
 
     Hash topRootHash = Hash.wrap(accountStateTrieOne.getTopRootHash());
 
-    InMemoryWorldStateRepository inMemoryWorldStateRepository = new InMemoryWorldStateRepository();
-    ZKEvmWorldState zkEvmWorldState = new ZKEvmWorldState(inMemoryWorldStateRepository);
     assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(DEFAULT_TRIE_ROOT);
 
     // create account with the rolling
@@ -415,7 +413,7 @@ public class RollingForwardTests {
 
     assertThat(
             JSON_OBJECT_MAPPER.writeValueAsString(
-                inMemoryWorldStateRepository
+                traceManager
                     .getTrace(0)
                     .map(bytes -> Trace.deserialize(RLP.input(bytes)))
                     .orElseThrow()))
@@ -428,17 +426,18 @@ public class RollingForwardTests {
       throws JsonProcessingException {
 
     ZKTrie accountStateTrieOne =
-        ZKTrie.createTrie(new AccountTrieRepositoryWrapper(new InMemoryWorldStateRepository()));
+        ZKTrie.createTrie(new AccountTrieRepositoryWrapper(new InMemoryWorldStateStorage()));
 
     // create contract with storage
     MutableZkAccount contract = getAccountTwo();
     StorageSlotKey storageSlotKey = new StorageSlotKey(UInt256.valueOf(14));
     MimcSafeBytes<UInt256> slotValue = safeUInt256(UInt256.valueOf(12));
     ZKTrie contractStorageTrie = getContractStorageTrie(contract);
-    contractStorageTrie.putAndProve(storageSlotKey.slotHash(), storageSlotKey.slotKey(), slotValue);
+    contractStorageTrie.putWithTrace(
+        storageSlotKey.slotHash(), storageSlotKey.slotKey(), slotValue);
     contract.setStorageRoot(Hash.wrap(contractStorageTrie.getTopRootHash()));
 
-    accountStateTrieOne.putAndProve(
+    accountStateTrieOne.putWithTrace(
         contract.getHkey(), contract.getAddress(), contract.getEncodedBytes());
 
     List<Trace> expectedTraces = new ArrayList<>();
@@ -446,10 +445,11 @@ public class RollingForwardTests {
     expectedTraces.add(
         updateTraceStorageLocation(
             contract.getAddress(),
-            contractStorageTrie.readAndProve(storageSlotKey.slotHash(), storageSlotKey.slotKey())));
+            contractStorageTrie.readWithTrace(
+                storageSlotKey.slotHash(), storageSlotKey.slotKey())));
     // selfdestruct contract
     expectedTraces.add(
-        accountStateTrieOne.removeAndProve(contract.getHkey(), contract.getAddress()));
+        accountStateTrieOne.removeWithTrace(contract.getHkey(), contract.getAddress()));
 
     // recreate contract
     MutableZkAccount updatedContract = getAccountTwo();
@@ -458,19 +458,17 @@ public class RollingForwardTests {
     expectedTraces.add(
         updateTraceStorageLocation(
             contract.getAddress(),
-            newContractStorageTrie.putAndProve(
+            newContractStorageTrie.putWithTrace(
                 storageSlotKey.slotHash(), storageSlotKey.slotKey(), newSlotValue)));
     updatedContract.setStorageRoot(Hash.wrap(newContractStorageTrie.getTopRootHash()));
     expectedTraces.add(
-        accountStateTrieOne.putAndProve(
+        accountStateTrieOne.putWithTrace(
             updatedContract.getHkey(),
             updatedContract.getAddress(),
             updatedContract.getEncodedBytes()));
 
     Hash topRootHash = Hash.wrap(accountStateTrieOne.getTopRootHash());
 
-    InMemoryWorldStateRepository inMemoryWorldStateRepository = new InMemoryWorldStateRepository();
-    ZKEvmWorldState zkEvmWorldState = new ZKEvmWorldState(inMemoryWorldStateRepository);
     assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(DEFAULT_TRIE_ROOT);
 
     // create account with the rolling
@@ -499,7 +497,7 @@ public class RollingForwardTests {
 
     assertThat(
             JSON_OBJECT_MAPPER.writeValueAsString(
-                inMemoryWorldStateRepository
+                traceManager
                     .getTrace(0)
                     .map(bytes -> Trace.deserialize(RLP.input(bytes)))
                     .orElseThrow()))
@@ -512,17 +510,18 @@ public class RollingForwardTests {
       throws JsonProcessingException {
 
     ZKTrie accountStateTrieOne =
-        ZKTrie.createTrie(new AccountTrieRepositoryWrapper(new InMemoryWorldStateRepository()));
+        ZKTrie.createTrie(new AccountTrieRepositoryWrapper(new InMemoryWorldStateStorage()));
 
     // create contract with storage
     MutableZkAccount contract = getAccountTwo();
     StorageSlotKey storageSlotKey = new StorageSlotKey(UInt256.valueOf(14));
     MimcSafeBytes<UInt256> slotValue = safeUInt256(UInt256.valueOf(12));
     ZKTrie contractStorageTrie = getContractStorageTrie(contract);
-    contractStorageTrie.putAndProve(storageSlotKey.slotHash(), storageSlotKey.slotKey(), slotValue);
+    contractStorageTrie.putWithTrace(
+        storageSlotKey.slotHash(), storageSlotKey.slotKey(), slotValue);
     contract.setStorageRoot(Hash.wrap(contractStorageTrie.getTopRootHash()));
 
-    accountStateTrieOne.putAndProve(
+    accountStateTrieOne.putWithTrace(
         contract.getHkey(), contract.getAddress(), contract.getEncodedBytes());
 
     List<Trace> expectedTraces = new ArrayList<>();
@@ -530,10 +529,11 @@ public class RollingForwardTests {
     expectedTraces.add(
         updateTraceStorageLocation(
             contract.getAddress(),
-            contractStorageTrie.readAndProve(storageSlotKey.slotHash(), storageSlotKey.slotKey())));
+            contractStorageTrie.readWithTrace(
+                storageSlotKey.slotHash(), storageSlotKey.slotKey())));
     // selfdestruct contract
     expectedTraces.add(
-        accountStateTrieOne.removeAndProve(contract.getHkey(), contract.getAddress()));
+        accountStateTrieOne.removeWithTrace(contract.getHkey(), contract.getAddress()));
     // recreate contract
 
     MutableZkAccount updatedContract = getAccountTwo();
@@ -543,19 +543,17 @@ public class RollingForwardTests {
     expectedTraces.add(
         updateTraceStorageLocation(
             contract.getAddress(),
-            newContractStorageTrie.putAndProve(
+            newContractStorageTrie.putWithTrace(
                 newStorageSlotKey.slotHash(), newStorageSlotKey.slotKey(), newSlotValue)));
     updatedContract.setStorageRoot(Hash.wrap(newContractStorageTrie.getTopRootHash()));
     expectedTraces.add(
-        accountStateTrieOne.putAndProve(
+        accountStateTrieOne.putWithTrace(
             updatedContract.getHkey(),
             updatedContract.getAddress(),
             updatedContract.getEncodedBytes()));
 
     Hash topRootHash = Hash.wrap(accountStateTrieOne.getTopRootHash());
 
-    InMemoryWorldStateRepository inMemoryWorldStateRepository = new InMemoryWorldStateRepository();
-    ZKEvmWorldState zkEvmWorldState = new ZKEvmWorldState(inMemoryWorldStateRepository);
     assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(DEFAULT_TRIE_ROOT);
 
     // create account with the rolling
@@ -582,7 +580,7 @@ public class RollingForwardTests {
 
     assertThat(
             JSON_OBJECT_MAPPER.writeValueAsString(
-                inMemoryWorldStateRepository
+                traceManager
                     .getTrace(0)
                     .map(bytes -> Trace.deserialize(RLP.input(bytes)))
                     .orElseThrow()))

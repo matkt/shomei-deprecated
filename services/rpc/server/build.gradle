@@ -17,6 +17,7 @@ dependencies {
 
     implementation project(':util')
     implementation project(':core')
+    implementation project(':crypto')
     implementation project(':services:rpc:common')
     implementation project(':services:metrics')
     implementation project(':trie')
@@ -45,6 +46,7 @@ dependencies {
 
     // Tuweni
     implementation 'org.apache.tuweni:tuweni-bytes'
+    implementation 'org.apache.tuweni:tuweni-units'
 
     // Vert.x dependencies
     implementation 'io.vertx:vertx-auth-jwt'
@@ -52,6 +54,9 @@ dependencies {
     implementation 'io.vertx:vertx-core'
     implementation 'io.vertx:vertx-unit'
     implementation 'io.vertx:vertx-web'
+
+    // Jackson
+    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jdk8'
 
     // Test dependencies
     testImplementation 'junit:junit'

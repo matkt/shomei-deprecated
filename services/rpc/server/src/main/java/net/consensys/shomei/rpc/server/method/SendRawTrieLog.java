@@ -16,13 +16,12 @@ package net.consensys.shomei.rpc.server.method;
 import net.consensys.shomei.observer.TrieLogObserver;
 import net.consensys.shomei.rpc.model.TrieLogElement;
 import net.consensys.shomei.rpc.server.ShomeiRpcMethod;
-import net.consensys.shomei.storage.WorldStateRepository;
+import net.consensys.shomei.storage.TrieLogManager;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.IntStream;
 
-import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.ethereum.api.jsonrpc.internal.JsonRpcRequestContext;
 import org.hyperledger.besu.ethereum.api.jsonrpc.internal.methods.JsonRpcMethod;
 import org.hyperledger.besu.ethereum.api.jsonrpc.internal.response.JsonRpcError;
@@ -36,12 +35,12 @@ public class SendRawTrieLog implements JsonRpcMethod {
   private static final Logger LOG = LoggerFactory.getLogger(SendRawTrieLog.class);
   final TrieLogObserver trieLogObserver;
 
-  final WorldStateRepository worldStateStorage;
+  final TrieLogManager trieLogManager;
 
   public SendRawTrieLog(
-      final TrieLogObserver trieLogObserver, final WorldStateRepository worldStateStorage) {
+      final TrieLogObserver trieLogObserver, final TrieLogManager trieLogManager) {
     this.trieLogObserver = trieLogObserver;
-    this.worldStateStorage = worldStateStorage;
+    this.trieLogManager = trieLogManager;
   }
 
   @Override
@@ -58,13 +57,9 @@ public class SendRawTrieLog implements JsonRpcMethod {
               index -> {
                 TrieLogElement param =
                     requestContext.getRequest().getRequiredParameter(index, TrieLogElement.class);
-                worldStateStorage.saveTrieLog(
-                    param.blockNumber(), Bytes.fromHexString(param.trieLog()));
                 trieLogIdentifiers.add(param.getTrieLogIdentifier());
               });
-      worldStateStorage.commitTrieLogStorage();
-      trieLogObserver.onNewHeadReceived(trieLogIdentifiers);
-
+      trieLogObserver.onNewBesuHeadReceived(trieLogIdentifiers);
     } catch (RuntimeException e) {
       LOG.error("failed to handle new TrieLog {}", e.getMessage());
       LOG.debug("exception handling TrieLog", e);

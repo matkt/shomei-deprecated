@@ -33,6 +33,7 @@ dependencies {
 
     // OpenTelemetry
     implementation 'io.opentelemetry:opentelemetry-api'
+
 }
 
 test {

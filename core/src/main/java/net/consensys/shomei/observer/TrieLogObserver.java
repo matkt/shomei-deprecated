@@ -25,15 +25,24 @@ public interface TrieLogObserver {
    *
    * @param trieLogIds the trie log identifiers
    */
-  void onNewHeadReceived(final List<TrieLogIdentifier> trieLogIds);
+  void onNewBesuHeadReceived(final List<TrieLogIdentifier> trieLogIds);
 
   /** A trie log identifier. */
   record TrieLogIdentifier(Long blockNumber, Hash blockHash, boolean isInitialSync)
       implements Comparable<TrieLogIdentifier> {
 
+    public TrieLogIdentifier(final Long blockNumber, final Hash blockHash) {
+      this(blockNumber, blockHash, false);
+    }
+
     @Override
     public int compareTo(TrieLogIdentifier other) {
       return this.blockNumber.compareTo(other.blockNumber);
+    }
+
+    public Object toLogString() {
+      return String.format(
+          "TrieLogIdentifier{blockNumber=%s, blockHash=%s}", blockNumber, blockHash);
     }
   }
 }
