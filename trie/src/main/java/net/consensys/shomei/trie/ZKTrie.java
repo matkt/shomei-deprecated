@@ -243,7 +243,13 @@ public class ZKTrie {
                       List.of(state.root))
                   .flatMap(List::stream)
                   .map(Node::getEncodedBytes)
-                  .collect(Collectors.toList())),
+                  .collect(
+                      Collectors.collectingAndThen(
+                          Collectors.toList(),
+                          l -> {
+                            Collections.reverse(l);
+                            return l;
+                          }))),
           new Proof<>(
               Optional.of(rightFlatLeafValue.leafValue()),
               Stream.of(
@@ -252,7 +258,13 @@ public class ZKTrie {
                       List.of(state.root))
                   .flatMap(List::stream)
                   .map(Node::getEncodedBytes)
-                  .collect(Collectors.toList())));
+                  .collect(
+                      Collectors.collectingAndThen(
+                          Collectors.toList(),
+                          l -> {
+                            Collections.reverse(l);
+                            return l;
+                          }))));
 
     } else {
 
@@ -271,7 +283,13 @@ public class ZKTrie {
               Stream.of(List.of(data.leaf().orElseThrow()), data.subProof(), List.of(state.root))
                   .flatMap(List::stream)
                   .map(Node::getEncodedBytes)
-                  .collect(Collectors.toList())));
+                  .collect(
+                      Collectors.collectingAndThen(
+                          Collectors.toList(),
+                          l -> {
+                            Collections.reverse(l);
+                            return l;
+                          }))));
     }
   }
 
