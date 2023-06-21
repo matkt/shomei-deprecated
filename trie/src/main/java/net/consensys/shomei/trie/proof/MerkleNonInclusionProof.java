@@ -21,11 +21,28 @@ public class MerkleNonInclusionProof extends MerkleProof {
   private final Proof<Bytes> leftProof;
   private final Proof<Bytes> rightProof;
 
+  private final long leftLeafIndex;
+  private final long rightLeafIndex;
+
   public MerkleNonInclusionProof(
-      final Bytes key, final Proof<Bytes> leftProof, final Proof<Bytes> rightProof) {
+      final Bytes key,
+      final long leftLeafIndex,
+      final long rightLeafIndex,
+      final Proof<Bytes> leftProof,
+      final Proof<Bytes> rightProof) {
     super(key);
+    this.leftLeafIndex = leftLeafIndex;
+    this.rightLeafIndex = rightLeafIndex;
     this.leftProof = leftProof;
     this.rightProof = rightProof;
+  }
+
+  public long getLeftLeafIndex() {
+    return leftLeafIndex;
+  }
+
+  public long getRightLeafIndex() {
+    return rightLeafIndex;
   }
 
   public Proof<Bytes> getLeftProof() {

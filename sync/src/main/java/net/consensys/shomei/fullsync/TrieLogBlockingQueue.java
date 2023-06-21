@@ -89,6 +89,7 @@ public class TrieLogBlockingQueue extends PriorityBlockingQueue<TrieLogObserver.
            * reorganizations and give enough time for Besu to send the final version of block. Note: This
            * method is only needed to the testnet environment.
            */
+          clear();
           startWaiting();
         } else {
           distance =

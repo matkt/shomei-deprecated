@@ -235,6 +235,8 @@ public class ZKTrie {
 
       return new MerkleNonInclusionProof(
           key.getOriginalUnsafeValue(),
+          leftFlatLeafValue.leafIndex(),
+          rightFlatLeafValue.leafIndex(),
           new Proof<>(
               Optional.of(leftFlatLeafValue.leafValue()),
               Stream.of(
@@ -270,6 +272,7 @@ public class ZKTrie {
 
       final FlattenedLeaf currentFlatLeafValue = nearestKeys.getCenterNodeValue().orElseThrow();
 
+      System.out.println(currentFlatLeafValue.leafValue());
       // GET path of hash(k)
       final Bytes leafPath = pathResolver.getLeafPath(currentFlatLeafValue.leafIndex());
       // READ hash(k)
