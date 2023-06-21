@@ -14,6 +14,7 @@
 package net.consensys.shomei.trie.json;
 
 import java.io.IOException;
+import java.util.Optional;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.JsonSerializer;
@@ -61,6 +62,21 @@ public class JsonTraceParser {
                       Hash node, JsonGenerator jsonGen, SerializerProvider serProv)
                       throws IOException {
                     jsonGen.writeString(node.toHexString());
+                  }
+                }),
+        new SimpleModule()
+            .addSerializer(
+                Optional.class,
+                new JsonSerializer<>() {
+                  @Override
+                  public void serialize(
+                      Optional optional, JsonGenerator jsonGen, SerializerProvider serProv)
+                      throws IOException {
+                    if (optional.isPresent() && optional.get() instanceof Bytes) {
+                      jsonGen.writeString(optional.get().toString());
+                    } else {
+                      jsonGen.writeString(optional.toString());
+                    }
                   }
                 }),
         new SimpleModule()
