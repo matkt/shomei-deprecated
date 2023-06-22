@@ -221,8 +221,10 @@ public class FullSyncDownloader extends AbstractVerticle implements TrieLogObser
         .whenComplete(
             (trieLogIdentifiers, throwable) -> {
               if (throwable == null) {
-                addTrieLogs(trieLogIdentifiers);
-                onNewBesuHeadReceived(trieLogIdentifiers);
+                if (!trieLogIdentifiers.isEmpty()) {
+                  addTrieLogs(trieLogIdentifiers);
+                  onNewBesuHeadReceived(trieLogIdentifiers);
+                }
               }
             });
   }
