@@ -15,6 +15,7 @@ package net.consensys.shomei.fullsync;
 
 import static net.consensys.shomei.fullsync.TrieLogBlockingQueue.INITIAL_SYNC_BLOCK_NUMBER_RANGE;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
@@ -40,11 +41,12 @@ public class FullSyncDownloaderTest {
 
   @Mock ZkWorldStateArchive zkWorldStateArchive;
 
-  FullSyncDownloader fullSyncDownloader;
+  private FullSyncDownloader fullSyncDownloader;
+  private TrieLogBlockingQueue blockingQueue;
 
   @Before
   public void setup() {
-    TrieLogBlockingQueue blockingQueue =
+    blockingQueue =
         spy(
             new TrieLogBlockingQueue(
                 INITIAL_SYNC_BLOCK_NUMBER_RANGE * 2,
@@ -59,7 +61,7 @@ public class FullSyncDownloaderTest {
                 }));
     fullSyncDownloader =
         new FullSyncDownloader(
-            blockingQueue, zkWorldStateArchive, Mockito.mock(GetRawTrieLogClient.class), 0);
+            blockingQueue, zkWorldStateArchive, Mockito.mock(GetRawTrieLogClient.class), 2, 0);
     doThrow(new RuntimeException()).when(blockingQueue).startWaiting();
   }
 
@@ -68,6 +70,34 @@ public class FullSyncDownloaderTest {
     fullSyncDownloader.startFullSync();
     Mockito.verify(zkWorldStateArchive, Mockito.never())
         .importBlock(Mockito.any(TrieLogIdentifier.class), Mockito.anyBoolean());
+  }
+
+  @Test
+  public void testNotTriggerTraceGenerationBeforeFirstBlockNumber() throws Exception {
+    fullSyncDownloader =
+        new FullSyncDownloader(
+            blockingQueue, zkWorldStateArchive, Mockito.mock(GetRawTrieLogClient.class), 1, 0);
+    List<TrieLogIdentifier> trieLogIdentifiers =
+        List.of(new TrieLogIdentifier(1L, Hash.EMPTY, true));
+    fullSyncDownloader.addTrieLogs(trieLogIdentifiers);
+    fullSyncDownloader.onNewBesuHeadReceived(trieLogIdentifiers);
+    fullSyncDownloader.startFullSync();
+    Mockito.verify(zkWorldStateArchive, times(1))
+        .importBlock(Mockito.any(TrieLogIdentifier.class), eq(true));
+  }
+
+  @Test
+  public void testTriggerTraceGenerationAfterFirstBlockNumber() throws Exception {
+    fullSyncDownloader =
+        new FullSyncDownloader(
+            blockingQueue, zkWorldStateArchive, Mockito.mock(GetRawTrieLogClient.class), 2, 0);
+    List<TrieLogIdentifier> trieLogIdentifiers =
+        List.of(new TrieLogIdentifier(1L, Hash.EMPTY, true));
+    fullSyncDownloader.addTrieLogs(trieLogIdentifiers);
+    fullSyncDownloader.onNewBesuHeadReceived(trieLogIdentifiers);
+    fullSyncDownloader.startFullSync();
+    Mockito.verify(zkWorldStateArchive, times(1))
+        .importBlock(Mockito.any(TrieLogIdentifier.class), eq(false));
   }
 
   @Test
@@ -113,24 +143,13 @@ public class FullSyncDownloaderTest {
   }
 
   @Test
-  public void testIsFarFromHead() {
-    assertThat(fullSyncDownloader.isFarFromBesuHead()).isTrue();
-    fullSyncDownloader.onNewBesuHeadReceived(
-        List.of(new TrieLogIdentifier(500L, Hash.EMPTY, true)));
-    assertThat(fullSyncDownloader.isFarFromBesuHead()).isFalse();
-    fullSyncDownloader.onNewBesuHeadReceived(
-        List.of(new TrieLogIdentifier(501L, Hash.EMPTY, true)));
-    assertThat(fullSyncDownloader.isFarFromBesuHead()).isTrue();
-  }
-
-  @Test
   public void onlyUpdateWithHigherHead() {
-    assertThat(fullSyncDownloader.isFarFromBesuHead()).isTrue();
+    assertThat(fullSyncDownloader.getEstimateBesuHeadBlockNumber()).isEmpty();
     fullSyncDownloader.onNewBesuHeadReceived(
         List.of(new TrieLogIdentifier(501L, Hash.EMPTY, true)));
-    assertThat(fullSyncDownloader.isFarFromBesuHead()).isTrue();
+    assertThat(fullSyncDownloader.getEstimateBesuHeadBlockNumber()).contains(501L);
     fullSyncDownloader.onNewBesuHeadReceived(List.of(new TrieLogIdentifier(2L, Hash.EMPTY, true)));
-    assertThat(fullSyncDownloader.isFarFromBesuHead()).isTrue();
+    assertThat(fullSyncDownloader.getEstimateBesuHeadBlockNumber()).contains(501L);
   }
 
   @Test
