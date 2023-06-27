@@ -77,7 +77,7 @@ public class Runner {
         new FullSyncDownloader(
             worldStateArchive,
             getRawTrieLog,
-            syncOption.getFirstGeneratedBlockNumber(),
+            syncOption.getTraceStartBlockNumber(),
             syncOption.getMinConfirmationsBeforeImporting());
 
     this.jsonRpcService =

@@ -32,12 +32,12 @@ public class SyncOption {
   static final long DEFAULT_MIN_CONFIRMATION = 0;
 
   @CommandLine.Option(
-      names = {"--first-generated-block-number"},
+      names = {"--trace-start-block-number"},
       paramLabel = "<PATH>",
       description =
           "Lowest block number for the trace generation process. Default: ${DEFAULT-VALUE}",
       arity = "1")
-  private long firstGeneratedBlockNumber = DEFAULT_FIRST_GENERATED_BLOCK_NUMBER;
+  private long traceStartBlockNumber = DEFAULT_FIRST_GENERATED_BLOCK_NUMBER;
 
   @CommandLine.Option(
       names = {"--min-confirmations-before-importing"},
@@ -46,8 +46,8 @@ public class SyncOption {
       arity = "1")
   private long minConfirmationsBeforeImporting = DEFAULT_MIN_CONFIRMATION;
 
-  public long getFirstGeneratedBlockNumber() {
-    return firstGeneratedBlockNumber;
+  public long getTraceStartBlockNumber() {
+    return traceStartBlockNumber;
   }
 
   public long getMinConfirmationsBeforeImporting() {

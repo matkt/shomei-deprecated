@@ -48,7 +48,7 @@ public class FullSyncDownloader extends AbstractVerticle implements TrieLogObser
 
   private final GetRawTrieLogClient getRawTrieLog;
 
-  private final long firstGeneratedBlockNumber;
+  private final long traceStartBlockNumber;
   private final long minConfirmationsBeforeImporting;
 
   private CompletableFuture<Void> completableFuture;
@@ -57,7 +57,7 @@ public class FullSyncDownloader extends AbstractVerticle implements TrieLogObser
   public FullSyncDownloader(
       final ZkWorldStateArchive zkWorldStateArchive,
       final GetRawTrieLogClient getRawTrieLog,
-      final long firstGeneratedBlockNumber,
+      final long traceStartBlockNumber,
       final long minConfirmationsBeforeImporting) {
     this.zkWorldStateArchive = zkWorldStateArchive;
     this.getRawTrieLog = getRawTrieLog;
@@ -67,7 +67,7 @@ public class FullSyncDownloader extends AbstractVerticle implements TrieLogObser
             zkWorldStateArchive::getCurrentBlockNumber,
             this::getEstimateBesuHeadBlockNumber,
             this::findMissingTrieLogFromBesu);
-    this.firstGeneratedBlockNumber = firstGeneratedBlockNumber;
+    this.traceStartBlockNumber = traceStartBlockNumber;
     this.minConfirmationsBeforeImporting = minConfirmationsBeforeImporting;
   }
 
@@ -75,12 +75,12 @@ public class FullSyncDownloader extends AbstractVerticle implements TrieLogObser
       final TrieLogBlockingQueue blockQueue,
       final ZkWorldStateArchive zkWorldStateArchive,
       final GetRawTrieLogClient getRawTrieLog,
-      final long firstGeneratedBlockNumber,
+      final long traceStartBlockNumber,
       final long minConfirmationsBeforeImporting) {
     this.blockQueue = blockQueue;
     this.zkWorldStateArchive = zkWorldStateArchive;
     this.getRawTrieLog = getRawTrieLog;
-    this.firstGeneratedBlockNumber = firstGeneratedBlockNumber;
+    this.traceStartBlockNumber = traceStartBlockNumber;
     this.minConfirmationsBeforeImporting = minConfirmationsBeforeImporting;
   }
 
@@ -112,8 +112,7 @@ public class FullSyncDownloader extends AbstractVerticle implements TrieLogObser
     final TrieLogObserver.TrieLogIdentifier trieLogId = blockQueue.poll();
     if (trieLogId != null) {
       try {
-        final boolean isTraceGenerationNeeded =
-            trieLogId.blockNumber() >= firstGeneratedBlockNumber;
+        final boolean isTraceGenerationNeeded = trieLogId.blockNumber() >= traceStartBlockNumber;
         zkWorldStateArchive.importBlock(Objects.requireNonNull(trieLogId), isTraceGenerationNeeded);
         if (zkWorldStateArchive
             .getCurrentBlockHash()
