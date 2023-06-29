@@ -82,7 +82,7 @@ public class RollupGetZkEVMStateMerkleProofV0Test {
     final JsonRpcResponse expectedResponse =
         new ShomeiJsonRpcErrorResponse(
             null,
-            JsonRpcError.INVALID_REQUEST,
+            JsonRpcError.INVALID_PARAMS,
             "BLOCK_MISSING_IN_CHAIN - block %d is missing".formatted(0));
     final JsonRpcResponse response = method.response(request);
 
