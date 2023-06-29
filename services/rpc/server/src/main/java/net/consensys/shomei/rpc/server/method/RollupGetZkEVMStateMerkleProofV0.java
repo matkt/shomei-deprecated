@@ -68,7 +68,7 @@ public class RollupGetZkEVMStateMerkleProofV0 implements JsonRpcMethod {
       if (traceRaw.isEmpty()) {
         return new ShomeiJsonRpcErrorResponse(
             requestContext.getRequest().getId(),
-            JsonRpcError.INVALID_REQUEST,
+            JsonRpcError.INVALID_PARAMS,
             "BLOCK_MISSING_IN_CHAIN - block %d is missing".formatted(i));
       }
     }
