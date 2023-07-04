@@ -74,7 +74,5 @@ public interface WorldStateStorage extends TrieStorage {
     void setBlockHash(final Hash blockHash);
 
     void setBlockNumber(final long blockNumber);
-
-    void saveZkStateRootHash(long blockNumber, Hash stateRoot);
   }
 }

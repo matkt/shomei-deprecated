@@ -91,8 +91,8 @@ public class GetRawTrieLogClient {
                     .log();
 
                 try {
-                  TrieLogManager.TrieLogManagerTransaction trieLogManagerTransaction =
-                      trieLogManager.startTransaction();
+                  TrieLogManager.TrieLogManagerUpdater trieLogManagerTransaction =
+                      trieLogManager.updater();
                   final List<TrieLogObserver.TrieLogIdentifier> trieLogIdentifiers =
                       new ArrayList<>();
                   for (TrieLogElement trieLogElement : responseBody.getResult()) {

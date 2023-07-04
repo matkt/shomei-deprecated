@@ -38,31 +38,36 @@ public class InMemoryStorageProvider implements StorageProvider {
       private final HashMap<Long, Hash> zkStateRootStorage = new HashMap<>();
 
       @Override
+      public TraceManagerUpdater updater() {
+        return new TraceManagerUpdater(null) {
+          @Override
+          public TraceManagerUpdater saveTrace(final long blockNumber, final List<Trace> traces) {
+            traceStorage.put(blockNumber, traces);
+            return this;
+          }
+
+          @Override
+          public TraceManagerUpdater saveZkStateRootHash(
+              final long blockNumber, final Hash stateRoot) {
+            zkStateRootStorage.put(blockNumber, stateRoot);
+            return this;
+          }
+
+          @Override
+          public void commit() {
+            // no-op
+          }
+        };
+      }
+
+      @Override
       public Optional<Bytes> getTrace(final long blockNumber) {
         return Optional.ofNullable(traceStorage.get(blockNumber)).map(Trace::serialize);
       }
 
       @Override
-      public TraceManager saveTrace(final long blockNumber, final List<Trace> traces) {
-        traceStorage.put(blockNumber, traces);
-        return this;
-      }
-
-      @Override
       public Optional<Hash> getZkStateRootHash(final long blockNumber) {
         return Optional.of(zkStateRootStorage.get(blockNumber));
-      }
-
-      @Override
-      public TraceManager saveZkStateRootHash(final long blockNumber, final Hash stateRoot) {
-        zkStateRootStorage.put(blockNumber, stateRoot);
-        return this;
-      }
-
-      @Override
-      public TraceManager commit() {
-        // no-op
-        return this;
       }
     };
   }
@@ -79,10 +84,10 @@ public class InMemoryStorageProvider implements StorageProvider {
       }
 
       @Override
-      public TrieLogManagerTransaction startTransaction() {
-        return new TrieLogManagerTransaction(null) {
+      public TrieLogManagerUpdater updater() {
+        return new TrieLogManagerUpdater(null) {
           @Override
-          public TrieLogManagerTransaction saveTrieLog(
+          public TrieLogManagerUpdater saveTrieLog(
               final TrieLogIdentifier trieLogIdentifier, final Bytes rawTrieLogLayer) {
             trieLogStorage.put(trieLogIdentifier.blockNumber(), rawTrieLogLayer);
             return this;

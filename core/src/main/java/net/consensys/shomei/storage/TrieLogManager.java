@@ -26,7 +26,7 @@ public interface TrieLogManager {
 
   Optional<Bytes> getTrieLog(final long blockNumber);
 
-  TrieLogManagerTransaction startTransaction();
+  TrieLogManagerUpdater updater();
 
   class TrieLogManagerImpl implements TrieLogManager {
     private final KeyValueStorage trieLogStorage;
@@ -41,19 +41,19 @@ public interface TrieLogManager {
     }
 
     @Override
-    public TrieLogManagerTransaction startTransaction() {
-      return new TrieLogManagerTransaction(trieLogStorage.startTransaction());
+    public TrieLogManagerUpdater updater() {
+      return new TrieLogManagerUpdater(trieLogStorage.startTransaction());
     }
   }
 
-  class TrieLogManagerTransaction {
+  class TrieLogManagerUpdater {
     private final KeyValueStorageTransaction transaction;
 
-    public TrieLogManagerTransaction(final KeyValueStorageTransaction transaction) {
+    public TrieLogManagerUpdater(final KeyValueStorageTransaction transaction) {
       this.transaction = transaction;
     }
 
-    public TrieLogManagerTransaction saveTrieLog(
+    public TrieLogManagerUpdater saveTrieLog(
         final TrieLogObserver.TrieLogIdentifier trieLogIdentifier, final Bytes rawTrieLogLayer) {
       transaction.put(
           Longs.toByteArray(trieLogIdentifier.blockNumber()), rawTrieLogLayer.toArrayUnsafe());

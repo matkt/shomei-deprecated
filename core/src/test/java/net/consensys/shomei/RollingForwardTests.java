@@ -53,7 +53,7 @@ public class RollingForwardTests {
   private final InMemoryStorageProvider storageProvider = new InMemoryStorageProvider();
   private final TraceManager traceManager = storageProvider.getTraceManager();
   private final ZkEvmWorldState zkEvmWorldState =
-      new ZkEvmWorldState(storageProvider.getWorldStateStorage(), traceManager::saveTrace);
+      new ZkEvmWorldState(storageProvider.getWorldStateStorage(), traceManager);
 
   @Before
   public void setup() {

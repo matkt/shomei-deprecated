@@ -163,11 +163,6 @@ public class PersistedWorldStateStorage implements WorldStateStorage {
       }
 
       @Override
-      public void saveZkStateRootHash(final long blockNumber, final Hash stateRoot) {
-        traceManager.saveZkStateRootHash(blockNumber, stateRoot);
-      }
-
-      @Override
       public void putFlatLeaf(final Bytes key, final FlattenedLeaf value) {
         flatLeafTx.get().put(key.toArrayUnsafe(), RLP.encode(value::writeTo).toArrayUnsafe());
       }
@@ -194,7 +189,6 @@ public class PersistedWorldStateStorage implements WorldStateStorage {
               trieTx.commit();
               return trieNodeStorage.startTransaction();
             });
-        traceManager.commit();
       }
     };
   }
