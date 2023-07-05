@@ -23,6 +23,7 @@ import java.util.Optional;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.vertx.core.http.HttpServerResponse;
@@ -120,9 +121,10 @@ public class JsonRpcObjectExecutor {
 
   private static ObjectWriter createObjectWriter() {
     return new ObjectMapper()
+        .disable(SerializationFeature.INDENT_OUTPUT)
         .registerModule(new Jdk8Module())
         .registerModules(JsonTraceParser.modules)
-        .writerWithDefaultPrettyPrinter()
+        .writer()
         .without(JsonGenerator.Feature.FLUSH_PASSED_TO_STREAM)
         .with(JsonGenerator.Feature.AUTO_CLOSE_TARGET);
   }
