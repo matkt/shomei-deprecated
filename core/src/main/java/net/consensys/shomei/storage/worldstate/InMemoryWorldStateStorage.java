@@ -81,9 +81,4 @@ public class InMemoryWorldStateStorage extends InMemoryStorage
   public void setBlockNumber(final long blockNumber) {
     this.currentBlockNumber = Optional.of(blockNumber);
   }
-
-  @Override
-  public void saveZkStateRootHash(final long blockNumber, final Hash stateRoot) {
-    zkStateRootHash.put(blockNumber, stateRoot);
-  }
 }

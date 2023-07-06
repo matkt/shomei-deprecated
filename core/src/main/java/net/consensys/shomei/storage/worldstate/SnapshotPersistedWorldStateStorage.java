@@ -57,11 +57,6 @@ public class SnapshotPersistedWorldStateStorage extends PersistedWorldStateStora
       }
 
       @Override
-      public void saveZkStateRootHash(final long blockNumber, final Hash stateRoot) {
-        traceManager.saveZkStateRootHash(blockNumber, stateRoot);
-      }
-
-      @Override
       public void putFlatLeaf(final Bytes key, final FlattenedLeaf value) {
         flatLeafTx.get().put(key.toArrayUnsafe(), RLP.encode(value::writeTo).toArrayUnsafe());
       }

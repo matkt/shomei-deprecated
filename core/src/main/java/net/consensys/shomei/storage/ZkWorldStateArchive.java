@@ -81,7 +81,7 @@ public class ZkWorldStateArchive implements Closeable {
   }
 
   private ZkEvmWorldState fromWorldStateStorage(WorldStateStorage storage) {
-    return new ZkEvmWorldState(storage, traceManager::saveTrace);
+    return new ZkEvmWorldState(storage, traceManager);
   }
 
   public void importBlock(

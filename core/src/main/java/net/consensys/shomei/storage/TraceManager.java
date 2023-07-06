@@ -20,7 +20,6 @@ import net.consensys.shomei.trie.trace.Trace;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicReference;
 
 import com.google.common.primitives.Longs;
 import org.apache.tuweni.bytes.Bytes;
@@ -30,69 +29,62 @@ import org.hyperledger.besu.datatypes.Hash;
 public interface TraceManager {
   String ZK_STATE_ROOT_PREFIX = "zkStateRoot";
 
+  TraceManagerUpdater updater();
+
   Optional<Bytes> getTrace(final long blockNumber);
 
-  TraceManager saveTrace(final long blockNumber, final List<Trace> traces);
-
+  // TODO it's not logical to save the zkstate root hash in the trace manager, we need to change
+  // that in the future. but for backward compatibility, we keep it here for now.
   Optional<Hash> getZkStateRootHash(final long blockNumber);
-
-  TraceManager saveZkStateRootHash(final long blockNumber, final Hash stateRoot);
-
-  TraceManager commit();
 
   class TraceManagerImpl implements TraceManager {
     private final KeyValueStorage traceStorage;
-    private final AtomicReference<KeyValueStorageTransaction> traceTx;
 
     public TraceManagerImpl(final KeyValueStorage traceStorage) {
       this.traceStorage = traceStorage;
-      this.traceTx = new AtomicReference<>(traceStorage.startTransaction());
     }
 
     @Override
     public Optional<Bytes> getTrace(final long blockNumber) {
       // we might not need to read through the transaction, but it probably doesn't hurt
-      return traceTx.get().get(Longs.toByteArray(blockNumber)).map(Bytes::wrap);
-    }
-
-    @Override
-    public TraceManager saveTrace(final long blockNumber, final List<Trace> traces) {
-      traceTx.getAndUpdate(
-          tx -> {
-            tx.put(Longs.toByteArray(blockNumber), Trace.serialize(traces).toArrayUnsafe());
-            tx.commit();
-            return traceStorage.startTransaction();
-          });
-      return this;
+      return traceStorage.get(Longs.toByteArray(blockNumber)).map(Bytes::wrap);
     }
 
     @Override
     public Optional<Hash> getZkStateRootHash(final long blockNumber) {
-      return traceTx
-          .get()
+      return traceStorage
           .get((ZK_STATE_ROOT_PREFIX + blockNumber).getBytes(StandardCharsets.UTF_8))
           .map(Bytes32::wrap)
           .map(Hash::wrap);
     }
 
     @Override
-    public TraceManager saveZkStateRootHash(final long blockNumber, final Hash stateRoot) {
-      traceTx
-          .get()
-          .put(
-              (ZK_STATE_ROOT_PREFIX + blockNumber).getBytes(StandardCharsets.UTF_8),
-              stateRoot.toArrayUnsafe());
+    public TraceManagerUpdater updater() {
+      return new TraceManagerUpdater(traceStorage.startTransaction());
+    }
+  }
+
+  class TraceManagerUpdater {
+    private final KeyValueStorageTransaction transaction;
+
+    public TraceManagerUpdater(final KeyValueStorageTransaction transaction) {
+      this.transaction = transaction;
+    }
+
+    public TraceManagerUpdater saveTrace(final long blockNumber, final List<Trace> traces) {
+      transaction.put(Longs.toByteArray(blockNumber), Trace.serialize(traces).toArrayUnsafe());
       return this;
     }
 
-    @Override
-    public TraceManager commit() {
-      traceTx.getAndUpdate(
-          tx -> {
-            tx.commit();
-            return traceStorage.startTransaction();
-          });
+    public TraceManagerUpdater saveZkStateRootHash(final long blockNumber, final Hash stateRoot) {
+      transaction.put(
+          (ZK_STATE_ROOT_PREFIX + blockNumber).getBytes(StandardCharsets.UTF_8),
+          stateRoot.toArrayUnsafe());
       return this;
+    }
+
+    public void commit() {
+      transaction.commit();
     }
   }
 }

@@ -19,6 +19,7 @@ import static net.consensys.shomei.util.bytes.MimcSafeBytes.safeUInt256;
 import net.consensys.shomei.MutableZkAccount;
 import net.consensys.shomei.ZkAccount;
 import net.consensys.shomei.ZkValue;
+import net.consensys.shomei.storage.TraceManager;
 import net.consensys.shomei.storage.worldstate.WorldStateStorage;
 import net.consensys.shomei.trie.ZKTrie;
 import net.consensys.shomei.trie.storage.AccountTrieRepositoryWrapper;
@@ -33,7 +34,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.function.BiConsumer;
 
 import com.google.common.annotations.VisibleForTesting;
 import org.apache.tuweni.units.bigints.UInt256;
@@ -59,17 +59,17 @@ public class ZkEvmWorldState {
   private Hash blockHash;
 
   private final WorldStateStorage zkEvmWorldStateStorage;
-  final BiConsumer<Long, List<Trace>> traceWriter;
+
+  private final TraceManager traceManager;
 
   public ZkEvmWorldState(
-      final WorldStateStorage zkEvmWorldStateStorage,
-      final BiConsumer<Long, List<Trace>> traceWriter) {
+      final WorldStateStorage zkEvmWorldStateStorage, final TraceManager traceManager) {
     this.stateRoot = zkEvmWorldStateStorage.getWorldStateRootHash().orElse(DEFAULT_TRIE_ROOT);
     this.blockNumber = zkEvmWorldStateStorage.getWorldStateBlockNumber().orElse(-1L);
     this.blockHash = zkEvmWorldStateStorage.getWorldStateBlockHash().orElse(Hash.EMPTY);
     this.accumulator = new ZkEvmWorldStateUpdateAccumulator();
     this.zkEvmWorldStateStorage = zkEvmWorldStateStorage;
-    this.traceWriter = traceWriter;
+    this.traceManager = traceManager;
   }
 
   public WorldStateStorage getZkEvmWorldStateStorage() {
@@ -83,21 +83,22 @@ public class ZkEvmWorldState {
         .addArgument(blockHash)
         .log();
     long start = System.currentTimeMillis();
-    final WorldStateStorage.WorldStateUpdater updater =
+    final WorldStateStorage.WorldStateUpdater worldStateUpdater =
         (WorldStateStorage.WorldStateUpdater) zkEvmWorldStateStorage.updater();
+    final TraceManager.TraceManagerUpdater traceUpdater = traceManager.updater();
 
-    final State state = generateNewState(updater, generateTrace);
+    final State state = generateNewState(worldStateUpdater, generateTrace);
 
     this.stateRoot = state.stateRoot();
     this.blockNumber = blockNumber;
     this.blockHash = blockHash;
 
-    updater.setBlockHash(blockHash);
-    updater.setBlockNumber(blockNumber);
-    updater.saveZkStateRootHash(blockNumber, state.stateRoot);
+    worldStateUpdater.setBlockHash(blockHash);
+    worldStateUpdater.setBlockNumber(blockNumber);
+    traceUpdater.saveZkStateRootHash(blockNumber, state.stateRoot);
 
     if (generateTrace) {
-      traceWriter.accept(blockNumber, state.traces);
+      traceUpdater.saveTrace(blockNumber, state.traces);
       if (!state.traces.isEmpty()) {
         LOG.atInfo()
             .setMessage("Generated trace for block {}:{} in {} ms")
@@ -114,7 +115,8 @@ public class ZkEvmWorldState {
       }
     }
     // persist
-    updater.commit();
+    worldStateUpdater.commit();
+    traceUpdater.commit();
     accumulator.reset();
   }
 

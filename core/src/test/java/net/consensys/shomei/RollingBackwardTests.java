@@ -38,8 +38,7 @@ public class RollingBackwardTests {
   private ZkEvmWorldState inMemoryWorldState() {
     InMemoryStorageProvider inMemoryStorageProvider = new InMemoryStorageProvider();
     return new ZkEvmWorldState(
-        inMemoryStorageProvider.getWorldStateStorage(),
-        inMemoryStorageProvider.getTraceManager()::saveTrace);
+        inMemoryStorageProvider.getWorldStateStorage(), inMemoryStorageProvider.getTraceManager());
   }
 
   @Test
