@@ -163,7 +163,7 @@ jobs:
       - name: Publish Docker Image
         run: |
           echo "${{ secrets.DOCKER_PASSWORD_RW }}" | docker login --username "${{ secrets.DOCKER_USER_RW }}" --password-stdin
-          ./gradlew --no-daemon dockerUpload
+          ./gradlew --no-daemon uploadDocker
 
   publishDockerArm64:
     needs: buildArm64
@@ -184,7 +184,7 @@ jobs:
       - name: Publish Docker Image
         run: |
           echo "${{ secrets.DOCKER_PASSWORD_RW }}" | docker login --username "${{ secrets.DOCKER_USER_RW }}" --password-stdin
-          ./gradlew --no-daemon dockerUpload
+          ./gradlew --no-daemon uploadDocker
 
   publishManifest:
     needs: [ publishDocker, publishDockerArm64 ]
@@ -204,4 +204,4 @@ jobs:
       - name: Publish Multi-arch Docker Image
         run: |
           echo "${{ secrets.DOCKER_PASSWORD_RW }}" | docker login --username "${{ secrets.DOCKER_USER_RW }}" --password-stdin
-          ./gradlew --no-daemon manifestDockerRelease
+          ./gradlew --no-daemon manifestDocker
