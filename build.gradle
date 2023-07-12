@@ -261,7 +261,7 @@ def archVariants = ["amd64", "arm64"]
 
 // rename the top level dir from shomei-<version> to shomei and this makes it really
 // simple for use in docker
-tasks.register("dockerDistUntar") {
+task dockerDistUntar {
     dependsOn distTar
     dependsOn distZip
     def dockerBuildDir = "build/docker-shomei/"
@@ -279,7 +279,8 @@ tasks.register("dockerDistUntar") {
     }
 }
 
-task distDocker {
+
+task dockerDist {
     dependsOn dockerDistUntar
     inputs.dir("build/docker-shomei/")
     def dockerBuildDir = "build/docker-shomei/"
@@ -316,8 +317,8 @@ task distDocker {
     }
 }
 
-task testDocker {
-    dependsOn distDocker
+task dockerTest {
+    dependsOn dockerDist
     def dockerReportsDir = "docker/reports/"
 
     doFirst {
@@ -337,8 +338,8 @@ task testDocker {
     }
 }
 
-task uploadDocker {
-    dependsOn distDocker
+task dockerUpload {
+    dependsOn dockerDist
     def architecture = System.getenv('architecture')
     def image = "${dockerImageName}:${dockerBuildVersion}"
     def tags = []
@@ -371,7 +372,7 @@ task uploadDocker {
     }
 }
 
-task manifestDocker {
+task dockerManifest {
     def tags = []
 
     if (!isInterimBuild(dockerBuildVersion)) {
@@ -397,10 +398,16 @@ task manifestDocker {
     }
 }
 
+// aliases for the prior docker task names:
+task distDocker(dependsOn: dockerDist)
+task testDocker(dependsOn: dockerTest)
+task uploadDocker(dependsOn: dockerUpload)
+task manifestDocker(dependsOn: dockerManifest)
+
 
 def isInterimBuild(dockerBuildVersion) {
-    return (dockerBuildVersion ==~ /.*-SNAPSHOT/) || (dockerBuildVersion ==~ /.*-alpha/)
-            || (dockerBuildVersion ==~ /.*-beta/) || (dockerBuildVersion ==~ /.*-RC.*/)
+    // any build version that is not major.minor.patch is treated as an interim build:
+    return !(dockerBuildVersion ==~ /[0-9]+\.[0-9]+\.[0-9]+/)
 }
 
 def buildTime() {
