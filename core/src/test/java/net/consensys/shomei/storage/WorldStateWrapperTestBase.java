@@ -13,6 +13,8 @@
 
 package net.consensys.shomei.storage;
 
+import static net.consensys.shomei.trie.storage.AccountTrieRepositoryWrapper.ACCOUNT_PREFIX;
+import static net.consensys.shomei.trie.storage.StorageTrieRepositoryWrapper.STORAGE_PREFIX;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import net.consensys.shomei.storage.worldstate.WorldStateStorage;
@@ -35,7 +37,7 @@ public abstract class WorldStateWrapperTestBase {
     final AccountTrieRepositoryWrapper wrapper =
         new AccountTrieRepositoryWrapper(worldStateStorage, worldStateStorage.updater());
     wrapper.updater().putFlatLeaf(Bytes.of(3), flatLeafValue);
-    var res = worldStateStorage.getFlatLeaf(Bytes.of(3));
+    var res = worldStateStorage.getFlatLeaf(Bytes.concatenate(ACCOUNT_PREFIX, Bytes.of(3)));
     assertThat(res).isPresent();
     assertThat(res.get()).isEqualTo(flatLeafValue);
   }
@@ -50,7 +52,7 @@ public abstract class WorldStateWrapperTestBase {
     assertThat(worldStateStorage.getFlatLeaf(Bytes.of(3))).isEmpty();
     var res =
         worldStateStorage.getFlatLeaf(
-            Bytes.concatenate(Bytes.wrap(Longs.toByteArray(1L)), Bytes.of(3)));
+            Bytes.concatenate(STORAGE_PREFIX, Bytes.wrap(Longs.toByteArray(1L)), Bytes.of(3)));
     assertThat(res).isPresent();
     assertThat(res.get()).isEqualTo(flatLeafValue);
   }
@@ -62,11 +64,12 @@ public abstract class WorldStateWrapperTestBase {
         new AccountTrieRepositoryWrapper(worldStateStorage, worldStateStorage.updater());
     final FlattenedLeaf flatLeafValue = new FlattenedLeaf(1L, Bytes.EMPTY);
     wrapper.updater().putFlatLeaf(Bytes.of(3), flatLeafValue);
-    var res = worldStateStorage.getFlatLeaf(Bytes.of(3));
+    var res = worldStateStorage.getFlatLeaf(Bytes.concatenate(ACCOUNT_PREFIX, Bytes.of(3)));
     assertThat(res).isPresent();
     assertThat(res.get()).isEqualTo(flatLeafValue);
     wrapper.updater().removeFlatLeafValue(Bytes.of(3));
-    assertThat(worldStateStorage.getFlatLeaf(Bytes.of(3))).isEmpty();
+    assertThat(worldStateStorage.getFlatLeaf(Bytes.concatenate(ACCOUNT_PREFIX, Bytes.of(3))))
+        .isEmpty();
   }
 
   @Test
@@ -76,7 +79,8 @@ public abstract class WorldStateWrapperTestBase {
         new StorageTrieRepositoryWrapper(1L, worldStateStorage, worldStateStorage.updater());
     final FlattenedLeaf flatLeafValue = new FlattenedLeaf(1L, Bytes.EMPTY);
     wrapper.updater().putFlatLeaf(Bytes.of(3), flatLeafValue);
-    var storageKey = Bytes.concatenate(Bytes.wrap(Longs.toByteArray(1L)), Bytes.of(3));
+    var storageKey =
+        Bytes.concatenate(STORAGE_PREFIX, Bytes.wrap(Longs.toByteArray(1L)), Bytes.of(3));
     var res = worldStateStorage.getFlatLeaf(storageKey);
     assertThat(res).isPresent();
     assertThat(res.get()).isEqualTo(flatLeafValue);
@@ -90,7 +94,11 @@ public abstract class WorldStateWrapperTestBase {
     final AccountTrieRepositoryWrapper wrapper =
         new AccountTrieRepositoryWrapper(worldStateStorage, worldStateStorage.updater());
     wrapper.updater().putTrieNode(Bytes.of(1), Bytes.of(1), Bytes.of(3));
-    assertThat(worldStateStorage.getTrieNode(Bytes.of(1), Bytes.of(1))).contains(Bytes.of(3));
+    assertThat(
+            worldStateStorage.getTrieNode(
+                Bytes.concatenate(ACCOUNT_PREFIX, Bytes.of(1)),
+                Bytes.concatenate(ACCOUNT_PREFIX, Bytes.of(1))))
+        .contains(Bytes.of(3));
   }
 
   @Test
@@ -102,7 +110,8 @@ public abstract class WorldStateWrapperTestBase {
     assertThat(worldStateStorage.getTrieNode(Bytes.of(1), Bytes.of(1))).isEmpty();
     assertThat(
             worldStateStorage.getTrieNode(
-                Bytes.concatenate(Bytes.wrap(Longs.toByteArray(1L)), Bytes.of(1)), Bytes.EMPTY))
+                Bytes.concatenate(STORAGE_PREFIX, Bytes.wrap(Longs.toByteArray(1L)), Bytes.of(1)),
+                Bytes.EMPTY))
         .contains(Bytes.of(3));
   }
 }

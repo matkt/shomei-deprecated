@@ -13,9 +13,7 @@
 
 package net.consensys.shomei.trie.storage;
 
-import net.consensys.shomei.trie.model.FlattenedLeaf;
-
-import java.util.Optional;
+import java.nio.charset.StandardCharsets;
 
 import org.apache.tuweni.bytes.Bytes;
 
@@ -23,40 +21,17 @@ import org.apache.tuweni.bytes.Bytes;
  * This class serves as a wrapper for the AccountTrieRepository, providing additional functionality
  * and abstraction for interacting with the account trie data.
  */
-public class AccountTrieRepositoryWrapper implements TrieStorage {
+public class AccountTrieRepositoryWrapper extends AbstractTrieRepositoryWrapper
+    implements TrieStorage {
 
-  private final TrieStorage trieStorage;
+  public static final Bytes ACCOUNT_PREFIX =
+      Bytes.wrap("accountPrefix".getBytes(StandardCharsets.UTF_8));
 
-  private final TrieUpdater worldStateUpdater;
-
-  public AccountTrieRepositoryWrapper(
-      final TrieStorage trieStorage, final TrieUpdater worldStateUpdater) {
-    this.trieStorage = trieStorage;
-    this.worldStateUpdater = worldStateUpdater;
+  public AccountTrieRepositoryWrapper(final TrieStorage trieStorage, final TrieUpdater updater) {
+    super(ACCOUNT_PREFIX, trieStorage, updater);
   }
 
   public AccountTrieRepositoryWrapper(final TrieStorage trieStorage) {
-    this.trieStorage = trieStorage;
-    this.worldStateUpdater = trieStorage.updater();
-  }
-
-  @Override
-  public Optional<FlattenedLeaf> getFlatLeaf(final Bytes hkey) {
-    return trieStorage.getFlatLeaf(hkey);
-  }
-
-  @Override
-  public Range getNearestKeys(final Bytes hkey) {
-    return trieStorage.getNearestKeys(hkey);
-  }
-
-  @Override
-  public Optional<Bytes> getTrieNode(final Bytes location, final Bytes nodeHash) {
-    return trieStorage.getTrieNode(location, nodeHash);
-  }
-
-  @Override
-  public TrieUpdater updater() {
-    return worldStateUpdater;
+    super(ACCOUNT_PREFIX, trieStorage, trieStorage.updater());
   }
 }
