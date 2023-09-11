@@ -63,6 +63,8 @@ public class RollupGetProof implements JsonRpcMethod {
     } else if (blockParameterOrBlockHash.getBlockHash()) {
       worldState =
           worldStateArchive.getCachedWorldState(blockParameterOrBlockHash.getHash().orElseThrow());
+    } else if (blockParameterOrBlockHash.isLatest()) {
+      worldState = worldStateArchive.getCachedWorldState(worldStateArchive.getCurrentBlockHash());
     }
     if (worldState.isPresent()) {
       final WorldStateProofProvider worldStateProofProvider =
