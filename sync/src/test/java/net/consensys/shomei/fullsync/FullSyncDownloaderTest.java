@@ -13,21 +13,9 @@
 
 package net.consensys.shomei.fullsync;
 
-import static net.consensys.shomei.fullsync.TrieLogBlockingQueue.INITIAL_SYNC_BLOCK_NUMBER_RANGE;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.times;
-
 import net.consensys.shomei.observer.TrieLogObserver.TrieLogIdentifier;
 import net.consensys.shomei.rpc.client.GetRawTrieLogClient;
 import net.consensys.shomei.storage.ZkWorldStateArchive;
-
-import java.util.List;
-import java.util.Optional;
-
 import org.hyperledger.besu.datatypes.Hash;
 import org.junit.Before;
 import org.junit.Test;
@@ -35,6 +23,17 @@ import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnitRunner;
+
+import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+
+import static net.consensys.shomei.fullsync.TrieLogBlockingQueue.INITIAL_SYNC_BLOCK_NUMBER_RANGE;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
 
 @RunWith(MockitoJUnitRunner.class)
 public class FullSyncDownloaderTest {
@@ -55,6 +54,7 @@ public class FullSyncDownloaderTest {
                 aLong -> {
                   try {
                     fullSyncDownloader.stop(); // force stop the downloader
+                    return CompletableFuture.completedFuture(false);
                   } catch (Exception e) {
                     throw new RuntimeException(e);
                   }
@@ -62,7 +62,6 @@ public class FullSyncDownloaderTest {
     fullSyncDownloader =
         new FullSyncDownloader(
             blockingQueue, zkWorldStateArchive, Mockito.mock(GetRawTrieLogClient.class), 2, 0);
-    doThrow(new RuntimeException()).when(blockingQueue).startWaiting();
   }
 
   @Test

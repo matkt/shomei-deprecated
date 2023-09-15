@@ -178,7 +178,6 @@ public class FullSyncDownloader extends AbstractVerticle implements TrieLogObser
         .map(TrieLogIdentifier::blockNumber)
         .filter(onNewHead -> onNewHead > estimateBesuHeadBlockNumber.orElse(-1L))
         .ifPresent(aLong -> estimateBesuHeadBlockNumber = Optional.of(aLong));
-    blockQueue.notifyNewHeadAvailable(); // notify the waiting thread that new head is available
   }
 
   public void addTrieLogs(final List<TrieLogObserver.TrieLogIdentifier> trieLogIds) {
@@ -208,10 +207,10 @@ public class FullSyncDownloader extends AbstractVerticle implements TrieLogObser
    * sends the trie log for the next block, Shomei stops waiting and instantly imports that trie
    * log.
    */
-  private void findMissingTrieLogFromBesu(final long missingTrieLogCount) {
+  private CompletableFuture<Boolean> findMissingTrieLogFromBesu(final long missingTrieLogCount) {
     final long startBlockNumber = zkWorldStateArchive.getCurrentBlockNumber() + 1;
     final long endBlockNumber = zkWorldStateArchive.getCurrentBlockNumber() + missingTrieLogCount;
-    getRawTrieLog
+    return getRawTrieLog
         .getTrieLog(startBlockNumber, endBlockNumber)
         .whenComplete(
             (trieLogIdentifiers, throwable) -> {
@@ -221,6 +220,7 @@ public class FullSyncDownloader extends AbstractVerticle implements TrieLogObser
                   onNewBesuHeadReceived(trieLogIdentifiers);
                 }
               }
-            });
+            })
+        .thenApply(z -> z.size() > 0);
   }
 }
