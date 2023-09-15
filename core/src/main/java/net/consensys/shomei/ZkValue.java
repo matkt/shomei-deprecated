@@ -52,7 +52,6 @@ public class ZkValue<T> {
   }
 
   public ZkValue<T> setUpdated(final T updated) {
-    this.isRollforward = updated == null;
     this.updated = updated;
     return this;
   }

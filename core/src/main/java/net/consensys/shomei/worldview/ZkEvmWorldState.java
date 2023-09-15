@@ -14,6 +14,7 @@
 package net.consensys.shomei.worldview;
 
 import static net.consensys.shomei.trie.ZKTrie.DEFAULT_TRIE_ROOT;
+import static net.consensys.shomei.trie.ZKTrie.EMPTY_TRIE;
 import static net.consensys.shomei.util.bytes.MimcSafeBytes.safeUInt256;
 
 import net.consensys.shomei.MutableZkAccount;
@@ -64,12 +65,19 @@ public class ZkEvmWorldState {
 
   public ZkEvmWorldState(
       final WorldStateStorage zkEvmWorldStateStorage, final TraceManager traceManager) {
-    this.stateRoot = zkEvmWorldStateStorage.getWorldStateRootHash().orElse(DEFAULT_TRIE_ROOT);
     this.blockNumber = zkEvmWorldStateStorage.getWorldStateBlockNumber().orElse(-1L);
     this.blockHash = zkEvmWorldStateStorage.getWorldStateBlockHash().orElse(Hash.EMPTY);
     this.accumulator = new ZkEvmWorldStateUpdateAccumulator();
     this.zkEvmWorldStateStorage = zkEvmWorldStateStorage;
     this.traceManager = traceManager;
+    this.stateRoot =
+        zkEvmWorldStateStorage
+            .getWorldStateRootHash()
+            .orElseGet(
+                () -> {
+                  stateRoot = Hash.wrap(EMPTY_TRIE.getTopRootHash());
+                  return generateNewState(zkEvmWorldStateStorage.updater(), false).stateRoot();
+                });
   }
 
   public WorldStateStorage getZkEvmWorldStateStorage() {
@@ -171,30 +179,35 @@ public class ZkEvmWorldState {
 
     // check if remove needed
     if (accountValue.isCleared()) {
+      if (accountValue.getPrior() != null) {
+        final long accountLeafIndex =
+            zkAccountTrie
+                .getLeafIndex(accountKey.accountHash())
+                .orElse(zkAccountTrie.getNextFreeNode());
+        traces.add(zkAccountTrie.removeWithTrace(accountKey.accountHash(), accountKey.address()));
+        updateSlots(accountKey, accountLeafIndex, accountValue, updater);
+      }
       if (!accountValue.isRollforward()) {
         zkAccountTrie.decrementNextFreeNode();
-      }
-      if (accountValue.getPrior() != null) {
-        traces.add(zkAccountTrie.removeWithTrace(accountKey.accountHash(), accountKey.address()));
-        // TODO remove all slots from storage : if we not do that the rollback will not work
-        // get index leaf from DB and delete all keys starting by HKEY+index in trie branch
       }
     }
 
     // check selfdestruct
     if (!accountValue.isRollforward()
         && accountValue.isRecreated()) { // decrement again in case of selfdestruct
-      zkAccountTrie.decrementNextFreeNode();
+      final long accountLeafIndex =
+          zkAccountTrie
+              .getLeafIndex(accountKey.accountHash())
+              .orElse(zkAccountTrie.getNextFreeNode());
       zkAccountTrie.removeWithTrace(accountKey.accountHash(), accountKey.address());
-      // TODO remove all slots from storage : if we not do that the rollback will not work
-      // get index leaf from DB and delete all keys starting by HKEY+index in trie branch
+      updateSlots(accountKey, accountLeafIndex, accountValue, updater);
+      zkAccountTrie.decrementNextFreeNode();
     }
 
     // check update and insert
     if (accountValue.isCleared() || !accountValue.isUnchanged()) {
       // update account or create
       if (accountValue.getUpdated() != null) {
-
         final long accountLeafIndex =
             zkAccountTrie
                 .getLeafIndex(accountKey.accountHash())
@@ -261,7 +274,10 @@ public class ZkEvmWorldState {
       final StorageTrieRepositoryWrapper storageAdapter =
           new StorageTrieRepositoryWrapper(accountLeafIndex, zkEvmWorldStateStorage, updater);
       final ZKTrie zkStorageTrie =
-          loadStorageTrie(accountValue, accountValue.isCleared(), storageAdapter);
+          loadStorageTrie(
+              accountValue,
+              accountValue.isCleared() && accountValue.isRollforward(),
+              storageAdapter);
       storageToUpdate.entrySet().stream()
           .sorted(Map.Entry.comparingByKey())
           .forEach(
@@ -272,9 +288,14 @@ public class ZkEvmWorldState {
                     updateSlot(accountValue, storageSlotKey, storageValue, zkStorageTrie));
               });
       // update storage root of the account
-      final MutableZkAccount mutableZkAccount = new MutableZkAccount(accountValue.getUpdated());
-      mutableZkAccount.setStorageRoot(Hash.wrap(zkStorageTrie.getTopRootHash()));
-      accountValue.setUpdated(mutableZkAccount);
+      if (accountValue.getUpdated() != null) {
+        final MutableZkAccount mutableZkAccount = new MutableZkAccount(accountValue.getUpdated());
+        mutableZkAccount.setStorageRoot(Hash.wrap(zkStorageTrie.getTopRootHash()));
+        accountValue.setUpdated(mutableZkAccount);
+      }
+      if (zkStorageTrie.getTopRootHash().equals(DEFAULT_TRIE_ROOT)) {
+        zkStorageTrie.removeHeadAndTail();
+      }
 
       zkStorageTrie.commit();
     }
@@ -295,12 +316,12 @@ public class ZkEvmWorldState {
     final List<Trace> traces = new ArrayList<>();
     // check remove needed (not needed in case of selfdestruct contract)
     if (storageValue.isCleared() && !accountValue.isRecreated()) {
-      if (!storageValue.isRollforward()) {
-        zkStorageTrie.decrementNextFreeNode();
-      }
       if (storageValue.getPrior() != null) {
         traces.add(
             zkStorageTrie.removeWithTrace(storageSlotKey.slotHash(), storageSlotKey.slotKey()));
+      }
+      if (!storageValue.isRollforward()) {
+        zkStorageTrie.decrementNextFreeNode();
       }
     }
 
@@ -336,7 +357,7 @@ public class ZkEvmWorldState {
   }
 
   private ZKTrie loadAccountTrie(final TrieStorage storage) {
-    if (stateRoot.equals(DEFAULT_TRIE_ROOT)) {
+    if (stateRoot.equals(EMPTY_TRIE.getTopRootHash())) {
       return ZKTrie.createTrie(storage);
     } else {
       return ZKTrie.loadTrie(stateRoot, storage);

@@ -411,6 +411,14 @@ public class RollingForwardTests {
     zkEvmWorldState.getAccumulator().rollForward(trieLogLayer2);
     zkEvmWorldState.commit(0L, null, true);
 
+    System.out.println(
+        JSON_OBJECT_MAPPER.writeValueAsString(
+            traceManager
+                .getTrace(0)
+                .map(bytes -> Trace.deserialize(RLP.input(bytes)))
+                .orElseThrow()));
+    System.out.println("***");
+    System.out.println(JSON_OBJECT_MAPPER.writeValueAsString(expectedTraces));
     assertThat(
             JSON_OBJECT_MAPPER.writeValueAsString(
                 traceManager

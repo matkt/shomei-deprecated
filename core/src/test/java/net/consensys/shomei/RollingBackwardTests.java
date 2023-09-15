@@ -55,14 +55,18 @@ public class RollingBackwardTests {
     // rollforward and adding an account
     zkEvmWorldState.getAccumulator().rollForward(trieLog);
     zkEvmWorldState.commit(0L, null, false);
-
-    assertThat(zkEvmWorldState.getStateRootHash()).isNotEqualTo(DEFAULT_TRIE_ROOT);
+    final Hash rootHashAfterAddingAccount = zkEvmWorldState.getStateRootHash();
+    assertThat(rootHashAfterAddingAccount).isNotEqualTo(DEFAULT_TRIE_ROOT);
 
     // rollbackward and reverting an account
     zkEvmWorldState.getAccumulator().rollBack(trieLog);
     zkEvmWorldState.commit(0L, null, false);
-
     assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(DEFAULT_TRIE_ROOT);
+
+    // rollforward and adding an account again
+    zkEvmWorldState.getAccumulator().rollForward(trieLog);
+    zkEvmWorldState.commit(0L, null, false);
+    assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(rootHashAfterAddingAccount);
   }
 
   @Test
@@ -78,15 +82,21 @@ public class RollingBackwardTests {
     ZkEvmWorldState zkEvmWorldState = inMemoryWorldState();
     assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(DEFAULT_TRIE_ROOT);
 
-    // rollforward and adding an account
+    // rollforward and adding two accounts
     zkEvmWorldState.getAccumulator().rollForward(trieLog);
     zkEvmWorldState.commit(0L, null, false);
-    assertThat(zkEvmWorldState.getStateRootHash()).isNotEqualTo(DEFAULT_TRIE_ROOT);
+    final Hash rootHashAfterAddingAccount = zkEvmWorldState.getStateRootHash();
+    assertThat(rootHashAfterAddingAccount).isNotEqualTo(DEFAULT_TRIE_ROOT);
 
-    // rollbackward and reverting an account
+    // rollbackward and reverting two accounts
     zkEvmWorldState.getAccumulator().rollBack(trieLog);
     zkEvmWorldState.commit(0L, null, false);
     assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(DEFAULT_TRIE_ROOT);
+
+    // rollforward and adding two accounts again
+    zkEvmWorldState.getAccumulator().rollForward(trieLog);
+    zkEvmWorldState.commit(0L, null, false);
+    assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(rootHashAfterAddingAccount);
   }
 
   @Test
@@ -102,27 +112,42 @@ public class RollingBackwardTests {
     accountOneUpdated.setBalance(Wei.of(100));
     trieLogLayer2.addAccountChange(account.getAddress(), account, accountOneUpdated);
 
-    // roll forward account creation
     ZkEvmWorldState zkEvmWorldState = inMemoryWorldState();
     assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(DEFAULT_TRIE_ROOT);
+
+    // roll forward account creation
     zkEvmWorldState.getAccumulator().rollForward(trieLogLayer);
     zkEvmWorldState.commit(0L, null, false);
-    final Hash rootHashBeforeUpdate = zkEvmWorldState.getStateRootHash();
+    final Hash rootHashAfterAccountCreation = zkEvmWorldState.getStateRootHash();
+    assertThat(rootHashAfterAccountCreation).isNotEqualTo(DEFAULT_TRIE_ROOT);
 
     // roll forward account update
     zkEvmWorldState.getAccumulator().rollForward(trieLogLayer2);
     zkEvmWorldState.commit(0L, null, false);
-    assertThat(zkEvmWorldState.getStateRootHash()).isNotEqualTo(rootHashBeforeUpdate);
+    final Hash rootHashBeforeAfterAccountUpdate = zkEvmWorldState.getStateRootHash();
+    assertThat(rootHashBeforeAfterAccountUpdate).isNotEqualTo(DEFAULT_TRIE_ROOT);
+    assertThat(rootHashBeforeAfterAccountUpdate).isNotEqualTo(rootHashAfterAccountCreation);
 
     // roll backward account update
     zkEvmWorldState.getAccumulator().rollBack(trieLogLayer2);
     zkEvmWorldState.commit(0L, null, false);
-    assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(rootHashBeforeUpdate);
+    assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(rootHashAfterAccountCreation);
 
     // roll backward account creation
     zkEvmWorldState.getAccumulator().rollBack(trieLogLayer);
     zkEvmWorldState.commit(0L, null, false);
     assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(DEFAULT_TRIE_ROOT);
+
+    // roll forward account creation again
+    assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(DEFAULT_TRIE_ROOT);
+    zkEvmWorldState.getAccumulator().rollForward(trieLogLayer);
+    zkEvmWorldState.commit(0L, null, false);
+    assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(rootHashAfterAccountCreation);
+
+    // roll forward account update again
+    zkEvmWorldState.getAccumulator().rollForward(trieLogLayer2);
+    zkEvmWorldState.commit(0L, null, false);
+    assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(rootHashBeforeAfterAccountUpdate);
   }
 
   @Test
@@ -137,28 +162,40 @@ public class RollingBackwardTests {
     TrieLogLayer trieLogLayer2 = new TrieLogLayer();
     trieLogLayer2.addAccountChange(account.getAddress(), account, null);
 
-    // roll forward account creation
     ZkEvmWorldState zkEvmWorldState = inMemoryWorldState();
     assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(DEFAULT_TRIE_ROOT);
+
+    // roll forward account creation
     zkEvmWorldState.getAccumulator().rollForward(trieLogLayer);
     zkEvmWorldState.commit(0L, null, false);
-    final Hash rootHashBeforeUpdate = zkEvmWorldState.getStateRootHash();
+    final Hash rootHashAfterAccountCreation = zkEvmWorldState.getStateRootHash();
 
     // roll forward account deletion
     zkEvmWorldState.getAccumulator().rollForward(trieLogLayer2);
     zkEvmWorldState.commit(0L, null, false);
-    assertThat(zkEvmWorldState.getStateRootHash()).isNotEqualTo(rootHashBeforeUpdate);
-    assertThat(zkEvmWorldState.getStateRootHash()).isNotEqualTo(DEFAULT_TRIE_ROOT);
+    final Hash rootHashAfterDeletion = zkEvmWorldState.getStateRootHash();
+    assertThat(rootHashAfterDeletion).isNotEqualTo(rootHashAfterAccountCreation);
+    assertThat(rootHashAfterDeletion).isNotEqualTo(DEFAULT_TRIE_ROOT);
 
     // roll backward account update
     zkEvmWorldState.getAccumulator().rollBack(trieLogLayer2);
     zkEvmWorldState.commit(0L, null, false);
-    assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(rootHashBeforeUpdate);
+    assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(rootHashAfterAccountCreation);
 
     // roll backward account creation
     zkEvmWorldState.getAccumulator().rollBack(trieLogLayer);
     zkEvmWorldState.commit(0L, null, false);
     assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(DEFAULT_TRIE_ROOT);
+
+    // roll forward account creation
+    zkEvmWorldState.getAccumulator().rollForward(trieLogLayer);
+    zkEvmWorldState.commit(0L, null, false);
+    assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(rootHashAfterAccountCreation);
+
+    // roll forward account deletion
+    zkEvmWorldState.getAccumulator().rollForward(trieLogLayer2);
+    zkEvmWorldState.commit(0L, null, false);
+    assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(rootHashAfterDeletion);
   }
 
   @Test
@@ -195,27 +232,40 @@ public class RollingBackwardTests {
         slotValue.getOriginalUnsafeValue(),
         null);
 
-    // roll forward account creation
     ZkEvmWorldState zkEvmWorldState = inMemoryWorldState();
     assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(DEFAULT_TRIE_ROOT);
+
+    // roll forward account creation
     zkEvmWorldState.getAccumulator().rollForward(trieLogLayer);
     zkEvmWorldState.commit(0L, null, false);
-    final Hash rootHashBeforeUpdate = zkEvmWorldState.getStateRootHash();
+    final Hash rootHashAfterAccountCreation = zkEvmWorldState.getStateRootHash();
 
     // roll forward storage update
     zkEvmWorldState.getAccumulator().rollForward(trieLogLayer2);
     zkEvmWorldState.commit(0L, null, false);
-    assertThat(zkEvmWorldState.getStateRootHash()).isNotEqualTo(rootHashBeforeUpdate);
+    final Hash rootHashAfterUpdate = zkEvmWorldState.getStateRootHash();
+    assertThat(rootHashAfterUpdate).isNotEqualTo(rootHashAfterAccountCreation);
 
     // roll backward storage update
     zkEvmWorldState.getAccumulator().rollBack(trieLogLayer2);
     zkEvmWorldState.commit(0L, null, false);
-    assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(rootHashBeforeUpdate);
+    assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(rootHashAfterAccountCreation);
 
     // roll backward account creation
     zkEvmWorldState.getAccumulator().rollBack(trieLogLayer);
     zkEvmWorldState.commit(0L, null, false);
     assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(DEFAULT_TRIE_ROOT);
+
+    // roll forward account creation again
+    assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(DEFAULT_TRIE_ROOT);
+    zkEvmWorldState.getAccumulator().rollForward(trieLogLayer);
+    zkEvmWorldState.commit(0L, null, false);
+    assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(rootHashAfterAccountCreation);
+
+    // roll forward storage update again
+    zkEvmWorldState.getAccumulator().rollForward(trieLogLayer2);
+    zkEvmWorldState.commit(0L, null, false);
+    assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(rootHashAfterUpdate);
   }
 
   @Test
@@ -255,22 +305,111 @@ public class RollingBackwardTests {
         slotValue.getOriginalUnsafeValue(),
         updatedStorageValue.getOriginalUnsafeValue());
 
-    // roll forward account creation
     ZkEvmWorldState zkEvmWorldState = inMemoryWorldState();
     assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(DEFAULT_TRIE_ROOT);
+
+    // roll forward account creation
     zkEvmWorldState.getAccumulator().rollForward(trieLogLayer);
     zkEvmWorldState.commit(0L, null, false);
-    final Hash rootHashBeforeUpdate = zkEvmWorldState.getStateRootHash();
+    final Hash rootHashAfterAccountCreation = zkEvmWorldState.getStateRootHash();
 
     // roll forward storage update
     zkEvmWorldState.getAccumulator().rollForward(trieLogLayer2);
     zkEvmWorldState.commit(0L, null, false);
-    assertThat(zkEvmWorldState.getStateRootHash()).isNotEqualTo(rootHashBeforeUpdate);
+    final Hash rootHashAfterUpdate = zkEvmWorldState.getStateRootHash();
+    assertThat(rootHashAfterUpdate).isNotEqualTo(rootHashAfterAccountCreation);
 
     // roll backward storage update
     zkEvmWorldState.getAccumulator().rollBack(trieLogLayer2);
     zkEvmWorldState.commit(0L, null, false);
-    assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(rootHashBeforeUpdate);
+    assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(rootHashAfterAccountCreation);
+
+    // roll backward account creation
+    zkEvmWorldState.getAccumulator().rollBack(trieLogLayer);
+    zkEvmWorldState.commit(0L, null, false);
+    assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(DEFAULT_TRIE_ROOT);
+
+    // roll forward account creation again
+    zkEvmWorldState.getAccumulator().rollForward(trieLogLayer);
+    zkEvmWorldState.commit(0L, null, false);
+    assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(rootHashAfterAccountCreation);
+
+    // roll forward storage update again
+    zkEvmWorldState.getAccumulator().rollForward(trieLogLayer2);
+    zkEvmWorldState.commit(0L, null, false);
+    assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(rootHashAfterUpdate);
+  }
+
+  @Test
+  public void rollingBackwardRecreateAccount() {
+
+    MutableZkAccount account = getAccountOne();
+
+    TrieLogLayer trieLogLayer = new TrieLogLayer();
+    trieLogLayer.addAccountChange(account.getAddress(), null, account);
+
+    TrieLogLayer trieLogLayer2 = new TrieLogLayer();
+    MutableZkAccount accountOneUpdated = new MutableZkAccount(account);
+    accountOneUpdated.setBalance(Wei.of(100));
+    trieLogLayer2.addAccountChange(account.getAddress(), account, accountOneUpdated);
+
+    TrieLogLayer trieLogLayer3 = new TrieLogLayer();
+    trieLogLayer3.addAccountChange(
+        account.getAddress(), accountOneUpdated, accountOneUpdated, true);
+
+    TrieLogLayer trieLogLayer4 = new TrieLogLayer();
+    MutableZkAccount accountOneUpdatedSecond = new MutableZkAccount(account);
+    accountOneUpdatedSecond.setBalance(Wei.of(101));
+    trieLogLayer4.addAccountChange(
+        account.getAddress(), accountOneUpdated, accountOneUpdatedSecond);
+
+    ZkEvmWorldState zkEvmWorldState = inMemoryWorldState();
+    assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(DEFAULT_TRIE_ROOT);
+
+    // roll forward account creation
+    zkEvmWorldState.getAccumulator().rollForward(trieLogLayer);
+    zkEvmWorldState.commit(0L, null, false);
+    final Hash rootHashAfterAccountCreation = zkEvmWorldState.getStateRootHash();
+    assertThat(rootHashAfterAccountCreation).isNotEqualTo(DEFAULT_TRIE_ROOT);
+
+    // roll forward account update
+    zkEvmWorldState.getAccumulator().rollForward(trieLogLayer2);
+    zkEvmWorldState.commit(0L, null, false);
+    final Hash rootHashAfterAccountUpdate = zkEvmWorldState.getStateRootHash();
+    assertThat(rootHashAfterAccountUpdate).isNotEqualTo(DEFAULT_TRIE_ROOT);
+    assertThat(rootHashAfterAccountUpdate).isNotEqualTo(rootHashAfterAccountCreation);
+
+    // roll forward account update
+    zkEvmWorldState.getAccumulator().rollForward(trieLogLayer3);
+    zkEvmWorldState.commit(0L, null, false);
+    final Hash rootHashAfterRecreate = zkEvmWorldState.getStateRootHash();
+    assertThat(rootHashAfterRecreate).isNotEqualTo(DEFAULT_TRIE_ROOT);
+    assertThat(rootHashAfterRecreate).isNotEqualTo(rootHashAfterAccountCreation);
+    assertThat(rootHashAfterRecreate).isNotEqualTo(rootHashAfterAccountUpdate);
+
+    // roll forward account update
+    zkEvmWorldState.getAccumulator().rollForward(trieLogLayer4);
+    zkEvmWorldState.commit(0L, null, false);
+    final Hash rootHashAfterUpdateSecond = zkEvmWorldState.getStateRootHash();
+    assertThat(rootHashAfterUpdateSecond).isNotEqualTo(DEFAULT_TRIE_ROOT);
+    assertThat(rootHashAfterUpdateSecond).isNotEqualTo(rootHashAfterAccountCreation);
+    assertThat(rootHashAfterUpdateSecond).isNotEqualTo(rootHashAfterAccountUpdate);
+    assertThat(rootHashAfterUpdateSecond).isNotEqualTo(rootHashAfterRecreate);
+
+    // roll backward account update second
+    zkEvmWorldState.getAccumulator().rollBack(trieLogLayer4);
+    zkEvmWorldState.commit(0L, null, false);
+    assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(rootHashAfterRecreate);
+
+    // roll backward account recreate
+    zkEvmWorldState.getAccumulator().rollBack(trieLogLayer3);
+    zkEvmWorldState.commit(0L, null, false);
+    assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(rootHashAfterAccountUpdate);
+
+    // roll backward account update
+    zkEvmWorldState.getAccumulator().rollBack(trieLogLayer2);
+    zkEvmWorldState.commit(0L, null, false);
+    assertThat(zkEvmWorldState.getStateRootHash()).isEqualTo(rootHashAfterAccountCreation);
 
     // roll backward account creation
     zkEvmWorldState.getAccumulator().rollBack(trieLogLayer);

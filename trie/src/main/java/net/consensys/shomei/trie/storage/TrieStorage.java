@@ -63,6 +63,10 @@ public interface TrieStorage {
 
     void removeFlatLeafValue(final Bytes key);
 
+    default void clearTrieNodes() {}
+
+    default void clearTrieNodesByPrefix(final Bytes key) {}
+
     void commit();
   }
 

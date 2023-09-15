@@ -168,6 +168,20 @@ public class ZKTrie {
     pathResolver.incrementNextFreeLeafNodeIndex();
   }
 
+  public void removeHeadAndTail() {
+    // head
+    pathResolver.decrementNextFreeLeafNodeIndex();
+    updater.removeFlatLeafValue(LeafOpening.HEAD.getHkey());
+    final Long headIndex = pathResolver.getNextFreeLeafNodeIndex();
+    state.removeAndProve(pathResolver.getLeafPath(headIndex));
+
+    // tail
+    pathResolver.decrementNextFreeLeafNodeIndex();
+    updater.removeFlatLeafValue(LeafOpening.TAIL.getHkey());
+    final Long tailIndex = pathResolver.getNextFreeLeafNodeIndex();
+    state.removeAndProve(pathResolver.getLeafPath(tailIndex));
+  }
+
   public Node<Bytes> getSubRootNode() {
     return state.getNode(pathResolver.geRootPath());
   }
