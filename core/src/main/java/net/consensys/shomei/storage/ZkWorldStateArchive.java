@@ -132,14 +132,17 @@ public class ZkWorldStateArchive implements Closeable {
       final long newBlockNumber, final boolean generateTrace, final TrieLogLayer trieLogLayer) {
     final Hash beforeUpdate = headWorldState.getStateRootHash();
     headWorldState.getAccumulator().rollForward(trieLogLayer);
+    headWorldState.commit(newBlockNumber, trieLogLayer.getBlockHash(), generateTrace);
     final Hash afterUpdate = headWorldState.getStateRootHash();
     System.out.println("Rollforward " + newBlockNumber + " " + afterUpdate);
     headWorldState.getAccumulator().rollBack(trieLogLayer);
+    headWorldState.commit(newBlockNumber, trieLogLayer.getBlockHash(), generateTrace);
     if (!headWorldState.getStateRootHash().equals(beforeUpdate)) {
       throw new RuntimeException("rollback failed");
     }
     System.out.println("Rollbackward " + newBlockNumber + " " + beforeUpdate);
     headWorldState.getAccumulator().rollForward(trieLogLayer);
+    headWorldState.commit(newBlockNumber, trieLogLayer.getBlockHash(), generateTrace);
     if (!headWorldState.getStateRootHash().equals(afterUpdate)) {
       throw new RuntimeException("rollforward failed failed");
     }
