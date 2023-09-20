@@ -109,6 +109,6 @@ dependencyManagement {
 
     // Other
     dependency 'com.google.code.gson:gson:2.10.1'
-
+    dependency 'com.google.guava:guava:31.1-jre'
   }
 }

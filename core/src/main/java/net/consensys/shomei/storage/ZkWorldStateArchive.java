@@ -85,7 +85,9 @@ public class ZkWorldStateArchive implements Closeable {
   }
 
   public void importBlock(
-      final TrieLogIdentifier trieLogIdentifier, final boolean shouldGenerateTrace)
+      final TrieLogIdentifier trieLogIdentifier,
+      final boolean shouldGenerateTrace,
+      final boolean isSnapshotGenerationNeeded)
       throws MissingTrieLogException {
     // import block, optionally cache a snapshot and generate trace if not too far behind head
     Optional<TrieLogLayer> trieLog =
@@ -97,7 +99,7 @@ public class ZkWorldStateArchive implements Closeable {
       applyTrieLog(trieLogIdentifier.blockNumber(), shouldGenerateTrace, trieLog.get());
 
       // if we generate a trace, cache a snapshot also:
-      if (shouldGenerateTrace) {
+      if (isSnapshotGenerationNeeded) {
         cacheSnapshot(trieLogIdentifier, headWorldStateStorage);
       }
 

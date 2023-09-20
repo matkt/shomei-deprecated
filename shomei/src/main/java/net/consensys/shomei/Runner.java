@@ -18,6 +18,7 @@ import net.consensys.shomei.cli.option.JsonRpcOption;
 import net.consensys.shomei.cli.option.MetricsOption;
 import net.consensys.shomei.cli.option.SyncOption;
 import net.consensys.shomei.fullsync.FullSyncDownloader;
+import net.consensys.shomei.fullsync.rules.FullSyncRules;
 import net.consensys.shomei.metrics.MetricsService;
 import net.consensys.shomei.metrics.PrometheusMetricsService;
 import net.consensys.shomei.rpc.client.GetRawTrieLogClient;
@@ -73,12 +74,14 @@ public class Runner {
             jsonRpcOption.getBesuRpcHttpHost(),
             jsonRpcOption.getBesuRHttpPort());
 
-    fullSyncDownloader =
-        new FullSyncDownloader(
-            worldStateArchive,
-            getRawTrieLog,
+    final FullSyncRules fullSyncRules =
+        new FullSyncRules(
             syncOption.getTraceStartBlockNumber(),
-            syncOption.getMinConfirmationsBeforeImporting());
+            syncOption.getMinConfirmationsBeforeImporting(),
+            Optional.empty(),
+            Optional.empty());
+
+    fullSyncDownloader = new FullSyncDownloader(worldStateArchive, getRawTrieLog, fullSyncRules);
 
     this.jsonRpcService =
         new JsonRpcService(

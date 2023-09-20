@@ -21,7 +21,9 @@ public enum ShomeiRpcMethod {
   ROLLUP_GET_PROOF("rollup_getProof"),
 
   ROLLUP_GET_ZKEVM_STATE_MERKLE_PROOF_V0("rollup_getZkEVMStateMerkleProofV0"),
-  ROLLUP_DELETE_ZKEVM_STATE_MERKLE_PROOF_BY_RANGE("rollup_deleteZkEVMStateMerkleProofByRange");
+  ROLLUP_DELETE_ZKEVM_STATE_MERKLE_PROOF_BY_RANGE("rollup_deleteZkEVMStateMerkleProofByRange"),
+
+  ROLLUP_FORK_CHOICE_UPDATED("rollup_forkChoiceUdpdated");
 
   private final String methodName;
 
