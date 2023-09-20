@@ -25,7 +25,6 @@ import net.consensys.shomei.storage.ZkWorldStateArchive;
 
 import java.util.Comparator;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -121,10 +120,8 @@ public class FullSyncDownloader extends AbstractVerticle implements TrieLogObser
         final boolean isSnapshotGenerationNeeded =
             isSnapshotGenerationAllowed(trieLogId.blockNumber());
         zkWorldStateArchive.importBlock(
-            Objects.requireNonNull(trieLogId), isTraceGenerationNeeded, isSnapshotGenerationNeeded);
-        if (zkWorldStateArchive
-            .getCurrentBlockHash()
-            .equals(Objects.requireNonNull(trieLogId.blockHash()))) {
+            trieLogId, isTraceGenerationNeeded, isSnapshotGenerationNeeded);
+        if (trieLogId.blockHash().equals(zkWorldStateArchive.getCurrentBlockHash())) {
           if (!isTraceGenerationNeeded) {
             if (trieLogId.blockNumber() % INITIAL_SYNC_BLOCK_NUMBER_RANGE == 0) {
               LOG.atInfo()
@@ -158,6 +155,7 @@ public class FullSyncDownloader extends AbstractVerticle implements TrieLogObser
   @Override
   public void stop() throws Exception {
     LOG.atInfo().setMessage("Fullsync downloader service stopped").log();
+    blockQueue.stop();
     completableFuture.complete(null);
     super.stop();
   }

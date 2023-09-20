@@ -33,6 +33,7 @@ public class TrieLogBlockingQueue extends PriorityBlockingQueue<TrieLogObserver.
   private final List<BlockImportValidator> importValidators;
   private final Supplier<Long> currentShomeiHeadSupplier;
   private final Function<Long, CompletableFuture<Boolean>> onTrieLogMissing;
+  private final CompletableFuture<Object> completableFuture;
 
   public TrieLogBlockingQueue(
       final long capacity,
@@ -44,6 +45,7 @@ public class TrieLogBlockingQueue extends PriorityBlockingQueue<TrieLogObserver.
     this.importValidators = importValidators;
     this.currentShomeiHeadSupplier = currentShomeiHeadSupplier;
     this.onTrieLogMissing = onTrieLogMissing;
+    this.completableFuture = new CompletableFuture<>();
   }
 
   @Override
@@ -99,10 +101,15 @@ public class TrieLogBlockingQueue extends PriorityBlockingQueue<TrieLogObserver.
             foundBlockFuture = onTrieLogMissing.apply(distance);
           }
         }
-      } while (!foundBlockFuture.completeOnTimeout(false, 5, TimeUnit.SECONDS).get());
+      } while (!completableFuture.isDone()
+          && !foundBlockFuture.completeOnTimeout(false, 5, TimeUnit.SECONDS).get());
       return foundBlockFuture.get();
     } catch (Exception ex) {
       return false;
     }
+  }
+
+  public void stop() {
+    completableFuture.complete(null);
   }
 }

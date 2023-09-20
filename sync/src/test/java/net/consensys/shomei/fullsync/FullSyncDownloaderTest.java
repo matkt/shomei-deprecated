@@ -55,6 +55,7 @@ public class FullSyncDownloaderTest {
                 zkWorldStateArchive::getCurrentBlockNumber,
                 aLong -> {
                   try {
+                    System.out.println("oco");
                     fullSyncDownloader.stop(); // force stop the downloader
                     return CompletableFuture.completedFuture(false);
                   } catch (Exception e) {
@@ -66,7 +67,7 @@ public class FullSyncDownloaderTest {
             blockingQueue,
             zkWorldStateArchive,
             Mockito.mock(GetRawTrieLogClient.class),
-            new FullSyncRules(2, 0, Long.MAX_VALUE, blockHashImportLimit));
+            new FullSyncRules(2, 0));
   }
 
   @Test
@@ -74,7 +75,7 @@ public class FullSyncDownloaderTest {
     fullSyncDownloader.startFullSync();
     Mockito.verify(zkWorldStateArchive, Mockito.never())
         .importBlock(
-            Mockito.any(TrieLogIdentifier.class), Mockito.anyBoolean(), isSnapshotGenerationNeeded);
+            Mockito.any(TrieLogIdentifier.class), Mockito.anyBoolean(), Mockito.anyBoolean());
   }
 
   @Test
@@ -84,14 +85,14 @@ public class FullSyncDownloaderTest {
             blockingQueue,
             zkWorldStateArchive,
             Mockito.mock(GetRawTrieLogClient.class),
-            new FullSyncRules(1, 0, Long.MAX_VALUE, blockHashImportLimit));
+            new FullSyncRules(1, 0));
     List<TrieLogIdentifier> trieLogIdentifiers =
         List.of(new TrieLogIdentifier(1L, Hash.EMPTY, true));
     fullSyncDownloader.addTrieLogs(trieLogIdentifiers);
     fullSyncDownloader.onNewBesuHeadReceived(trieLogIdentifiers);
     fullSyncDownloader.startFullSync();
     Mockito.verify(zkWorldStateArchive, times(1))
-        .importBlock(Mockito.any(TrieLogIdentifier.class), eq(true), isSnapshotGenerationNeeded);
+        .importBlock(Mockito.any(TrieLogIdentifier.class), eq(true), eq(true));
   }
 
   @Test
@@ -101,14 +102,14 @@ public class FullSyncDownloaderTest {
             blockingQueue,
             zkWorldStateArchive,
             Mockito.mock(GetRawTrieLogClient.class),
-            new FullSyncRules(2, 0, Long.MAX_VALUE, blockHashImportLimit));
+            new FullSyncRules(2, 0));
     List<TrieLogIdentifier> trieLogIdentifiers =
         List.of(new TrieLogIdentifier(1L, Hash.EMPTY, true));
     fullSyncDownloader.addTrieLogs(trieLogIdentifiers);
     fullSyncDownloader.onNewBesuHeadReceived(trieLogIdentifiers);
     fullSyncDownloader.startFullSync();
     Mockito.verify(zkWorldStateArchive, times(1))
-        .importBlock(Mockito.any(TrieLogIdentifier.class), eq(false), isSnapshotGenerationNeeded);
+        .importBlock(Mockito.any(TrieLogIdentifier.class), eq(false), eq(false));
   }
 
   @Test
@@ -120,7 +121,7 @@ public class FullSyncDownloaderTest {
     fullSyncDownloader.startFullSync();
     Mockito.verify(zkWorldStateArchive, times(1))
         .importBlock(
-            Mockito.any(TrieLogIdentifier.class), Mockito.anyBoolean(), isSnapshotGenerationNeeded);
+            Mockito.any(TrieLogIdentifier.class), Mockito.anyBoolean(), Mockito.anyBoolean());
   }
 
   @Test
@@ -132,7 +133,7 @@ public class FullSyncDownloaderTest {
     fullSyncDownloader.startFullSync();
     Mockito.verify(zkWorldStateArchive, never())
         .importBlock(
-            Mockito.any(TrieLogIdentifier.class), Mockito.anyBoolean(), isSnapshotGenerationNeeded);
+            Mockito.any(TrieLogIdentifier.class), Mockito.anyBoolean(), Mockito.anyBoolean());
   }
 
   @Test
@@ -144,7 +145,7 @@ public class FullSyncDownloaderTest {
     fullSyncDownloader.startFullSync();
     Mockito.verify(zkWorldStateArchive, never())
         .importBlock(
-            Mockito.any(TrieLogIdentifier.class), Mockito.anyBoolean(), isSnapshotGenerationNeeded);
+            Mockito.any(TrieLogIdentifier.class), Mockito.anyBoolean(), Mockito.anyBoolean());
   }
 
   @Test
