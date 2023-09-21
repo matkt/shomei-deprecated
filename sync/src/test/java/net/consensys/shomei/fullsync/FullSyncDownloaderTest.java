@@ -66,7 +66,7 @@ public class FullSyncDownloaderTest {
             blockingQueue,
             zkWorldStateArchive,
             Mockito.mock(GetRawTrieLogClient.class),
-            new FullSyncRules(2, 0));
+            new FullSyncRules(true, 2, 0));
   }
 
   @Test
@@ -84,7 +84,7 @@ public class FullSyncDownloaderTest {
             blockingQueue,
             zkWorldStateArchive,
             Mockito.mock(GetRawTrieLogClient.class),
-            new FullSyncRules(1, 0));
+            new FullSyncRules(true, 1, 0));
     List<TrieLogIdentifier> trieLogIdentifiers =
         List.of(new TrieLogIdentifier(1L, Hash.EMPTY, true));
     fullSyncDownloader.addTrieLogs(trieLogIdentifiers);
@@ -101,7 +101,7 @@ public class FullSyncDownloaderTest {
             blockingQueue,
             zkWorldStateArchive,
             Mockito.mock(GetRawTrieLogClient.class),
-            new FullSyncRules(2, 0));
+            new FullSyncRules(true, 2, 0));
     List<TrieLogIdentifier> trieLogIdentifiers =
         List.of(new TrieLogIdentifier(1L, Hash.EMPTY, true));
     fullSyncDownloader.addTrieLogs(trieLogIdentifiers);

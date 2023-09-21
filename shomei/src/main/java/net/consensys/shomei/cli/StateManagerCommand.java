@@ -94,6 +94,11 @@ public class StateManagerCommand implements Runnable {
           new CommandLine(this),
           "Block number limit (--import-block-number-limit) and block hash limit (--import-block-hash-limit) must always be defined together");
     }
+    if (!syncOption.isTraceGenerationEnabled() && syncOption.getTraceStartBlockNumber() != 0) {
+      throw new ParameterException(
+          new CommandLine(this),
+          "Cannot use --trace-start-block-number if trace generation is disabled");
+    }
   }
 
   public LoggingLevelOption getLoggingLevelOption() {

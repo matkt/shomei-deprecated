@@ -40,6 +40,13 @@ public class SyncOption {
   private long traceStartBlockNumber = DEFAULT_FIRST_GENERATED_BLOCK_NUMBER;
 
   @CommandLine.Option(
+      names = {"--enable-trace-generation"},
+      paramLabel = "<BOOL>",
+      description = "Enable trace generation. Default: ${DEFAULT-VALUE}",
+      arity = "1")
+  private boolean enableTraceGeneration = true;
+
+  @CommandLine.Option(
       names = {"--min-confirmations-before-importing"},
       paramLabel = "<LONG>",
       description = "Number of confirmations before importing block. Default: ${DEFAULT-VALUE}",
@@ -75,5 +82,9 @@ public class SyncOption {
 
   public String getImportBlockHashLimit() {
     return importBlockHashLimit;
+  }
+
+  public boolean isTraceGenerationEnabled() {
+    return enableTraceGeneration;
   }
 }

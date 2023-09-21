@@ -77,6 +77,7 @@ public class Runner {
 
     final FullSyncRules fullSyncRules =
         new FullSyncRules(
+            syncOption.isTraceGenerationEnabled(),
             syncOption.getTraceStartBlockNumber(),
             syncOption.getMinConfirmationsBeforeImporting(),
             Optional.ofNullable(syncOption.getImportBlockNumberLimit()),

@@ -226,7 +226,8 @@ public class FullSyncDownloader extends AbstractVerticle implements TrieLogObser
   }
 
   private boolean isTraceGenerationAllowed(final long blockNumberToImport) {
-    return isBlockNumberBeyondTraceGenerationLimit(blockNumberToImport);
+    return fullSyncRules.isTraceGenerationEnabled()
+        && isBlockNumberBeyondTraceGenerationLimit(blockNumberToImport);
   }
 
   private boolean isSnapshotGenerationAllowed(final long blockNumberToImport) {
@@ -238,7 +239,7 @@ public class FullSyncDownloader extends AbstractVerticle implements TrieLogObser
   }
 
   private boolean isFullBlockImportLogAllowed(final long blockNumberToImport) {
-    return isBlockNumberBeyondTraceGenerationLimit(blockNumberToImport)
+    return isTraceGenerationAllowed(blockNumberToImport)
         || isConfiguredBlockLimitReached(blockNumberToImport);
   }
 

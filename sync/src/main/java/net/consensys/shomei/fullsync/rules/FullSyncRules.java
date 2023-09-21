@@ -19,16 +19,19 @@ import org.hyperledger.besu.datatypes.Hash;
 
 public class FullSyncRules {
 
+  private boolean isTraceGenerationEnabled;
   private long traceStartBlockNumber;
   private long minConfirmationsBeforeImporting;
   private Optional<Long> blockNumberImportLimit;
   private Optional<Hash> blockHashImportLimit;
 
   public FullSyncRules(
+      final boolean isTraceGenerationEnabled,
       final long traceStartBlockNumber,
       final long minConfirmationsBeforeImporting,
       final Optional<Long> blockNumberImportLimit,
       final Optional<Hash> blockHashImportLimit) {
+    this.isTraceGenerationEnabled = isTraceGenerationEnabled;
     this.traceStartBlockNumber = traceStartBlockNumber;
     this.minConfirmationsBeforeImporting = minConfirmationsBeforeImporting;
     this.blockNumberImportLimit = blockNumberImportLimit;
@@ -36,11 +39,18 @@ public class FullSyncRules {
   }
 
   public FullSyncRules(
-      final long traceStartBlockNumber, final long minConfirmationsBeforeImporting) {
+      final boolean isTraceGenerationEnabled,
+      final long traceStartBlockNumber,
+      final long minConfirmationsBeforeImporting) {
+    this.isTraceGenerationEnabled = isTraceGenerationEnabled;
     this.traceStartBlockNumber = traceStartBlockNumber;
     this.minConfirmationsBeforeImporting = minConfirmationsBeforeImporting;
     this.blockNumberImportLimit = Optional.empty();
     this.blockHashImportLimit = Optional.empty();
+  }
+
+  public boolean isTraceGenerationEnabled() {
+    return isTraceGenerationEnabled;
   }
 
   public long getTraceStartBlockNumber() {
