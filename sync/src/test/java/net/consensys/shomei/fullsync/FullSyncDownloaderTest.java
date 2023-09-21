@@ -55,7 +55,6 @@ public class FullSyncDownloaderTest {
                 zkWorldStateArchive::getCurrentBlockNumber,
                 aLong -> {
                   try {
-                    System.out.println("oco");
                     fullSyncDownloader.stop(); // force stop the downloader
                     return CompletableFuture.completedFuture(false);
                   } catch (Exception e) {

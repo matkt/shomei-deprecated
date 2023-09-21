@@ -25,8 +25,10 @@ public class RollupForkChoiceUpdatedParameter {
 
   @JsonCreator
   public RollupForkChoiceUpdatedParameter(
-      @JsonProperty("finalizedBlockNumber") final String finalizedBlockNumber,
-      @JsonProperty("finalizedBlockHash") final String finalizedBlockHash) {
+      @JsonProperty(required = true, value = "finalizedBlockNumber")
+          final String finalizedBlockNumber,
+      @JsonProperty(required = true, value = "finalizedBlockHash")
+          final String finalizedBlockHash) {
     this.finalizedBlockNumber = finalizedBlockNumber;
     this.finalizedBlockHash = finalizedBlockHash;
   }

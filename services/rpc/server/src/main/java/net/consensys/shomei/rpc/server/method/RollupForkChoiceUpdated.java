@@ -49,24 +49,11 @@ public class RollupForkChoiceUpdated implements JsonRpcMethod {
   public JsonRpcResponse response(final JsonRpcRequestContext requestContext) {
     final RollupForkChoiceUpdatedParameter param =
         requestContext.getRequiredParameter(0, RollupForkChoiceUpdatedParameter.class);
-    if (fullSyncDownloader
-        .getFullSyncRules()
-        .getBlockNumberImportLimit()
-        .map(limit -> limit >= param.getFinalizedBlockNumber())
-        .orElse(false)) {
-      return new ShomeiJsonRpcErrorResponse(
-          requestContext.getRequest().getId(),
-          JsonRpcError.INVALID_PARAMS,
-          "You cannot set a limit %d lower than the existing one %s ."
-              .formatted(
-                  param.getFinalizedBlockNumber(),
-                  fullSyncDownloader.getFullSyncRules().getBlockNumberImportLimit()));
-    }
     if (param.getFinalizedBlockNumber() < zkWorldStateArchive.getCurrentBlockNumber()) {
       return new ShomeiJsonRpcErrorResponse(
           requestContext.getRequest().getId(),
           JsonRpcError.INVALID_PARAMS,
-          "You cannot set a limit %d lower than the current shomei head %s ."
+          "Cannot set a limit %d lower than the current shomei head %s ."
               .formatted(
                   param.getFinalizedBlockNumber(), zkWorldStateArchive.getCurrentBlockNumber()));
     }

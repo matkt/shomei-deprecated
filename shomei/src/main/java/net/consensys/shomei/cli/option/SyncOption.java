@@ -33,7 +33,7 @@ public class SyncOption {
 
   @CommandLine.Option(
       names = {"--trace-start-block-number"},
-      paramLabel = "<PATH>",
+      paramLabel = "<LONG>",
       description =
           "Lowest block number for the trace generation process. Default: ${DEFAULT-VALUE}",
       arity = "1")
@@ -41,10 +41,25 @@ public class SyncOption {
 
   @CommandLine.Option(
       names = {"--min-confirmations-before-importing"},
-      paramLabel = "<PATH>",
+      paramLabel = "<LONG>",
       description = "Number of confirmations before importing block. Default: ${DEFAULT-VALUE}",
       arity = "1")
   private long minConfirmationsBeforeImporting = DEFAULT_MIN_CONFIRMATION;
+
+  @CommandLine.Option(
+      names = {"--import-block-number-limit"},
+      paramLabel = "<LONG>",
+      description =
+          "Cap on the block number that can be imported, preventing the import of blocks beyond this limit.",
+      arity = "1")
+  private Long importBlockNumberLimit = null;
+
+  @CommandLine.Option(
+      names = {"--import-block-hash-limit"},
+      paramLabel = "<LONG>",
+      description = "Specific block hash as the limit for importing blocks",
+      arity = "1")
+  private String importBlockHashLimit = null;
 
   public long getTraceStartBlockNumber() {
     return traceStartBlockNumber;
@@ -52,5 +67,13 @@ public class SyncOption {
 
   public long getMinConfirmationsBeforeImporting() {
     return minConfirmationsBeforeImporting;
+  }
+
+  public Long getImportBlockNumberLimit() {
+    return importBlockNumberLimit;
+  }
+
+  public String getImportBlockHashLimit() {
+    return importBlockHashLimit;
   }
 }

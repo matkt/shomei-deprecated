@@ -36,6 +36,7 @@ import io.micrometer.core.instrument.binder.jvm.JvmGcMetrics;
 import io.micrometer.core.instrument.binder.jvm.JvmMemoryMetrics;
 import io.micrometer.core.instrument.binder.jvm.JvmThreadMetrics;
 import io.vertx.core.Vertx;
+import org.hyperledger.besu.datatypes.Hash;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -78,8 +79,8 @@ public class Runner {
         new FullSyncRules(
             syncOption.getTraceStartBlockNumber(),
             syncOption.getMinConfirmationsBeforeImporting(),
-            Optional.empty(),
-            Optional.empty());
+            Optional.ofNullable(syncOption.getImportBlockNumberLimit()),
+            Optional.ofNullable(syncOption.getImportBlockHashLimit()).map(Hash::fromHexString));
 
     fullSyncDownloader = new FullSyncDownloader(worldStateArchive, getRawTrieLog, fullSyncRules);
 

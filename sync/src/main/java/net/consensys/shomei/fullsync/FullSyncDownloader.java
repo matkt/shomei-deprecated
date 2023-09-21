@@ -122,7 +122,15 @@ public class FullSyncDownloader extends AbstractVerticle implements TrieLogObser
         zkWorldStateArchive.importBlock(
             trieLogId, isTraceGenerationNeeded, isSnapshotGenerationNeeded);
         if (trieLogId.blockHash().equals(zkWorldStateArchive.getCurrentBlockHash())) {
-          if (!isTraceGenerationNeeded) {
+          final boolean isFullBlockImportLogAllowed =
+              isFullBlockImportLogAllowed(trieLogId.blockNumber());
+          if (isFullBlockImportLogAllowed) {
+            LOG.atInfo()
+                .setMessage("Imported block {} ({})")
+                .addArgument(trieLogId.blockNumber())
+                .addArgument(trieLogId.blockHash())
+                .log();
+          } else {
             if (trieLogId.blockNumber() % INITIAL_SYNC_BLOCK_NUMBER_RANGE == 0) {
               LOG.atInfo()
                   .setMessage("Block import progress: {}:{}")
@@ -130,12 +138,6 @@ public class FullSyncDownloader extends AbstractVerticle implements TrieLogObser
                   .addArgument(trieLogId.blockHash())
                   .log();
             }
-          } else {
-            LOG.atInfo()
-                .setMessage("Imported block {} ({})")
-                .addArgument(trieLogId.blockNumber())
-                .addArgument(trieLogId.blockHash())
-                .log();
           }
         } else {
           throw new RuntimeException(
@@ -193,24 +195,51 @@ public class FullSyncDownloader extends AbstractVerticle implements TrieLogObser
   public void addTrieLogs(final List<TrieLogObserver.TrieLogIdentifier> trieLogIds) {
     trieLogIds.forEach(
         trieLogIdentifier -> {
-          LOG.atDebug().setMessage("received trie log {} ").addArgument(trieLogIdentifier).log();
-          blockQueue.offer(trieLogIdentifier);
+          if (isValidTrieLog(trieLogIdentifier)) {
+            LOG.atDebug().setMessage("received trie log {} ").addArgument(trieLogIdentifier).log();
+            blockQueue.offer(trieLogIdentifier);
+          } else {
+            throw new RuntimeException("invalid trie log received");
+          }
         });
   }
 
-  private boolean isTraceGenerationAllowed(final long blockNumberToImport) {
+  private boolean isValidTrieLog(final TrieLogIdentifier trieLogIdentifier) {
+    if (fullSyncRules.getBlockNumberImportLimit().isPresent()
+        && fullSyncRules.getBlockHashImportLimit().isPresent()) {
+      if (trieLogIdentifier.blockNumber().equals(fullSyncRules.getBlockNumberImportLimit().get())) {
+        return trieLogIdentifier.blockHash().equals(fullSyncRules.getBlockHashImportLimit().get());
+      }
+    }
+    return true;
+  }
+
+  private boolean isBlockNumberBeyondTraceGenerationLimit(final long blockNumberToImport) {
     return blockNumberToImport >= fullSyncRules.getTraceStartBlockNumber();
+  }
+
+  private boolean isConfiguredBlockLimitReached(final long blockNumberToImport) {
+    return fullSyncRules
+        .getBlockNumberImportLimit()
+        .map(limit -> limit.equals(blockNumberToImport))
+        .orElse(false);
+  }
+
+  private boolean isTraceGenerationAllowed(final long blockNumberToImport) {
+    return isBlockNumberBeyondTraceGenerationLimit(blockNumberToImport);
   }
 
   private boolean isSnapshotGenerationAllowed(final long blockNumberToImport) {
     final boolean isBlockLimitConfigured = fullSyncRules.getBlockNumberImportLimit().isPresent();
-    final boolean isBlockNumberAtLimit =
-        fullSyncRules
-            .getBlockNumberImportLimit()
-            .map(limit -> limit.equals(blockNumberToImport))
-            .orElse(false);
+    final boolean isConfiguredBlockLimitReached =
+        isConfiguredBlockLimitReached(blockNumberToImport);
     return (!isBlockLimitConfigured && isTraceGenerationAllowed(blockNumberToImport))
-        || (isBlockLimitConfigured && isBlockNumberAtLimit);
+        || (isBlockLimitConfigured && isConfiguredBlockLimitReached);
+  }
+
+  private boolean isFullBlockImportLogAllowed(final long blockNumberToImport) {
+    return isBlockNumberBeyondTraceGenerationLimit(blockNumberToImport)
+        || isConfiguredBlockLimitReached(blockNumberToImport);
   }
 
   /**

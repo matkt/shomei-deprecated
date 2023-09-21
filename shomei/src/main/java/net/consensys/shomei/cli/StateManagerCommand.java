@@ -29,6 +29,7 @@ import org.slf4j.LoggerFactory;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Mixin;
+import picocli.CommandLine.ParameterException;
 
 @Command(
     name = "shomei",
@@ -84,6 +85,17 @@ public class StateManagerCommand implements Runnable {
     }
   }
 
+  private void verifyCommandParameters() {
+    if (((syncOption.getImportBlockHashLimit() != null)
+            && (syncOption.getImportBlockHashLimit() == null))
+        || ((syncOption.getImportBlockHashLimit() == null)
+            && (syncOption.getImportBlockHashLimit() != null))) {
+      throw new ParameterException(
+          new CommandLine(this),
+          "Block number limit (--import-block-number-limit) and block hash limit (--import-block-hash-limit) must always be defined together");
+    }
+  }
+
   public LoggingLevelOption getLoggingLevelOption() {
     return loggingLevelOption;
   }
@@ -95,12 +107,13 @@ public class StateManagerCommand implements Runnable {
   @Override
   public void run() {
     try {
+      verifyCommandParameters();
       configureLogging();
       final Runner runner = new Runner(dataStorageOption, jsonRpcOption, syncOption, metricsOption);
       addShutdownHook(runner);
       runner.start();
     } catch (final Exception e) {
-      throw new CommandLine.ParameterException(new CommandLine(this), e.getMessage(), e);
+      throw new ParameterException(new CommandLine(this), e.getMessage(), e);
     }
   }
 
