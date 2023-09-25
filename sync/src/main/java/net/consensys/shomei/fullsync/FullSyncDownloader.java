@@ -17,12 +17,13 @@ import static net.consensys.shomei.fullsync.TrieLogBlockingQueue.INITIAL_SYNC_BL
 
 import net.consensys.shomei.fullsync.rules.BlockConfirmationMinRequirementValidator;
 import net.consensys.shomei.fullsync.rules.BlockImportValidator;
-import net.consensys.shomei.fullsync.rules.BlockNumberImportLimitValidator;
+import net.consensys.shomei.fullsync.rules.FinalizedBlockLimitValidator;
 import net.consensys.shomei.fullsync.rules.FullSyncRules;
 import net.consensys.shomei.observer.TrieLogObserver;
 import net.consensys.shomei.rpc.client.GetRawTrieLogClient;
 import net.consensys.shomei.storage.ZkWorldStateArchive;
 
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -80,15 +81,20 @@ public class FullSyncDownloader extends AbstractVerticle implements TrieLogObser
   }
 
   private TrieLogBlockingQueue createQueue() {
-    final List<BlockImportValidator> blockImportValidators =
-        List.of(
-            new BlockConfirmationMinRequirementValidator(
-                zkWorldStateArchive::getCurrentBlockNumber,
-                this::getEstimateBesuHeadBlockNumber,
-                fullSyncRules::getMinConfirmationsBeforeImporting),
-            new BlockNumberImportLimitValidator(
-                fullSyncRules::getBlockNumberImportLimit,
-                zkWorldStateArchive::getCurrentBlockNumber));
+    final List<BlockImportValidator> blockImportValidators = new ArrayList<>();
+    if (fullSyncRules.getMinConfirmationsBeforeImporting() > 0) {
+      blockImportValidators.add(
+          new BlockConfirmationMinRequirementValidator(
+              zkWorldStateArchive::getCurrentBlockNumber,
+              this::getEstimateBesuHeadBlockNumber,
+              fullSyncRules::getMinConfirmationsBeforeImporting));
+    }
+    if (fullSyncRules.isEnableFinalizedBlockLimit()) {
+      blockImportValidators.add(
+          new FinalizedBlockLimitValidator(
+              fullSyncRules::getFinalizedBlockNumberLimit,
+              zkWorldStateArchive::getCurrentBlockNumber));
+    }
     return new TrieLogBlockingQueue(
         INITIAL_SYNC_BLOCK_NUMBER_RANGE * 2,
         blockImportValidators,
@@ -205,10 +211,14 @@ public class FullSyncDownloader extends AbstractVerticle implements TrieLogObser
   }
 
   private boolean isValidTrieLog(final TrieLogIdentifier trieLogIdentifier) {
-    if (fullSyncRules.getBlockNumberImportLimit().isPresent()
-        && fullSyncRules.getBlockHashImportLimit().isPresent()) {
-      if (trieLogIdentifier.blockNumber().equals(fullSyncRules.getBlockNumberImportLimit().get())) {
-        return trieLogIdentifier.blockHash().equals(fullSyncRules.getBlockHashImportLimit().get());
+    if (fullSyncRules.getFinalizedBlockNumberLimit().isPresent()
+        && fullSyncRules.getFinalizedBlockHashLimit().isPresent()) {
+      if (trieLogIdentifier
+          .blockNumber()
+          .equals(fullSyncRules.getFinalizedBlockNumberLimit().get())) {
+        return trieLogIdentifier
+            .blockHash()
+            .equals(fullSyncRules.getFinalizedBlockHashLimit().get());
       }
     }
     return true;
@@ -220,7 +230,7 @@ public class FullSyncDownloader extends AbstractVerticle implements TrieLogObser
 
   private boolean isConfiguredBlockLimitReached(final long blockNumberToImport) {
     return fullSyncRules
-        .getBlockNumberImportLimit()
+        .getFinalizedBlockNumberLimit()
         .map(limit -> limit.equals(blockNumberToImport))
         .orElse(false);
   }
@@ -231,7 +241,7 @@ public class FullSyncDownloader extends AbstractVerticle implements TrieLogObser
   }
 
   private boolean isSnapshotGenerationAllowed(final long blockNumberToImport) {
-    final boolean isBlockLimitConfigured = fullSyncRules.getBlockNumberImportLimit().isPresent();
+    final boolean isBlockLimitConfigured = fullSyncRules.getFinalizedBlockNumberLimit().isPresent();
     final boolean isConfiguredBlockLimitReached =
         isConfiguredBlockLimitReached(blockNumberToImport);
     return (!isBlockLimitConfigured && isTraceGenerationAllowed(blockNumberToImport))

@@ -67,7 +67,21 @@ public class RollupForkChoiceUpdatedTest {
         new ShomeiJsonRpcErrorResponse(
             null,
             JsonRpcError.INVALID_PARAMS,
-            "Cannot set a limit 0 lower than the current shomei head 1 .");
+            "Cannot set finalized 0 lower than the current shomei head 1 .");
+
+    assertThat(response).usingRecursiveComparison().isEqualTo(expectedResponse);
+  }
+
+  @Test
+  public void cannotChangeLimitWhenFinalizedBlockFeatureIsDisabled() {
+    when(worldStateArchive.getCurrentBlockNumber()).thenReturn(1L);
+    JsonRpcResponse response = method.response(request("2"));
+
+    final JsonRpcResponse expectedResponse =
+        new ShomeiJsonRpcErrorResponse(
+            null,
+            JsonRpcError.UNAUTHORIZED,
+            "The --enable-finalized-block-limit feature must be activated in order to set the finalized block limit.");
 
     assertThat(response).usingRecursiveComparison().isEqualTo(expectedResponse);
   }
@@ -75,9 +89,10 @@ public class RollupForkChoiceUpdatedTest {
   @Test
   public void canChangeLimitWithBlockAfterHead() {
     when(worldStateArchive.getCurrentBlockNumber()).thenReturn(1L);
+    when(fullSyncRules.isEnableFinalizedBlockLimit()).thenReturn(true);
     JsonRpcResponse response = method.response(request("2"));
-    verify(fullSyncRules, times(1)).setBlockNumberImportLimit(Optional.of(2L));
-    verify(fullSyncRules, times(1)).setBlockHashImportLimit(Optional.of(Hash.EMPTY));
+    verify(fullSyncRules, times(1)).setFinalizedBlockNumberLimit(Optional.of(2L));
+    verify(fullSyncRules, times(1)).setFinalizedBlockHashLimit(Optional.of(Hash.EMPTY));
     assertThat(response).usingRecursiveComparison().isInstanceOf(JsonRpcSuccessResponse.class);
   }
 
@@ -86,8 +101,6 @@ public class RollupForkChoiceUpdatedTest {
         new JsonRpcRequest(
             "2.0",
             "rollup_forkChoiceUpdated",
-            new Object[] {
-              new RollupForkChoiceUpdatedParameter(blockNumber, Hash.EMPTY.toHexString())
-            }));
+            new Object[] {new RollupForkChoiceUpdatedParameter(blockNumber, Hash.EMPTY)}));
   }
 }

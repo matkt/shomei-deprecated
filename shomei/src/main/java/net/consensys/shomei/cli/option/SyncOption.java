@@ -54,19 +54,27 @@ public class SyncOption {
   private long minConfirmationsBeforeImporting = DEFAULT_MIN_CONFIRMATION;
 
   @CommandLine.Option(
-      names = {"--import-block-number-limit"},
-      paramLabel = "<LONG>",
-      description =
-          "Cap on the block number that can be imported, preventing the import of blocks beyond this limit.",
+      names = {"--enable-finalized-block-limit"},
+      paramLabel = "<BOOL>",
+      description = "Enable finalized block limit. Default: ${DEFAULT-VALUE}",
       arity = "1")
-  private Long importBlockNumberLimit = null;
+  private boolean enableFinalizedBlockLimit = false;
 
   @CommandLine.Option(
-      names = {"--import-block-hash-limit"},
+      names = {"--use-finalized-block-number"},
       paramLabel = "<LONG>",
-      description = "Specific block hash as the limit for importing blocks",
+      description =
+          "Number of the finalized block up to which Shomei will synchronize. After this point, it will pause and wait for further finalized blocks.",
       arity = "1")
-  private String importBlockHashLimit = null;
+  private Long finalizedBlockNumberLimit = null;
+
+  @CommandLine.Option(
+      names = {"--use-finalized-block-hash"},
+      paramLabel = "<LONG>",
+      description =
+          "Hash of the finalized block up to which Shomei will synchronize. After this point, it will pause and wait for further finalized blocks.",
+      arity = "1")
+  private String finalizedBlockHashLimit = null;
 
   public long getTraceStartBlockNumber() {
     return traceStartBlockNumber;
@@ -76,12 +84,16 @@ public class SyncOption {
     return minConfirmationsBeforeImporting;
   }
 
-  public Long getImportBlockNumberLimit() {
-    return importBlockNumberLimit;
+  public boolean isEnableFinalizedBlockLimit() {
+    return enableFinalizedBlockLimit;
   }
 
-  public String getImportBlockHashLimit() {
-    return importBlockHashLimit;
+  public Long getFinalizedBlockNumberLimit() {
+    return finalizedBlockNumberLimit;
+  }
+
+  public String getFinalizedBlockHashLimit() {
+    return finalizedBlockHashLimit;
   }
 
   public boolean isTraceGenerationEnabled() {

@@ -21,14 +21,13 @@ public class RollupForkChoiceUpdatedParameter {
 
   private final String finalizedBlockNumber;
 
-  private final String finalizedBlockHash;
+  private final Hash finalizedBlockHash;
 
   @JsonCreator
   public RollupForkChoiceUpdatedParameter(
       @JsonProperty(required = true, value = "finalizedBlockNumber")
           final String finalizedBlockNumber,
-      @JsonProperty(required = true, value = "finalizedBlockHash")
-          final String finalizedBlockHash) {
+      @JsonProperty(required = true, value = "finalizedBlockHash") final Hash finalizedBlockHash) {
     this.finalizedBlockNumber = finalizedBlockNumber;
     this.finalizedBlockHash = finalizedBlockHash;
   }
@@ -38,7 +37,7 @@ public class RollupForkChoiceUpdatedParameter {
   }
 
   public Hash getFinalizedBlockHash() {
-    return Hash.fromHexString(finalizedBlockHash);
+    return finalizedBlockHash;
   }
 
   @Override

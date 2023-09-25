@@ -80,8 +80,9 @@ public class Runner {
             syncOption.isTraceGenerationEnabled(),
             syncOption.getTraceStartBlockNumber(),
             syncOption.getMinConfirmationsBeforeImporting(),
-            Optional.ofNullable(syncOption.getImportBlockNumberLimit()),
-            Optional.ofNullable(syncOption.getImportBlockHashLimit()).map(Hash::fromHexString));
+            syncOption.isEnableFinalizedBlockLimit(),
+            Optional.ofNullable(syncOption.getFinalizedBlockNumberLimit()),
+            Optional.ofNullable(syncOption.getFinalizedBlockHashLimit()).map(Hash::fromHexString));
 
     fullSyncDownloader = new FullSyncDownloader(worldStateArchive, getRawTrieLog, fullSyncRules);
 

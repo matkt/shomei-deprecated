@@ -22,20 +22,23 @@ public class FullSyncRules {
   private boolean isTraceGenerationEnabled;
   private long traceStartBlockNumber;
   private long minConfirmationsBeforeImporting;
-  private Optional<Long> blockNumberImportLimit;
-  private Optional<Hash> blockHashImportLimit;
+  private final boolean enableFinalizedBlockLimit;
+  private Optional<Long> finalizedBlockNumberLimit;
+  private Optional<Hash> finalizedBlockHashLimit;
 
   public FullSyncRules(
       final boolean isTraceGenerationEnabled,
       final long traceStartBlockNumber,
       final long minConfirmationsBeforeImporting,
-      final Optional<Long> blockNumberImportLimit,
-      final Optional<Hash> blockHashImportLimit) {
+      final boolean enableFinalizedBlockLimit,
+      final Optional<Long> finalizedBlockNumberLimit,
+      final Optional<Hash> finalizedBlockHashLimit) {
     this.isTraceGenerationEnabled = isTraceGenerationEnabled;
     this.traceStartBlockNumber = traceStartBlockNumber;
     this.minConfirmationsBeforeImporting = minConfirmationsBeforeImporting;
-    this.blockNumberImportLimit = blockNumberImportLimit;
-    this.blockHashImportLimit = blockHashImportLimit;
+    this.enableFinalizedBlockLimit = enableFinalizedBlockLimit;
+    this.finalizedBlockNumberLimit = finalizedBlockNumberLimit;
+    this.finalizedBlockHashLimit = finalizedBlockHashLimit;
   }
 
   public FullSyncRules(
@@ -45,8 +48,9 @@ public class FullSyncRules {
     this.isTraceGenerationEnabled = isTraceGenerationEnabled;
     this.traceStartBlockNumber = traceStartBlockNumber;
     this.minConfirmationsBeforeImporting = minConfirmationsBeforeImporting;
-    this.blockNumberImportLimit = Optional.empty();
-    this.blockHashImportLimit = Optional.empty();
+    this.enableFinalizedBlockLimit = false;
+    this.finalizedBlockNumberLimit = Optional.empty();
+    this.finalizedBlockHashLimit = Optional.empty();
   }
 
   public boolean isTraceGenerationEnabled() {
@@ -61,12 +65,16 @@ public class FullSyncRules {
     return minConfirmationsBeforeImporting;
   }
 
-  public Optional<Long> getBlockNumberImportLimit() {
-    return blockNumberImportLimit;
+  public boolean isEnableFinalizedBlockLimit() {
+    return enableFinalizedBlockLimit;
   }
 
-  public Optional<Hash> getBlockHashImportLimit() {
-    return blockHashImportLimit;
+  public Optional<Long> getFinalizedBlockNumberLimit() {
+    return finalizedBlockNumberLimit;
+  }
+
+  public Optional<Hash> getFinalizedBlockHashLimit() {
+    return finalizedBlockHashLimit;
   }
 
   public void setTraceStartBlockNumber(final long traceStartBlockNumber) {
@@ -77,11 +85,11 @@ public class FullSyncRules {
     this.minConfirmationsBeforeImporting = minConfirmationsBeforeImporting;
   }
 
-  public void setBlockNumberImportLimit(final Optional<Long> blockNumberImportLimit) {
-    this.blockNumberImportLimit = blockNumberImportLimit;
+  public void setFinalizedBlockNumberLimit(final Optional<Long> finalizedBlockNumberLimit) {
+    this.finalizedBlockNumberLimit = finalizedBlockNumberLimit;
   }
 
-  public void setBlockHashImportLimit(final Optional<Hash> blockHashImportLimit) {
-    this.blockHashImportLimit = blockHashImportLimit;
+  public void setFinalizedBlockHashLimit(final Optional<Hash> finalizedBlockHashLimit) {
+    this.finalizedBlockHashLimit = finalizedBlockHashLimit;
   }
 }

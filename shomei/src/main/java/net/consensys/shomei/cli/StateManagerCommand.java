@@ -86,13 +86,18 @@ public class StateManagerCommand implements Runnable {
   }
 
   private void verifyCommandParameters() {
-    if (((syncOption.getImportBlockHashLimit() != null)
-            && (syncOption.getImportBlockHashLimit() == null))
-        || ((syncOption.getImportBlockHashLimit() == null)
-            && (syncOption.getImportBlockHashLimit() != null))) {
+    if (!syncOption.isEnableFinalizedBlockLimit()
+        && (syncOption.getFinalizedBlockNumberLimit() != null
+            || syncOption.getFinalizedBlockHashLimit() != null)) {
       throw new ParameterException(
           new CommandLine(this),
-          "Block number limit (--import-block-number-limit) and block hash limit (--import-block-hash-limit) must always be defined together");
+          "To use block number limit (--use-finalized-block-number) or block hash limit (--use-finalized-block-hash), the --enable-finalized-block-limit must be set to true.");
+    } else if (syncOption.isEnableFinalizedBlockLimit()
+        && (syncOption.getFinalizedBlockNumberLimit() == null
+            || syncOption.getFinalizedBlockHashLimit() == null)) {
+      throw new ParameterException(
+          new CommandLine(this),
+          "When --enable-finalized-block-limit is activated, both block number limit (--use-finalized-block-number) and block hash limit (--use-finalized-block-hash) must be defined.");
     }
     if (!syncOption.isTraceGenerationEnabled() && syncOption.getTraceStartBlockNumber() != 0) {
       throw new ParameterException(

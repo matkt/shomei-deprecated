@@ -16,13 +16,13 @@ package net.consensys.shomei.fullsync.rules;
 import java.util.Optional;
 import java.util.function.Supplier;
 
-public class BlockNumberImportLimitValidator implements BlockImportValidator {
+public class FinalizedBlockLimitValidator implements BlockImportValidator {
 
   private final Supplier<Optional<Long>> currentShomeiBlockNumberLimitSupplier;
 
   private final Supplier<Long> currentShomeiHeadSupplier;
 
-  public BlockNumberImportLimitValidator(
+  public FinalizedBlockLimitValidator(
       final Supplier<Optional<Long>> currentShomeiBlockNumberLimitSupplier,
       final Supplier<Long> currentShomeiHeadSupplier) {
     this.currentShomeiBlockNumberLimitSupplier = currentShomeiBlockNumberLimitSupplier;

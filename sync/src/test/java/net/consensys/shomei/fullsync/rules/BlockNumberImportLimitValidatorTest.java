@@ -26,22 +26,22 @@ public class BlockNumberImportLimitValidatorTest {
 
   @Test
   public void canImportWhenBlockLimitNotConfigured() {
-    final BlockNumberImportLimitValidator blockNumberImportLimitValidator =
-        new BlockNumberImportLimitValidator(() -> Optional.empty(), () -> 1L);
+    final FinalizedBlockLimitValidator blockNumberImportLimitValidator =
+        new FinalizedBlockLimitValidator(() -> Optional.empty(), () -> 1L);
     assertThat(blockNumberImportLimitValidator.canImportBlock()).isTrue();
   }
 
   @Test
   public void canImportWhenBlockLimitNotReached() {
-    final BlockNumberImportLimitValidator blockNumberImportLimitValidator =
-        new BlockNumberImportLimitValidator(() -> Optional.of(2L), () -> 1L);
-    assertThat(blockNumberImportLimitValidator.canImportBlock()).isTrue();
+    final FinalizedBlockLimitValidator finalizedBlockNumberLimitValidator =
+        new FinalizedBlockLimitValidator(() -> Optional.of(2L), () -> 1L);
+    assertThat(finalizedBlockNumberLimitValidator.canImportBlock()).isTrue();
   }
 
   @Test
   public void cannotImportWhenBlockLimitReached() {
-    final BlockNumberImportLimitValidator blockNumberImportLimitValidator =
-        new BlockNumberImportLimitValidator(() -> Optional.of(1L), () -> 1L);
-    assertThat(blockNumberImportLimitValidator.canImportBlock()).isFalse();
+    final FinalizedBlockLimitValidator finalizedBlockNumberLimitValidator =
+        new FinalizedBlockLimitValidator(() -> Optional.of(1L), () -> 1L);
+    assertThat(finalizedBlockNumberLimitValidator.canImportBlock()).isFalse();
   }
 }

@@ -53,17 +53,23 @@ public class RollupForkChoiceUpdated implements JsonRpcMethod {
       return new ShomeiJsonRpcErrorResponse(
           requestContext.getRequest().getId(),
           JsonRpcError.INVALID_PARAMS,
-          "Cannot set a limit %d lower than the current shomei head %s ."
+          "Cannot set finalized %d lower than the current shomei head %s ."
               .formatted(
                   param.getFinalizedBlockNumber(), zkWorldStateArchive.getCurrentBlockNumber()));
+    }
+    if (!fullSyncDownloader.getFullSyncRules().isEnableFinalizedBlockLimit()) {
+      return new ShomeiJsonRpcErrorResponse(
+          requestContext.getRequest().getId(),
+          JsonRpcError.UNAUTHORIZED,
+          "The --enable-finalized-block-limit feature must be activated in order to set the finalized block limit.");
     }
     // update full sync rules
     fullSyncDownloader
         .getFullSyncRules()
-        .setBlockNumberImportLimit(Optional.of(param.getFinalizedBlockNumber()));
+        .setFinalizedBlockNumberLimit(Optional.of(param.getFinalizedBlockNumber()));
     fullSyncDownloader
         .getFullSyncRules()
-        .setBlockHashImportLimit(Optional.of(param.getFinalizedBlockHash()));
+        .setFinalizedBlockHashLimit(Optional.of(param.getFinalizedBlockHash()));
     return new JsonRpcSuccessResponse(requestContext.getRequest().getId());
   }
 }
