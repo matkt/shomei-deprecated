@@ -20,6 +20,7 @@ dependencies {
     implementation project(':crypto')
     implementation project(':services:rpc:common')
     implementation project(':services:metrics')
+    implementation project(':sync')
     implementation project(':trie')
 
     // Google Guava

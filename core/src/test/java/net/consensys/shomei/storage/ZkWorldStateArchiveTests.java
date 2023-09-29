@@ -78,7 +78,7 @@ public class ZkWorldStateArchiveTests {
     trieLogManagerTransaction.saveTrieLog(genesis, Bytes.of(encoder.serialize(pluginLayer)));
     trieLogManagerTransaction.commit();
 
-    archive.importBlock(new TrieLogIdentifier(0L, pluginLayer.getBlockHash()), true);
+    archive.importBlock(new TrieLogIdentifier(0L, pluginLayer.getBlockHash()), true, true);
 
     assertThat(archive.getCachedWorldState(0L).isPresent()).isTrue();
     assertThat(archive.getCachedWorldState(pluginLayer.getBlockHash()).isPresent()).isTrue();

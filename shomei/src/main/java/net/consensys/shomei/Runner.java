@@ -18,6 +18,7 @@ import net.consensys.shomei.cli.option.JsonRpcOption;
 import net.consensys.shomei.cli.option.MetricsOption;
 import net.consensys.shomei.cli.option.SyncOption;
 import net.consensys.shomei.fullsync.FullSyncDownloader;
+import net.consensys.shomei.fullsync.rules.FullSyncRules;
 import net.consensys.shomei.metrics.MetricsService;
 import net.consensys.shomei.metrics.PrometheusMetricsService;
 import net.consensys.shomei.rpc.client.GetRawTrieLogClient;
@@ -35,6 +36,7 @@ import io.micrometer.core.instrument.binder.jvm.JvmGcMetrics;
 import io.micrometer.core.instrument.binder.jvm.JvmMemoryMetrics;
 import io.micrometer.core.instrument.binder.jvm.JvmThreadMetrics;
 import io.vertx.core.Vertx;
+import org.hyperledger.besu.datatypes.Hash;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -73,12 +75,16 @@ public class Runner {
             jsonRpcOption.getBesuRpcHttpHost(),
             jsonRpcOption.getBesuRHttpPort());
 
-    fullSyncDownloader =
-        new FullSyncDownloader(
-            worldStateArchive,
-            getRawTrieLog,
+    final FullSyncRules fullSyncRules =
+        new FullSyncRules(
+            syncOption.isTraceGenerationEnabled(),
             syncOption.getTraceStartBlockNumber(),
-            syncOption.getMinConfirmationsBeforeImporting());
+            syncOption.getMinConfirmationsBeforeImporting(),
+            syncOption.isEnableFinalizedBlockLimit(),
+            Optional.ofNullable(syncOption.getFinalizedBlockNumberLimit()),
+            Optional.ofNullable(syncOption.getFinalizedBlockHashLimit()).map(Hash::fromHexString));
+
+    fullSyncDownloader = new FullSyncDownloader(worldStateArchive, getRawTrieLog, fullSyncRules);
 
     this.jsonRpcService =
         new JsonRpcService(

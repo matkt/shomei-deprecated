@@ -29,6 +29,7 @@ import org.slf4j.LoggerFactory;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Mixin;
+import picocli.CommandLine.ParameterException;
 
 @Command(
     name = "shomei",
@@ -84,6 +85,27 @@ public class StateManagerCommand implements Runnable {
     }
   }
 
+  private void verifyCommandParameters() {
+    if (!syncOption.isEnableFinalizedBlockLimit()
+        && (syncOption.getFinalizedBlockNumberLimit() != null
+            || syncOption.getFinalizedBlockHashLimit() != null)) {
+      throw new ParameterException(
+          new CommandLine(this),
+          "To use block number limit (--use-finalized-block-number) or block hash limit (--use-finalized-block-hash), the --enable-finalized-block-limit must be set to true.");
+    } else if (syncOption.isEnableFinalizedBlockLimit()
+        && (syncOption.getFinalizedBlockNumberLimit() == null
+            || syncOption.getFinalizedBlockHashLimit() == null)) {
+      throw new ParameterException(
+          new CommandLine(this),
+          "When --enable-finalized-block-limit is activated, both block number limit (--use-finalized-block-number) and block hash limit (--use-finalized-block-hash) must be defined.");
+    }
+    if (!syncOption.isTraceGenerationEnabled() && syncOption.getTraceStartBlockNumber() != 0) {
+      throw new ParameterException(
+          new CommandLine(this),
+          "Cannot use --trace-start-block-number if trace generation is disabled");
+    }
+  }
+
   public LoggingLevelOption getLoggingLevelOption() {
     return loggingLevelOption;
   }
@@ -95,12 +117,13 @@ public class StateManagerCommand implements Runnable {
   @Override
   public void run() {
     try {
+      verifyCommandParameters();
       configureLogging();
       final Runner runner = new Runner(dataStorageOption, jsonRpcOption, syncOption, metricsOption);
       addShutdownHook(runner);
       runner.start();
     } catch (final Exception e) {
-      throw new CommandLine.ParameterException(new CommandLine(this), e.getMessage(), e);
+      throw new ParameterException(new CommandLine(this), e.getMessage(), e);
     }
   }
 

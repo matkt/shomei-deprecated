@@ -15,18 +15,23 @@ package net.consensys.shomei.fullsync;
 
 import static net.consensys.shomei.fullsync.TrieLogBlockingQueue.INITIAL_SYNC_BLOCK_NUMBER_RANGE;
 
+import net.consensys.shomei.fullsync.rules.BlockConfirmationMinRequirementValidator;
+import net.consensys.shomei.fullsync.rules.BlockImportValidator;
+import net.consensys.shomei.fullsync.rules.FinalizedBlockLimitValidator;
+import net.consensys.shomei.fullsync.rules.FullSyncRules;
 import net.consensys.shomei.observer.TrieLogObserver;
 import net.consensys.shomei.rpc.client.GetRawTrieLogClient;
 import net.consensys.shomei.storage.ZkWorldStateArchive;
 
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import com.google.common.annotations.VisibleForTesting;
 import io.vertx.core.AbstractVerticle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,8 +53,7 @@ public class FullSyncDownloader extends AbstractVerticle implements TrieLogObser
 
   private final GetRawTrieLogClient getRawTrieLog;
 
-  private final long traceStartBlockNumber;
-  private final long minConfirmationsBeforeImporting;
+  private final FullSyncRules fullSyncRules;
 
   private CompletableFuture<Void> completableFuture;
   private Optional<Long> estimateBesuHeadBlockNumber = Optional.empty();
@@ -57,31 +61,45 @@ public class FullSyncDownloader extends AbstractVerticle implements TrieLogObser
   public FullSyncDownloader(
       final ZkWorldStateArchive zkWorldStateArchive,
       final GetRawTrieLogClient getRawTrieLog,
-      final long traceStartBlockNumber,
-      final long minConfirmationsBeforeImporting) {
+      final FullSyncRules fullSyncRules) {
     this.zkWorldStateArchive = zkWorldStateArchive;
     this.getRawTrieLog = getRawTrieLog;
-    this.blockQueue =
-        new TrieLogBlockingQueue(
-            INITIAL_SYNC_BLOCK_NUMBER_RANGE * 2,
-            zkWorldStateArchive::getCurrentBlockNumber,
-            this::getEstimateBesuHeadBlockNumber,
-            this::findMissingTrieLogFromBesu);
-    this.traceStartBlockNumber = traceStartBlockNumber;
-    this.minConfirmationsBeforeImporting = minConfirmationsBeforeImporting;
+    this.fullSyncRules = fullSyncRules;
+    this.blockQueue = createQueue();
   }
 
+  @VisibleForTesting
   public FullSyncDownloader(
       final TrieLogBlockingQueue blockQueue,
       final ZkWorldStateArchive zkWorldStateArchive,
       final GetRawTrieLogClient getRawTrieLog,
-      final long traceStartBlockNumber,
-      final long minConfirmationsBeforeImporting) {
+      final FullSyncRules fullSyncRules) {
     this.blockQueue = blockQueue;
     this.zkWorldStateArchive = zkWorldStateArchive;
     this.getRawTrieLog = getRawTrieLog;
-    this.traceStartBlockNumber = traceStartBlockNumber;
-    this.minConfirmationsBeforeImporting = minConfirmationsBeforeImporting;
+    this.fullSyncRules = fullSyncRules;
+  }
+
+  private TrieLogBlockingQueue createQueue() {
+    final List<BlockImportValidator> blockImportValidators = new ArrayList<>();
+    if (fullSyncRules.getMinConfirmationsBeforeImporting() > 0) {
+      blockImportValidators.add(
+          new BlockConfirmationMinRequirementValidator(
+              zkWorldStateArchive::getCurrentBlockNumber,
+              this::getEstimateBesuHeadBlockNumber,
+              fullSyncRules::getMinConfirmationsBeforeImporting));
+    }
+    if (fullSyncRules.isEnableFinalizedBlockLimit()) {
+      blockImportValidators.add(
+          new FinalizedBlockLimitValidator(
+              fullSyncRules::getFinalizedBlockNumberLimit,
+              zkWorldStateArchive::getCurrentBlockNumber));
+    }
+    return new TrieLogBlockingQueue(
+        INITIAL_SYNC_BLOCK_NUMBER_RANGE * 2,
+        blockImportValidators,
+        zkWorldStateArchive::getCurrentBlockNumber,
+        this::findMissingTrieLogFromBesu);
   }
 
   @Override
@@ -91,18 +109,10 @@ public class FullSyncDownloader extends AbstractVerticle implements TrieLogObser
   }
 
   public void startFullSync() {
-    if (minConfirmationsBeforeImporting == 0) {
-      LOG.atInfo().setMessage("Fullsync downloader service started").log();
-    } else {
-      LOG.atInfo()
-          .setMessage(
-              "Fullsync downloader service started (with minimum confirmation configuration {})")
-          .addArgument(minConfirmationsBeforeImporting)
-          .log();
-    }
+    LOG.atInfo().setMessage("Fullsync downloader service started").log();
     completableFuture = new CompletableFuture<>();
     while (!completableFuture.isDone()) {
-      if (blockQueue.waitForNewElement(minConfirmationsBeforeImporting)) {
+      if (blockQueue.waitForNewElement()) {
         importBlock();
       }
     }
@@ -112,12 +122,21 @@ public class FullSyncDownloader extends AbstractVerticle implements TrieLogObser
     final TrieLogObserver.TrieLogIdentifier trieLogId = blockQueue.poll();
     if (trieLogId != null) {
       try {
-        final boolean isTraceGenerationNeeded = trieLogId.blockNumber() >= traceStartBlockNumber;
-        zkWorldStateArchive.importBlock(Objects.requireNonNull(trieLogId), isTraceGenerationNeeded);
-        if (zkWorldStateArchive
-            .getCurrentBlockHash()
-            .equals(Objects.requireNonNull(trieLogId.blockHash()))) {
-          if (!isTraceGenerationNeeded) {
+        final boolean isTraceGenerationNeeded = isTraceGenerationAllowed(trieLogId.blockNumber());
+        final boolean isSnapshotGenerationNeeded =
+            isSnapshotGenerationAllowed(trieLogId.blockNumber());
+        zkWorldStateArchive.importBlock(
+            trieLogId, isTraceGenerationNeeded, isSnapshotGenerationNeeded);
+        if (trieLogId.blockHash().equals(zkWorldStateArchive.getCurrentBlockHash())) {
+          final boolean isFullBlockImportLogAllowed =
+              isFullBlockImportLogAllowed(trieLogId.blockNumber());
+          if (isFullBlockImportLogAllowed) {
+            LOG.atInfo()
+                .setMessage("Imported block {} ({})")
+                .addArgument(trieLogId.blockNumber())
+                .addArgument(trieLogId.blockHash())
+                .log();
+          } else {
             if (trieLogId.blockNumber() % INITIAL_SYNC_BLOCK_NUMBER_RANGE == 0) {
               LOG.atInfo()
                   .setMessage("Block import progress: {}:{}")
@@ -125,12 +144,6 @@ public class FullSyncDownloader extends AbstractVerticle implements TrieLogObser
                   .addArgument(trieLogId.blockHash())
                   .log();
             }
-          } else {
-            LOG.atInfo()
-                .setMessage("Imported block {} ({})")
-                .addArgument(trieLogId.blockNumber())
-                .addArgument(trieLogId.blockHash())
-                .log();
           }
         } else {
           throw new RuntimeException(
@@ -150,6 +163,7 @@ public class FullSyncDownloader extends AbstractVerticle implements TrieLogObser
   @Override
   public void stop() throws Exception {
     LOG.atInfo().setMessage("Fullsync downloader service stopped").log();
+    blockQueue.stop();
     completableFuture.complete(null);
     super.stop();
   }
@@ -168,6 +182,10 @@ public class FullSyncDownloader extends AbstractVerticle implements TrieLogObser
     return estimateBesuHeadBlockNumber;
   }
 
+  public FullSyncRules getFullSyncRules() {
+    return fullSyncRules;
+  }
+
   @Override
   public void onNewBesuHeadReceived(final List<TrieLogObserver.TrieLogIdentifier> trieLogIds) {
     // Update the head only if the new besu head is higher than the previous one. receiving a trie
@@ -178,15 +196,61 @@ public class FullSyncDownloader extends AbstractVerticle implements TrieLogObser
         .map(TrieLogIdentifier::blockNumber)
         .filter(onNewHead -> onNewHead > estimateBesuHeadBlockNumber.orElse(-1L))
         .ifPresent(aLong -> estimateBesuHeadBlockNumber = Optional.of(aLong));
-    blockQueue.notifyNewHeadAvailable(); // notify the waiting thread that new head is available
   }
 
   public void addTrieLogs(final List<TrieLogObserver.TrieLogIdentifier> trieLogIds) {
     trieLogIds.forEach(
         trieLogIdentifier -> {
-          LOG.atDebug().setMessage("received trie log {} ").addArgument(trieLogIdentifier).log();
-          blockQueue.offer(trieLogIdentifier);
+          if (isValidTrieLog(trieLogIdentifier)) {
+            LOG.atDebug().setMessage("received trie log {} ").addArgument(trieLogIdentifier).log();
+            blockQueue.offer(trieLogIdentifier);
+          } else {
+            throw new RuntimeException("invalid trie log received");
+          }
         });
+  }
+
+  private boolean isValidTrieLog(final TrieLogIdentifier trieLogIdentifier) {
+    if (fullSyncRules.getFinalizedBlockNumberLimit().isPresent()
+        && fullSyncRules.getFinalizedBlockHashLimit().isPresent()) {
+      if (trieLogIdentifier
+          .blockNumber()
+          .equals(fullSyncRules.getFinalizedBlockNumberLimit().get())) {
+        return trieLogIdentifier
+            .blockHash()
+            .equals(fullSyncRules.getFinalizedBlockHashLimit().get());
+      }
+    }
+    return true;
+  }
+
+  private boolean isBlockNumberBeyondTraceGenerationLimit(final long blockNumberToImport) {
+    return blockNumberToImport >= fullSyncRules.getTraceStartBlockNumber();
+  }
+
+  private boolean isConfiguredBlockLimitReached(final long blockNumberToImport) {
+    return fullSyncRules
+        .getFinalizedBlockNumberLimit()
+        .map(limit -> limit.equals(blockNumberToImport))
+        .orElse(false);
+  }
+
+  private boolean isTraceGenerationAllowed(final long blockNumberToImport) {
+    return fullSyncRules.isTraceGenerationEnabled()
+        && isBlockNumberBeyondTraceGenerationLimit(blockNumberToImport);
+  }
+
+  private boolean isSnapshotGenerationAllowed(final long blockNumberToImport) {
+    final boolean isBlockLimitConfigured = fullSyncRules.getFinalizedBlockNumberLimit().isPresent();
+    final boolean isConfiguredBlockLimitReached =
+        isConfiguredBlockLimitReached(blockNumberToImport);
+    return (!isBlockLimitConfigured && isTraceGenerationAllowed(blockNumberToImport))
+        || (isBlockLimitConfigured && isConfiguredBlockLimitReached);
+  }
+
+  private boolean isFullBlockImportLogAllowed(final long blockNumberToImport) {
+    return isTraceGenerationAllowed(blockNumberToImport)
+        || isConfiguredBlockLimitReached(blockNumberToImport);
   }
 
   /**
@@ -208,10 +272,10 @@ public class FullSyncDownloader extends AbstractVerticle implements TrieLogObser
    * sends the trie log for the next block, Shomei stops waiting and instantly imports that trie
    * log.
    */
-  private void findMissingTrieLogFromBesu(final long missingTrieLogCount) {
+  private CompletableFuture<Boolean> findMissingTrieLogFromBesu(final long missingTrieLogCount) {
     final long startBlockNumber = zkWorldStateArchive.getCurrentBlockNumber() + 1;
     final long endBlockNumber = zkWorldStateArchive.getCurrentBlockNumber() + missingTrieLogCount;
-    getRawTrieLog
+    return getRawTrieLog
         .getTrieLog(startBlockNumber, endBlockNumber)
         .whenComplete(
             (trieLogIdentifiers, throwable) -> {
@@ -221,6 +285,7 @@ public class FullSyncDownloader extends AbstractVerticle implements TrieLogObser
                   onNewBesuHeadReceived(trieLogIdentifiers);
                 }
               }
-            });
+            })
+        .thenApply(z -> z.size() > 0);
   }
 }

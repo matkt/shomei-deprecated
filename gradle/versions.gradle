@@ -20,7 +20,7 @@ dependencyManagement {
     dependency 'tech.pegasys.tools.epchecks:errorprone-checks:1.1.1'
 
     // Guava
-    dependency 'com.google.guava:guava:31.1-jre'
+    dependency 'com.google.guava:guava:32.1.2-jre'
 
     // Hyperledger Besu
     dependencySet(group: 'org.hyperledger.besu', version: '23.4.1') {
@@ -109,6 +109,6 @@ dependencyManagement {
 
     // Other
     dependency 'com.google.code.gson:gson:2.10.1'
-
+    dependency 'com.google.guava:guava:31.1-jre'
   }
 }
