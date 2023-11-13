@@ -26,6 +26,7 @@ import net.consensys.shomei.storage.worldstate.InMemoryWorldStateStorage;
 import net.consensys.shomei.trie.ZKTrie;
 import net.consensys.shomei.trie.json.JsonTraceParser;
 import net.consensys.shomei.trie.storage.AccountTrieRepositoryWrapper;
+import net.consensys.shomei.trie.trace.ReadZeroTrace;
 import net.consensys.shomei.trie.trace.Trace;
 import net.consensys.shomei.trielog.AccountKey;
 import net.consensys.shomei.trielog.StorageSlotKey;
@@ -221,6 +222,44 @@ public class RollingForwardTests {
                     .map(bytes -> Trace.deserialize(RLP.input(bytes)))
                     .orElseThrow()))
         .isEqualTo(JSON_OBJECT_MAPPER.writeValueAsString(expectedTraces));
+  }
+
+  @Test
+  public void rollingForwardContractWithoutStorageLoadTrieOnlyOnce()
+      throws JsonProcessingException {
+
+    MutableZkAccount contract = getAccountTwo();
+    StorageSlotKey storageSlotKey = new StorageSlotKey(UInt256.ZERO);
+
+    TrieLogLayer trieLogLayer = new TrieLogLayer();
+    final AccountKey contractAccountKey =
+        trieLogLayer.addAccountChange(contract.getAddress(), null, contract);
+    trieLogLayer.addStorageChange(
+        contractAccountKey, storageSlotKey.slotKey().getOriginalUnsafeValue(), null, null);
+    zkEvmWorldState.getAccumulator().rollForward(trieLogLayer);
+    zkEvmWorldState.commit(0L, null, true);
+
+    MutableZkAccount contractU = getAccountTwo();
+    contractU.setBalance(Wei.ONE);
+    TrieLogLayer trieLogLayer2 = new TrieLogLayer();
+    final AccountKey contractAccountKey2 =
+        trieLogLayer2.addAccountChange(contract.getAddress(), contract, contractU);
+    trieLogLayer2.addStorageChange(
+        contractAccountKey2, storageSlotKey.slotKey().getOriginalUnsafeValue(), null, null);
+    zkEvmWorldState.getAccumulator().rollForward(trieLogLayer2);
+    zkEvmWorldState.commit(1L, null, true);
+
+    List<Trace> foundTraces =
+        traceManager.getTrace(1).map(bytes -> Trace.deserialize(RLP.input(bytes))).stream()
+            .flatMap(List::stream)
+            .filter(
+                trace ->
+                    trace
+                        .getLocation()
+                        .equals(contractAccountKey2.address().getOriginalUnsafeValue()))
+            .toList();
+    assertThat(foundTraces).hasSize(1);
+    assertThat(((ReadZeroTrace) foundTraces.get(0)).getNextFreeNode()).isEqualTo(2);
   }
 
   @Test

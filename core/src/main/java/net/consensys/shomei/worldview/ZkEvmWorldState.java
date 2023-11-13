@@ -36,6 +36,7 @@ import java.util.Map;
 import java.util.Objects;
 
 import com.google.common.annotations.VisibleForTesting;
+import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.datatypes.Hash;
 import org.slf4j.Logger;
@@ -224,7 +225,7 @@ public class ZkEvmWorldState {
       // load the account storage trie
       final StorageTrieRepositoryWrapper storageAdapter =
           new StorageTrieRepositoryWrapper(accountLeafIndex, zkEvmWorldStateStorage, updater);
-      final ZKTrie zkStorageTrie = loadStorageTrie(accountValue, false, storageAdapter);
+      final ZKTrie zkStorageTrie = loadStorageTrie(accountValue, storageAdapter);
       storageToRead.entrySet().stream()
           .sorted(Map.Entry.comparingByKey())
           .forEach(
@@ -260,8 +261,7 @@ public class ZkEvmWorldState {
       // load the account storage trie
       final StorageTrieRepositoryWrapper storageAdapter =
           new StorageTrieRepositoryWrapper(accountLeafIndex, zkEvmWorldStateStorage, updater);
-      final ZKTrie zkStorageTrie =
-          loadStorageTrie(accountValue, accountValue.isCleared(), storageAdapter);
+      final ZKTrie zkStorageTrie = loadStorageTrie(accountValue, storageAdapter);
       storageToUpdate.entrySet().stream()
           .sorted(Map.Entry.comparingByKey())
           .forEach(
@@ -336,21 +336,15 @@ public class ZkEvmWorldState {
   }
 
   private ZKTrie loadAccountTrie(final TrieStorage storage) {
-    if (stateRoot.equals(DEFAULT_TRIE_ROOT)) {
+    if (storage.getTrieNode(Bytes.EMPTY, null).isEmpty()) {
       return ZKTrie.createTrie(storage);
     } else {
       return ZKTrie.loadTrie(stateRoot, storage);
     }
   }
 
-  private ZKTrie loadStorageTrie(
-      final ZkValue<ZkAccount> zkAccount, final boolean forceNewTrie, final TrieStorage storage) {
-    if (zkAccount.getPrior() == null // new contract
-        || zkAccount
-            .getPrior()
-            .getStorageRoot()
-            .equals(DEFAULT_TRIE_ROOT) // first write in the storage
-        || forceNewTrie) { // recreate contract
+  private ZKTrie loadStorageTrie(final ZkValue<ZkAccount> zkAccount, final TrieStorage storage) {
+    if (storage.getTrieNode(Bytes.EMPTY, null).isEmpty()) {
       return ZKTrie.createTrie(storage);
     } else {
       return ZKTrie.loadTrie(zkAccount.getPrior().getStorageRoot(), storage);
