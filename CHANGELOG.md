@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.4.1
+### Release Date X
+### Additions and Improvements
+### Bug Fixes
+### Release Link
+
+
 ## 1.4.0
 ### Release Date 2023-10-23
 ### Additions and Improvements
