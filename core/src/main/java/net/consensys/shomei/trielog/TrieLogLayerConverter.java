@@ -109,7 +109,8 @@ public class TrieLogLayerConverter {
             final UInt256 oldValueFound;
             if (isAccountCleared) {
               oldValueFound = null;
-              oldValueExpected = null; //ignore old value as we will create a new account in the trie
+              oldValueExpected =
+                  null; // ignore old value as we will create a new account in the trie
             } else {
               oldValueFound =
                   maybeAccountIndex
