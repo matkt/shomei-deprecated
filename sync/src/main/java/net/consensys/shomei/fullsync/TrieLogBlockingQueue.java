@@ -26,7 +26,7 @@ import java.util.function.Supplier;
 
 public class TrieLogBlockingQueue extends PriorityBlockingQueue<TrieLogObserver.TrieLogIdentifier> {
 
-  public static final long INITIAL_SYNC_BLOCK_NUMBER_RANGE = 500;
+  public static final long INITIAL_SYNC_BLOCK_NUMBER_RANGE = 64;
 
   private final long maxCapacity;
 
@@ -106,7 +106,7 @@ public class TrieLogBlockingQueue extends PriorityBlockingQueue<TrieLogObserver.
           }
         }
       } while (!completableFuture.isDone()
-          && !foundBlockFuture.completeOnTimeout(false, 1, TimeUnit.SECONDS).get());
+          && !foundBlockFuture.completeOnTimeout(false, 5, TimeUnit.SECONDS).get());
       return null;
     } catch (Exception ex) {
       return null;
