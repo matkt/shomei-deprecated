@@ -94,7 +94,7 @@ public class TrieLogBlockingQueue extends PriorityBlockingQueue<TrieLogObserver.
               CompletableFuture.supplyAsync(
                   () -> false, CompletableFuture.delayedExecutor(1, TimeUnit.SECONDS));
         } else {
-          final TrieLogObserver.TrieLogIdentifier trieLogIdentifier = poll();
+          final TrieLogObserver.TrieLogIdentifier trieLogIdentifier = peek();
           distance =
               distance(trieLogIdentifier, currentShomeiHeadSupplier.get())
                   .orElse(INITIAL_SYNC_BLOCK_NUMBER_RANGE);
