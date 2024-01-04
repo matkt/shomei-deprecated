@@ -4,6 +4,9 @@
 ### Release Date X
 ### Additions and Improvements
 ### Bug Fixes
+
+- Added a fix to correctly handle the scenario of contract self-destruction and recreation within the same block by creating a new tree for the recreated contract. [#68](https://github.com/Consensys/shomei/pull/68)
+
 ### Release Link
 
 
