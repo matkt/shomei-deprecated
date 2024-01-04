@@ -87,6 +87,7 @@ shomei --enable-trace-generation=false  --enable-finalized-block-limit=true --us
 ### More
 
 In addition, it's important to note that Shomei currently does not handle rollback state operations, particularly due to its strategy for managing self-destruction of contracts. This is a known limitation and we are actively exploring potential solutions to improve that.
+Indeed, this limitation is also due to how we decode the trie log that we receive from Besu but not only that. For more details on this, please refer to the pull request at https://github.com/Consensys/shomei/pull/68.
 
 ## Testing
 
