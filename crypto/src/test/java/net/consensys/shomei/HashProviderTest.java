@@ -32,6 +32,6 @@ public class HashProviderTest {
     assertThat(HashProvider.mimc(input))
         .isEqualTo(
             Bytes32.fromHexString(
-                "0x145875dd085ea2fb9796333e55c9da80228eb321df0ca9a41ca64ba6fe90b167"));
+                "0x12900ae41a010e54e3b1ed95efa39071d357ff642aeedd30a2c4e13250409662"));
   }
 }

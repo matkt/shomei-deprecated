@@ -17,7 +17,7 @@ import com.sun.jna.Native;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Hash;
-import org.hyperledger.besu.nativelib.mimc.LibMimc;
+import org.hyperledger.besu.nativelib.gnark.LibGnark;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,7 +31,7 @@ public class HashProvider {
   static {
     boolean enabled;
     try {
-      Native.register(LibMimc.class, "mimc_jni");
+      Native.register(LibGnark.class, "gnark_jni");
       enabled = true;
     } catch (final Throwable t) {
       LOG.atError()
@@ -49,7 +49,7 @@ public class HashProvider {
 
   public static Hash mimc(final Bytes bytes) {
     final byte[] output = new byte[Bytes32.SIZE];
-    LibMimc.compute(bytes.toArrayUnsafe(), bytes.size(), output);
+    LibGnark.computeMimcBls12377(bytes.toArrayUnsafe(), bytes.size(), output);
     return Hash.wrap(Bytes32.wrap(output));
   }
 }
