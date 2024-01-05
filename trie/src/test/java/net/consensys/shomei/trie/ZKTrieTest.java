@@ -38,11 +38,11 @@ public class ZKTrieTest {
     assertThat(zkTrie.getSubRootHash())
         .isEqualTo(
             Bytes.fromHexString(
-                "21bf7e28464bf26302be46623b706eacf89b08134665b8f425d437f13218091b"));
+                "0x02c922349d06bd81028ae748ed367a1c41073612886253d0219a20d5e4422efe"));
     assertThat(zkTrie.getTopRootHash())
         .isEqualTo(
             Bytes.fromHexString(
-                "2e7942bb21022172cbad3ffc38d1c59e998f1ab6ab52feb15345d04bbf859f14"));
+                "0x090dccbc1e7b264c40101a13610bd84942fa6837bfa8e0c67ede029c5ad4d00c"));
   }
 
   @Test
@@ -61,11 +61,11 @@ public class ZKTrieTest {
     assertThat(zkTrie.getSubRootHash())
         .isEqualTo(
             Bytes.fromHexString(
-                "1b8c9d905e0561b9ae850cf04ba39ff166f7b7306ea348b87f3f682a45cc82c1"));
+                "0x0500936c306714ae84a942536b21ecc0c4c7d1f41ac1fa052baeeda3e9d8ef78"));
     assertThat(zkTrie.getTopRootHash())
         .isEqualTo(
             Bytes.fromHexString(
-                "186cb83c254c5f6985f7929e02cfd5f19e6c953c4f01bc2af9e0276f75184d6b"));
+                "0x043c9421381594b60cc83e617eee1bcef4dc9612f2a4246627967bc97dfa2478"));
   }
 
   @Test
@@ -84,11 +84,11 @@ public class ZKTrieTest {
     assertThat(zkTrie.getSubRootHash())
         .isNotEqualTo(
             Bytes.fromHexString(
-                "1b8c9d905e0561b9ae850cf04ba39ff166f7b7306ea348b87f3f682a45cc82c1"));
+                "0x0500936c306714ae84a942536b21ecc0c4c7d1f41ac1fa052baeeda3e9d8ef78"));
     assertThat(zkTrie.getTopRootHash())
         .isNotEqualTo(
             Bytes.fromHexString(
-                "186cb83c254c5f6985f7929e02cfd5f19e6c953c4f01bc2af9e0276f75184d6b"));
+                "0x043c9421381594b60cc83e617eee1bcef4dc9612f2a4246627967bc97dfa2478"));
 
     // Note : the tree should be in exactly the same state as after directly
     // inserting 42
@@ -97,11 +97,11 @@ public class ZKTrieTest {
     assertThat(zkTrie.getSubRootHash())
         .isEqualTo(
             Bytes.fromHexString(
-                "1b8c9d905e0561b9ae850cf04ba39ff166f7b7306ea348b87f3f682a45cc82c1"));
+                "0x0500936c306714ae84a942536b21ecc0c4c7d1f41ac1fa052baeeda3e9d8ef78"));
     assertThat(zkTrie.getTopRootHash())
         .isEqualTo(
             Bytes.fromHexString(
-                "186cb83c254c5f6985f7929e02cfd5f19e6c953c4f01bc2af9e0276f75184d6b"));
+                "0x043c9421381594b60cc83e617eee1bcef4dc9612f2a4246627967bc97dfa2478"));
   }
 
   @Test
@@ -118,21 +118,21 @@ public class ZKTrieTest {
     assertThat(zkTrie.getSubRootHash())
         .isNotEqualTo(
             Bytes.fromHexString(
-                "21bf7e28464bf26302be46623b706eacf89b08134665b8f425d437f13218091b"));
+                "0x02c922349d06bd81028ae748ed367a1c41073612886253d0219a20d5e4422efe"));
     assertThat(zkTrie.getTopRootHash())
         .isNotEqualTo(
             Bytes.fromHexString(
-                "2844b523cac49f6c5205b7b44065a741fd5c4ba8481c0ebee1d06ecf33f5ef40"));
+                "0x0fe7cd3903ac559aff000495f4c4a82b21f83bc11988f900ba5e46c1a106a885"));
 
     zkTrie.removeWithTrace(hkey, key);
 
     assertThat(zkTrie.getSubRootHash())
         .isEqualTo(
             Bytes.fromHexString(
-                "21bf7e28464bf26302be46623b706eacf89b08134665b8f425d437f13218091b"));
+                "0x02c922349d06bd81028ae748ed367a1c41073612886253d0219a20d5e4422efe"));
     assertThat(zkTrie.getTopRootHash())
         .isEqualTo(
             Bytes.fromHexString(
-                "2844b523cac49f6c5205b7b44065a741fd5c4ba8481c0ebee1d06ecf33f5ef40"));
+                "0x0fe7cd3903ac559aff000495f4c4a82b21f83bc11988f900ba5e46c1a106a885"));
   }
 }
