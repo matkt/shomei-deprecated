@@ -53,7 +53,8 @@ public class WorldStateStateRootTest {
 
     assertThat(HashProvider.mimc(zkAccount.getEncodedBytes()))
         .isEqualTo(
-            Hash.fromHexString("25ddd6106526ffb2c9b923617cf3bcab669a5d57821d0ec81daa23155c1513ea"));
+            Hash.fromHexString(
+                "0x017095f9f125ac3d74c7e0bb482f3cfb7409915d27ecad1b1bb4ca65103f13ce"));
 
     final ZKTrie accountStateTrie =
         ZKTrie.createTrie(new AccountTrieRepositoryWrapper(new InMemoryWorldStateStorage()));
@@ -62,11 +63,13 @@ public class WorldStateStateRootTest {
 
     assertThat(accountStateTrie.getSubRootHash())
         .isEqualTo(
-            Hash.fromHexString("15154ecb54514b439ed9cd51078e08e51676c30fc2067d04320ef6b6d263584e"));
+            Hash.fromHexString(
+                "0x0285aa2ff8faa86ea35ca9ffe18474233445148f22c5a5e2680d2fcc3b4042a1"));
 
     assertThat(accountStateTrie.getTopRootHash())
         .isEqualTo(
-            Hash.fromHexString("11aed727a707f2f1962e399bd4787153ba0e69b7224e8eecf4d1e4e6a8e8dafd"));
+            Hash.fromHexString(
+                "0x02d507540514011b52e7debd8a136c6c28819bb128f0cd52ef6d5a753966cb88"));
   }
 
   @Test
@@ -86,7 +89,8 @@ public class WorldStateStateRootTest {
 
     assertThat(HashProvider.mimc(account.getEncodedBytes()))
         .isEqualTo(
-            Hash.fromHexString("25ddd6106526ffb2c9b923617cf3bcab669a5d57821d0ec81daa23155c1513ea"));
+            Hash.fromHexString(
+                "0x017095f9f125ac3d74c7e0bb482f3cfb7409915d27ecad1b1bb4ca65103f13ce"));
 
     final ZKTrie accountStateTrie =
         ZKTrie.createTrie(new AccountTrieRepositoryWrapper(new InMemoryWorldStateStorage()));
@@ -97,7 +101,8 @@ public class WorldStateStateRootTest {
 
     assertThat(accountStateTrie.getTopRootHash())
         .isEqualTo(
-            Hash.fromHexString("1f8b53f5cf08c25611e11f8bfd2ffdbdab2f12f7e0578e54282f31e0e6267ab4"));
+            Hash.fromHexString(
+                "0x03b9395928c56d45c10d317c7102e9950d03b4f55f6ad043000fd19987fa961f"));
   }
 
   @Test
@@ -124,7 +129,8 @@ public class WorldStateStateRootTest {
 
     assertThat(accountStateTrie.getTopRootHash())
         .isEqualTo(
-            Hash.fromHexString("15471b9c6443332dccaef5b1544c5881e2c2a6e4576ad1696cec3d1769061e21"));
+            Hash.fromHexString(
+                "0x0e96b1188b30497434accbf8b64047863d56568d6526c25751a2a253393da8e0"));
   }
 
   @Test
@@ -168,7 +174,8 @@ public class WorldStateStateRootTest {
 
     assertThat(accountStateTrie.getTopRootHash())
         .isEqualTo(
-            Hash.fromHexString("16df792bd76d708e98bccd2f037d15e5b8d5fa816febf0bf0a30487b8e0ba117"));
+            Hash.fromHexString(
+                "0x061caf856bd61568a5f3bbd2983f6e270eb88d07685b5aa7940034dd2822c9ae"));
   }
 
   @Test
@@ -210,7 +217,8 @@ public class WorldStateStateRootTest {
     accountStateTrie.removeWithTrace(account.getHkey(), account.getAddress());
     assertThat(accountStateTrie.getTopRootHash())
         .isEqualTo(
-            Hash.fromHexString("2e603c5f62481d627428d9efbfccd33fc1474e1d191b9e93cefa337b4a0e67da"));
+            Hash.fromHexString(
+                "0x116a0520d95c7f2d0fe67cc2a3ce07d497aeda71b4cdfdd505d9b5ac829cb4f7"));
 
     // clean storage B
     account2Storage.removeWithTrace(slotKeyHash, slotKey);
@@ -219,7 +227,8 @@ public class WorldStateStateRootTest {
         zkAccount2.getHkey(), zkAccount2.getAddress(), zkAccount2.getEncodedBytes());
     assertThat(accountStateTrie.getTopRootHash())
         .isEqualTo(
-            Hash.fromHexString("1aee37cbf805a51f827b48eb8fab44a7012575876045dca6ea6faaaa2233b0b5"));
+            Hash.fromHexString(
+                "0x1184b2790357fdfe64095f296d7002ef330ad56bc26c92e7ce6a58261e00f068"));
 
     // Write again, somewhere else
     final MimcSafeBytes<Bytes32> newSlotKey = createDumFullBytes(11);
@@ -231,7 +240,8 @@ public class WorldStateStateRootTest {
         zkAccount2.getHkey(), zkAccount2.getAddress(), zkAccount2.getEncodedBytes());
     assertThat(accountStateTrie.getTopRootHash())
         .isEqualTo(
-            Hash.fromHexString("02b9fb86c95b0e45a3ad401f1267b62f80e1ec16057d1491c2c9b32b36a1478f"));
+            Hash.fromHexString(
+                "0x0b34fb264bffa61fb7540a76a702dbf7ccc04300d2c6d8a72fc1f4e4d42b0af5"));
   }
 
   @Test
@@ -271,7 +281,8 @@ public class WorldStateStateRootTest {
 
     assertThat(accountStateTrie.getTopRootHash())
         .isEqualTo(
-            Hash.fromHexString("1cb213eb41f295fded1c6850d570beec729ca15541a33586320e0f097f0ed11b"));
+            Hash.fromHexString(
+                "0x06309a0479348bf18d63d896dcac6ce365982ec46e36d278d7127d8ab841e4fb"));
   }
 
   @Test
@@ -298,7 +309,7 @@ public class WorldStateStateRootTest {
     assertThat(accountStateTrie.getTopRootHash())
         .isEqualTo(
             Hash.fromHexString(
-                "0x15471b9c6443332dccaef5b1544c5881e2c2a6e4576ad1696cec3d1769061e21"));
+                "0x0e96b1188b30497434accbf8b64047863d56568d6526c25751a2a253393da8e0"));
     accountStateTrie.commit();
     // revert all addition
     accountStateTrie.removeWithTrace(account.getHkey(), account.getAddress());
@@ -307,7 +318,8 @@ public class WorldStateStateRootTest {
     accountStateTrie.decrementNextFreeNode();
     assertThat(accountStateTrie.getTopRootHash())
         .isEqualTo(
-            Hash.fromHexString("2e7942bb21022172cbad3ffc38d1c59e998f1ab6ab52feb15345d04bbf859f14"));
+            Hash.fromHexString(
+                "0x090dccbc1e7b264c40101a13610bd84942fa6837bfa8e0c67ede029c5ad4d00c"));
     accountStateTrie.commit();
     // add account again
     accountStateTrie.putWithTrace(
@@ -317,6 +329,6 @@ public class WorldStateStateRootTest {
     assertThat(accountStateTrie.getTopRootHash())
         .isEqualTo(
             Hash.fromHexString(
-                "0x15471b9c6443332dccaef5b1544c5881e2c2a6e4576ad1696cec3d1769061e21"));
+                "0x0e96b1188b30497434accbf8b64047863d56568d6526c25751a2a253393da8e0"));
   }
 }

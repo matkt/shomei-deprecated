@@ -80,7 +80,8 @@ public class RollingForwardTests {
     Hash topRootHash = Hash.wrap(accountStateTrieOne.getTopRootHash());
     assertThat(topRootHash)
         .isEqualTo(
-            Hash.fromHexString("11aed727a707f2f1962e399bd4787153ba0e69b7224e8eecf4d1e4e6a8e8dafd"));
+            Hash.fromHexString(
+                "0x02d507540514011b52e7debd8a136c6c28819bb128f0cd52ef6d5a753966cb88"));
 
     TrieLogLayer trieLogLayer = new TrieLogLayer();
     trieLogLayer.addAccountChange(account.getAddress(), null, account);
@@ -115,7 +116,8 @@ public class RollingForwardTests {
     Hash topRootHash = Hash.wrap(accountStateTrieOne.getTopRootHash());
     assertThat(topRootHash)
         .isEqualTo(
-            Hash.fromHexString("11aed727a707f2f1962e399bd4787153ba0e69b7224e8eecf4d1e4e6a8e8dafd"));
+            Hash.fromHexString(
+                "0x02d507540514011b52e7debd8a136c6c28819bb128f0cd52ef6d5a753966cb88"));
 
     TrieLogLayer trieLogLayer = new TrieLogLayer();
     trieLogLayer.addAccountChange(account.getAddress(), null, account);
@@ -158,7 +160,7 @@ public class RollingForwardTests {
     assertThat(topRootHash)
         .isEqualTo(
             Hash.fromHexString(
-                "0x271a0e17054a194a6a1e227ddfa4bec3f22c55a0b061c5056a089bba1ae24ec9"));
+                "0x06341106b90f20fbb4d09f326c7e34562764fe45d9666110b8af17da45e0da7d"));
 
     TrieLogLayer trieLogLayer = new TrieLogLayer();
     trieLogLayer.addAccountChange(account.getAddress(), null, account);
@@ -171,7 +173,8 @@ public class RollingForwardTests {
     zkEvmWorldState.commit(0L, null, true);
     assertThat(zkEvmWorldState.getStateRootHash())
         .isEqualTo(
-            Hash.fromHexString("11aed727a707f2f1962e399bd4787153ba0e69b7224e8eecf4d1e4e6a8e8dafd"));
+            Hash.fromHexString(
+                "0x02d507540514011b52e7debd8a136c6c28819bb128f0cd52ef6d5a753966cb88"));
 
     zkEvmWorldState.getAccumulator().rollForward(trieLogLayer2);
     zkEvmWorldState.commit(0L, null, true);
