@@ -264,6 +264,7 @@ public class WorldstateTraceTest {
 
     // clean storage B
     Trace trace2 = account2Storage.removeWithTrace(slotKeyHash, slotKey);
+    trace2.setLocation(zkAccount2.getAddress().getOriginalUnsafeValue());
 
     zkAccount2.setStorageRoot(Hash.wrap(account2Storage.getTopRootHash()));
     Trace trace3 =
@@ -275,11 +276,15 @@ public class WorldstateTraceTest {
     final Hash newSlotKeyHash = HashProvider.trieHash(newSlotKey);
     final MimcSafeBytes<Bytes32> newSlotValue = createDumFullBytes(78);
     Trace trace4 = account2Storage.putWithTrace(newSlotKeyHash, newSlotKey, newSlotValue);
+    trace4.setLocation(zkAccount2.getAddress().getOriginalUnsafeValue());
 
     zkAccount2.setStorageRoot(Hash.wrap(account2Storage.getTopRootHash()));
     Trace trace5 =
         accountStateTrie.putWithTrace(
             zkAccount2.getHkey(), zkAccount2.getAddress(), zkAccount2.getEncodedBytes());
+
+    System.out.println(
+        JSON_OBJECT_MAPPER.writeValueAsString(List.of(trace, trace2, trace3, trace4, trace5)));
 
     assertThat(
             JSON_OBJECT_MAPPER.writeValueAsString(List.of(trace, trace2, trace3, trace4, trace5)))

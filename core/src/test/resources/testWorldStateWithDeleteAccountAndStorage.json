@@ -162,7 +162,7 @@
     "type":4
   },
   {
-    "location":"0x",
+    "location":"0x2f00000000000000000000000000000000000000",
     "newNextFreeNode":3,
     "oldSubRoot":"0x064eff50d7b751ec47695d9208ef9b3dc2b546e82a69d3b7df270fd9de9e67f0",
     "newSubRoot":"0x0951bfcd4ac808d195af8247140b906a4379b3f2d37ec66e34d2f4a5d35fa166",
@@ -385,7 +385,7 @@
     "type":3
   },
   {
-    "location":"0x",
+    "location":"0x2f00000000000000000000000000000000000000",
     "newNextFreeNode":4,
     "oldSubRoot":"0x0951bfcd4ac808d195af8247140b906a4379b3f2d37ec66e34d2f4a5d35fa166",
     "newSubRoot":"0x0dbcff94b5b54bc3d4b15b6b54c111906b38d8ad14704c731bb3e3a96a641c6a",
