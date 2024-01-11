@@ -30,7 +30,7 @@ public class ZKTrieTest {
 
   @Test
   public void testWorldStateHead() {
-    assertThat(HashProvider.mimc(LeafOpening.HEAD.getEncodesBytes()))
+    assertThat(HashProvider.trieHash(LeafOpening.HEAD.getEncodesBytes()))
         .isEqualTo(
             Bytes.fromHexString(
                 "0x0891fa77c3d0c9b745840d71d41dcb58b638d4734bb4f0bba4a3d1a2d847b672"));
@@ -38,7 +38,7 @@ public class ZKTrieTest {
 
   @Test
   public void testWorldStateTail() {
-    assertThat(HashProvider.mimc(LeafOpening.TAIL.getEncodesBytes()))
+    assertThat(HashProvider.trieHash(LeafOpening.TAIL.getEncodesBytes()))
         .isEqualTo(
             Bytes.fromHexString(
                 "0x10ba2286f648a549b50ea5f1b6e1155d22c31eb4727c241e76c420200cd5dbe0"));
