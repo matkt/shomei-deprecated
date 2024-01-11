@@ -7,9 +7,9 @@
 Version 2.1.0 requires a re-sync of the state and requires version [0.3.0](https://github.com/Consensys/besu-shomei-plugin/releases/tag/v0.3.0)+ of the besu-shomei plugin.
 
 ### Additions and Improvements
-- Updates the parameters of the zktrie to complete the integration of the new mimc bl12-377 hash [#72](https://github.com/Consensys/shomei/pull/72) 
 
 ### Bug Fixes
+- Updates the parameters of the zktrie to complete the integration of the new mimc bl12-377 hash [#73](https://github.com/Consensys/shomei/pull/73)
 
 ### Release Link
 
