@@ -1,10 +1,20 @@
 # Changelog
 
+## 2.2.0
+
+### Additions and Improvements
+
+### Bug Fixes
+
+### Release Link
+
 ## 2.1.0
 
 ⚠️  It is important to upgrade to this version in order to obtain a correct world state. **It is also necessary to resync from scratch.**
 
 Version 2.1.0 requires a re-sync of the state and requires version [0.3.0](https://github.com/Consensys/besu-shomei-plugin/releases/tag/v0.3.0)+ of the besu-shomei plugin.
+
+### Release Date 2024-01-11
 
 ### Additions and Improvements
 
@@ -12,6 +22,8 @@ Version 2.1.0 requires a re-sync of the state and requires version [0.3.0](https
 - Updates the parameters of the zktrie to complete the integration of the new mimc bl12-377 hash [#73](https://github.com/Consensys/shomei/pull/73)
 
 ### Release Link
+
+https://hub.docker.com/r/consensys/linea-shomei/tags?name=2.1.0
 
 ## 2.0.0
 
