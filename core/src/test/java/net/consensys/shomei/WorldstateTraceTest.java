@@ -283,9 +283,6 @@ public class WorldstateTraceTest {
         accountStateTrie.putWithTrace(
             zkAccount2.getHkey(), zkAccount2.getAddress(), zkAccount2.getEncodedBytes());
 
-    System.out.println(
-        JSON_OBJECT_MAPPER.writeValueAsString(List.of(trace, trace2, trace3, trace4, trace5)));
-
     assertThat(
             JSON_OBJECT_MAPPER.writeValueAsString(List.of(trace, trace2, trace3, trace4, trace5)))
         .isEqualToIgnoringWhitespace(
