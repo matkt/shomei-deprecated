@@ -103,7 +103,7 @@ public class WorldstateTraceTest {
   }
 
   @Test
-  public void testWorldStateWithTwoAccount() throws IOException {
+  public void testWorldStateWithTwoAccounts() throws IOException {
 
     final ZkAccount zkAccount2 =
         new ZkAccount(
